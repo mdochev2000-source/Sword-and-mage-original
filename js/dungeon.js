@@ -1,6 +1,20 @@
 'use strict';
 // ================= ПОДЗЕМИЯ: процедурна генерация на етажи =================
 
+// подовите плочки по ръба на стаята, чийто външен съсед е под (=входовете-проходи)
+function roomGates(room, cells, w, h) {
+  const g = [];
+  for (let i = room.x; i < room.x + room.w; i++) {
+    if (room.y - 1 >= 0 && cells[room.y * w + i] === FLOOR && cells[(room.y - 1) * w + i] === FLOOR) g.push([i, room.y]);
+    if (room.y + room.h < h && cells[(room.y + room.h - 1) * w + i] === FLOOR && cells[(room.y + room.h) * w + i] === FLOOR) g.push([i, room.y + room.h - 1]);
+  }
+  for (let j = room.y; j < room.y + room.h; j++) {
+    if (room.x - 1 >= 0 && cells[j * w + room.x] === FLOOR && cells[j * w + room.x - 1] === FLOOR) g.push([room.x, j]);
+    if (room.x + room.w < w && cells[j * w + room.x + room.w - 1] === FLOOR && cells[j * w + room.x + room.w] === FLOOR) g.push([room.x + room.w - 1, j]);
+  }
+  return g;
+}
+
 const Dungeon = {
   generate(depth, runSeed) {
     const R = mulberry32(((depth * 2654435761) ^ runSeed) >>> 0);
@@ -135,6 +149,34 @@ const Dungeon = {
       if (free(i, j)) { props.push({ kind: 'chest', x: i + 0.5, y: j + 0.5, r: 0.4, solid: true, opened: false }); take(i, j); }
     }
 
+    // --- специални стаи: Съкровищница (%5===3) и Арена (четни етажи) ---
+    const usedRooms = new Set([startRoom, farRoom]);
+    const pickSpecialRoom = () => {
+      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4);
+      if (!avail.length) return null;
+      const r = avail[ri(0, avail.length - 1)];
+      usedRooms.add(r);
+      return r;
+    };
+    const vaultRoom = (depth % 5 === 3) ? pickSpecialRoom() : null;
+    const arenaRoom = (depth % 2 === 0) ? pickSpecialRoom() : null;
+    let vault = null, arena = null;
+    if (vaultRoom) {
+      // заключени врати на всеки вход + 3 сандъка вътре, без обикновени врагове
+      for (const [gi, gj] of roomGates(vaultRoom, cells, w, h)) props.push({ kind: 'vaultdoor', x: gi + 0.5, y: gj + 0.5, r: 0.5, solid: true, opened: false });
+      let placed = 0;
+      for (let tries = 0; tries < 50 && placed < 3; tries++) {
+        const i = ri(vaultRoom.x + 1, vaultRoom.x + vaultRoom.w - 2), j = ri(vaultRoom.y + 1, vaultRoom.y + vaultRoom.h - 2);
+        if (free(i, j)) { props.push({ kind: 'chest', x: i + 0.5, y: j + 0.5, r: 0.4, solid: true, opened: false }); take(i, j); placed++; }
+      }
+      vault = { room: { x: vaultRoom.x, y: vaultRoom.y, w: vaultRoom.w, h: vaultRoom.h } };
+    }
+    if (arenaRoom) {
+      props.push({ kind: 'arena', x: arenaRoom.cx + 0.5, y: arenaRoom.cy + 0.5, r: 0.5, solid: false });
+      take(arenaRoom.cx, arenaRoom.cy);
+      arena = { room: { x: arenaRoom.x, y: arenaRoom.y, w: arenaRoom.w, h: arenaRoom.h } };
+    }
+
     // --- мангали, бъчви, декор ---
     for (const r of rooms) {
       if (R() < 0.75) {
@@ -172,6 +214,7 @@ const Dungeon = {
     for (const r of rooms) {
       if (r === startRoom) continue;
       if (bossFloor && r === farRoom) continue; // босовата стая е само за боса
+      if (r === vaultRoom || r === arenaRoom) continue; // специалните стаи нямат обикновени врагове
       const roomN = Math.min(budget, Math.max(1, Math.round(r.w * r.h / 14) + (R() < 0.5 ? 0 : 1)));
       for (let e = 0; e < roomN && budget > 0; e++) {
         const i = ri(r.x, r.x + r.w - 1), j = ri(r.y, r.y + r.h - 1);
@@ -190,9 +233,21 @@ const Dungeon = {
       spawns.push({ bossId, x: farRoom.cx + 0.5, y: farRoom.cy - 3 + 0.5 });
     }
 
+    // Съкровищница: един елит носи ключа (маркиран). Ако няма елит — правим един гарантиран.
+    if (vault) {
+      let kg = spawns.find(s => s.elite && !s.bossId);
+      if (!kg) kg = spawns.find(s => !s.bossId);
+      if (!kg) {
+        const rr = rooms.find(r => r !== startRoom && r !== vaultRoom && r !== arenaRoom && !(bossFloor && r === farRoom)) || rooms[1];
+        if (rr) { kg = { kind: 'brute', x: rr.cx + 0.5, y: rr.cy + 0.5 }; spawns.push(kg); }
+      }
+      if (kg) { kg.elite = true; kg.keyGuardian = true; }
+    }
+
     return {
       map, props, spawns, theme: themeIndexFor(depth), bossFloor,
       bossRoom: bossFloor ? { x: farRoom.x, y: farRoom.y, w: farRoom.w, h: farRoom.h } : null,
+      vault, arena,
     };
   },
 };

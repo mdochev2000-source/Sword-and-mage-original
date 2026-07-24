@@ -787,6 +787,8 @@ function renderWorld() {
     else if (pr.kind === 'barrel') spr = Spr.barrel;
     else if (pr.kind === 'crate') spr = Spr.crate;
     else if (pr.kind === 'chest') spr = pr.opened ? Spr.chestOpen : Spr.chest;
+    else if (pr.kind === 'vaultdoor') spr = pr.opened ? null : Spr.vaultdoor; // отворената врата изчезва
+    else if (pr.kind === 'arena') spr = Spr.arena;
     else if (pr.kind === 'fountain') spr = pr.used ? Spr.fountainDry : Spr.fountain[Math.floor(G.time * 4) % 2];
     else if (pr.kind === 'bones') spr = Spr.bones;
     else if (pr.kind === 'rubble') spr = Spr.rubble;
@@ -964,6 +966,13 @@ function drawEnemy(e, sx, sy) {
   blit(ctx, spr, sx - spr.width * S / 2 + ox, dy, e.flip);
   ctx.globalAlpha = 1;
   if (e.elite) blit(ctx, Spr.crown, sx - Spr.crown.width * S / 2, dy - 5 * S);
+  if (e.keyGuardian) { // пулсиращ златен пръстен = ПАЗИТЕЛ НА КЛЮЧА
+    ctx.strokeStyle = 'rgba(255,210,59,' + (0.5 + 0.3 * Math.sin(G.time * 5)) + ')';
+    ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, (e.r + 0.3) * TW * 0.5, (e.r + 0.3) * TH * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   // Щитоносец: син ореол докато щитът стои
   if (e.shield) {
     ctx.strokeStyle = 'rgba(138,176,255,' + (0.5 + 0.3 * Math.sin(G.time * 6)) + ')';
@@ -981,7 +990,13 @@ function drawEnemy(e, sx, sy) {
     ctx.fillStyle = '#c22836';
     ctx.fillRect(bx, by, bw * clamp(e.hp / e.maxhp, 0, 1), bh);
   }
-  if (e.mod) {
+  if (e.keyGuardian) {
+    ctx.font = fontBold(5);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillText('KEY GUARDIAN', sx, dy - 7 * S);
+    ctx.textAlign = 'left';
+  } else if (e.mod) {
     ctx.font = fontPx(5);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffd23b';

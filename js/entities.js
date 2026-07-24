@@ -383,6 +383,13 @@ function killEnemy(e) {
   e.dead = true;
   G.kills++;
   if (e.plagued) addHazard({ type: 'poison', x: e.x, y: e.y, t: 0, life: 3, r: 0.9, dps: 6 + G.depth * 0.4 }); // Poison „Plague": ражда нов малък облак
+  if (e.keyGuardian && G.vault && !G.vaultUnlocked) { // Съкровищница: ключът пада -> вратите се отварят
+    G.vaultUnlocked = true;
+    for (const pr of G.props) if (pr.kind === 'vaultdoor') { pr.opened = true; pr.solid = false; }
+    toast('The Key Guardian falls — the Vault opens!', '#ffd23b');
+    Sfx.play('level'); Sfx.play('open');
+    G.miniDirty = true;
+  }
   G.hitStop = Math.max(G.hitStop, 0.045);
   G.shake = Math.min(8, G.shake + 1.5);
   Sfx.play('die');
@@ -580,6 +587,7 @@ function updatePlayer(dt) {
   updatePickups(dt);
   updateInteract();
   checkBossRoom();
+  updateArena(dt);
 }
 
 function tryMelee() {
@@ -967,13 +975,14 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
     const reach = INTERACT[pr.kind];
     if (!reach) continue;
     if (pr.kind === 'chest' && pr.opened) continue;
+    if (pr.kind === 'vaultdoor' && pr.opened) continue; // отворената врата вече не подсказва
     const d = dist(p.x, p.y, pr.x, pr.y);
     if (d < reach && d < bd) { bd = d; best = pr; }
   }
@@ -991,6 +1000,8 @@ function updateInteract() {
   else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
   else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
+  else if (best.kind === 'vaultdoor') G.interactHint = { pr: best, txt: 'Locked — the Key Guardian holds the key' };
+  else if (best.kind === 'arena') G.interactHint = { pr: best, txt: (G.arena && G.arena.state !== 'idle') ? 'Arena — clear the waves!' : 'Arena — step inside to seal the doors' };
 }
 function doInteract() {
   const h = G.interactHint;
@@ -1011,10 +1022,14 @@ function doInteract() {
     pr.opened = true;
     pr.solid = false;
     Sfx.play('open');
+    const boost = pr.arenaReward ? 30 : 10; // наградата от арената е с повишена рядкост
     spawnDrop(pr.x, pr.y, { gold: rndi(10, 20) + G.depth * 4 });
-    spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, 10) });
-    if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
+    spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) });
+    if (pr.arenaReward) { spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) }); spawnDrop(pr.x, pr.y, { shard: rndi(3, 6) }); }
+    else if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
+  } else if (pr.kind === 'vaultdoor') {
+    if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
   } else if (pr.kind === 'vendor' || pr.kind === 'stall') {
     openShop(pr.vtype);
   } else if (pr.kind === 'portal') {
@@ -1323,6 +1338,8 @@ function spawnEnemies(spawns) {
       if (e.mod === 'firetrail') e.trailT = 0;
       if (e.mod === 'mender') e.mendT = 0;
     }
+    if (s.keyGuardian) e.keyGuardian = true; // пази ключа за Съкровищницата
+    if (s.arena) e.arena = true;             // враг от вълна на Арената
     G.enemies.push(e);
   }
 }
@@ -1567,6 +1584,65 @@ function unlockBossRoom() {
   computeFOV();
   G.miniDirty = true;
   toast('The room\'s seal has broken.', '#7fd0a0');
+}
+
+// ---------- АРЕНА: доброволна стая, запечатва се при влизане, 3 вълни, после награда ----------
+function arenaKind() {
+  const pool = ['slime', 'skeleton', 'bat'];
+  if (G.depth >= 3) pool.push('archer');
+  if (G.depth >= 5) pool.push('shaman');
+  if (G.depth >= 6) pool.push('brute');
+  if (G.depth >= 8) pool.push('wraith');
+  return pick(pool);
+}
+function spawnArenaWave(n) {
+  const r = G.arena.room;
+  const cfg = [{ n: 4, e: 0 }, { n: 5, e: 1 }, { n: 6, e: 2 }][n - 1];
+  const specs = [];
+  for (let k = 0; k < cfg.n; k++) {
+    const pos = freeFloorNear(r.x + 1 + Math.random() * (r.w - 2), r.y + 1 + Math.random() * (r.h - 2));
+    specs.push({ kind: arenaKind(), x: pos.x, y: pos.y, elite: k < cfg.e, arena: true });
+  }
+  spawnEnemies(specs);
+}
+function startArena() {
+  const a = G.arena, r = a.room, m = G.map;
+  a.state = 'wave'; a.wave = 1; a.gates = [];
+  for (let i = r.x - 1; i <= r.x + r.w; i++) for (const j of [r.y - 1, r.y + r.h]) { const idx = j * m.w + i; if (m.cells[idx] === FLOOR) { m.cells[idx] = WALL; a.gates.push(idx); } }
+  for (let j = r.y; j < r.y + r.h; j++) for (const i of [r.x - 1, r.x + r.w]) { const idx = j * m.w + i; if (m.cells[idx] === FLOOR) { m.cells[idx] = WALL; a.gates.push(idx); } }
+  spawnArenaWave(1);
+  toast('Arena — Wave 1 / 3!', '#ff8a1f');
+  Sfx.play('roar'); Sfx.play('boom'); G.shake = 8;
+  computeFOV(); G.miniDirty = true;
+}
+function finishArena() {
+  const a = G.arena, r = a.room;
+  for (const idx of a.gates) G.map.cells[idx] = FLOOR;
+  a.gates = [];
+  const ai = G.props.findIndex(pr => pr.kind === 'arena'); if (ai >= 0) G.props.splice(ai, 1);
+  const pos = freeFloorNear(r.x + (r.w >> 1) + 0.5, r.y + (r.h >> 1) + 0.5);
+  G.props.push({ kind: 'chest', x: pos.x, y: pos.y, r: 0.4, solid: true, opened: false, arenaReward: true });
+  toast('Arena cleared! Claim your reward.', '#7fd0a0');
+  Sfx.play('level'); G.shake = 6;
+  G.arena = null;
+  computeFOV(); G.miniDirty = true;
+}
+function updateArena(dt) {
+  const a = G.arena; if (!a) return;
+  const p = G.player, r = a.room;
+  if (a.state === 'idle') {
+    if (p.x > r.x + 0.7 && p.x < r.x + r.w - 0.7 && p.y > r.y + 0.7 && p.y < r.y + r.h - 0.7) startArena();
+    return;
+  }
+  if (a.state === 'wave') {
+    if (!G.enemies.some(e => !e.dead && e.arena)) { // само враговете на арената броят
+      if (a.wave >= 3) finishArena();
+      else { a.state = 'pause'; a.timer = 2; }
+    }
+  } else if (a.state === 'pause') {
+    a.timer -= dt;
+    if (a.timer <= 0) { a.wave++; spawnArenaWave(a.wave); a.state = 'wave'; toast('Wave ' + a.wave + ' / 3!', '#ff8a1f'); Sfx.play('roar'); }
+  }
 }
 
 // ---------- босове: фази по % живот + сигнатурни механики ----------
@@ -1912,6 +1988,9 @@ function startFloor(depth) {
   G.bossRoom = gen.bossRoom || null;
   G.bossRoomLocked = false;
   G.bossGates = [];
+  G.vault = gen.vault || null;                 // Съкровищница (заключена, ключът е у елит)
+  G.vaultUnlocked = false;
+  G.arena = gen.arena ? { room: gen.arena.room, state: 'idle', wave: 0, timer: 0, gates: [] } : null; // Арена
   G.visible = new Uint8Array(gen.map.w * gen.map.h);
   G.explored = new Uint8Array(gen.map.w * gen.map.h);
   G.props = gen.props;
@@ -2143,6 +2222,7 @@ function startSurface() {
   G.bossRoom = null;
   G.bossRoomLocked = false;
   G.bossGates = [];
+  G.vault = null; G.vaultUnlocked = false; G.arena = null; // чисти състояния на специалните стаи
   if (G.player) G.player.usedSecondChance = false; // ново спускане — нов Втори шанс
   initSurfaceSprites();
   initSprites(0); // за икони/герой, ако още не са готови

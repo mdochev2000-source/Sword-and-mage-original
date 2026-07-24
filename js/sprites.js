@@ -207,6 +207,27 @@ function genChest(open) {
   outlineSprite(g, '#0a0c12');
   return g.canvas;
 }
+function genVaultDoor() {
+  const g = mk(16, 20);
+  rc(g, 2, 2, 12, 17, '#3a3040');       // каменна рамка
+  rc(g, 3, 3, 10, 15, '#5c4a2a');       // бронзова врата
+  rc(g, 3, 3, 10, 1, '#7d6636'); rc(g, 3, 17, 10, 1, '#2a2018');
+  rc(g, 5, 4, 1, 13, '#e8c04a'); rc(g, 10, 4, 1, 13, '#e8c04a'); // вертикални златни ленти
+  rc(g, 3, 9, 10, 1, '#e8c04a');        // хоризонтална лента
+  rc(g, 7, 9, 2, 3, '#ffd23b'); px(g, 7, 8, '#8f6a1f'); px(g, 8, 8, '#8f6a1f'); px(g, 8, 10, '#5a4010'); // катинар
+  outlineSprite(g, '#0a0c12');
+  return g.canvas;
+}
+function genArenaMarker() {
+  const g = mk(14, 22);
+  rc(g, 6, 3, 2, 18, '#5c3d26');        // прът
+  rc(g, 2, 3, 9, 8, '#8a1c2a');         // червено знаме
+  rc(g, 2, 3, 9, 1, '#c22836'); rc(g, 2, 10, 9, 1, '#5a0f18');
+  rc(g, 5, 5, 3, 3, '#d8d3c0'); px(g, 5, 6, '#403c30'); px(g, 7, 6, '#403c30'); px(g, 6, 8, '#d8d3c0'); // череп
+  px(g, 4, 9, '#8a97ad'); px(g, 8, 9, '#8a97ad'); // кръстосани остриета
+  outlineSprite(g, '#0a0c12');
+  return g.canvas;
+}
 function genStairs(t) {
   const g = mk(32, 16);
   fillDiamond(g, 0, t.dark);
@@ -1024,6 +1045,8 @@ function initSprites(themeIdx) {
     Spr.crate = genCrate();
     Spr.chest = genChest(false);
     Spr.chestOpen = genChest(true);
+    Spr.vaultdoor = genVaultDoor();
+    Spr.arena = genArenaMarker();
     Spr.fountain = genFountain(false);
     Spr.fountainDry = genFountain(true)[0];
     Spr.bones = genBones();

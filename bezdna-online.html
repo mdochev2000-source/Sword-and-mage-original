@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-24 12:27 UTC";
+window.__BUILD__ = "2026-07-24 12:44 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -453,6 +453,27 @@ function genChest(open) {
     rc(g, 2, 7, 12, 2, '#ffd23b'); rc(g, 4, 6, 3, 1, '#fff2a0'); // злато вътре
     rc(g, 1, 11, 14, 1, '#3d2a1a');
   }
+  outlineSprite(g, '#0a0c12');
+  return g.canvas;
+}
+function genVaultDoor() {
+  const g = mk(16, 20);
+  rc(g, 2, 2, 12, 17, '#3a3040');       // каменна рамка
+  rc(g, 3, 3, 10, 15, '#5c4a2a');       // бронзова врата
+  rc(g, 3, 3, 10, 1, '#7d6636'); rc(g, 3, 17, 10, 1, '#2a2018');
+  rc(g, 5, 4, 1, 13, '#e8c04a'); rc(g, 10, 4, 1, 13, '#e8c04a'); // вертикални златни ленти
+  rc(g, 3, 9, 10, 1, '#e8c04a');        // хоризонтална лента
+  rc(g, 7, 9, 2, 3, '#ffd23b'); px(g, 7, 8, '#8f6a1f'); px(g, 8, 8, '#8f6a1f'); px(g, 8, 10, '#5a4010'); // катинар
+  outlineSprite(g, '#0a0c12');
+  return g.canvas;
+}
+function genArenaMarker() {
+  const g = mk(14, 22);
+  rc(g, 6, 3, 2, 18, '#5c3d26');        // прът
+  rc(g, 2, 3, 9, 8, '#8a1c2a');         // червено знаме
+  rc(g, 2, 3, 9, 1, '#c22836'); rc(g, 2, 10, 9, 1, '#5a0f18');
+  rc(g, 5, 5, 3, 3, '#d8d3c0'); px(g, 5, 6, '#403c30'); px(g, 7, 6, '#403c30'); px(g, 6, 8, '#d8d3c0'); // череп
+  px(g, 4, 9, '#8a97ad'); px(g, 8, 9, '#8a97ad'); // кръстосани остриета
   outlineSprite(g, '#0a0c12');
   return g.canvas;
 }
@@ -1273,6 +1294,8 @@ function initSprites(themeIdx) {
     Spr.crate = genCrate();
     Spr.chest = genChest(false);
     Spr.chestOpen = genChest(true);
+    Spr.vaultdoor = genVaultDoor();
+    Spr.arena = genArenaMarker();
     Spr.fountain = genFountain(false);
     Spr.fountainDry = genFountain(true)[0];
     Spr.bones = genBones();
@@ -2218,6 +2241,20 @@ function rollPerkChoices() {
 'use strict';
 // ================= ПОДЗЕМИЯ: процедурна генерация на етажи =================
 
+// подовите плочки по ръба на стаята, чийто външен съсед е под (=входовете-проходи)
+function roomGates(room, cells, w, h) {
+  const g = [];
+  for (let i = room.x; i < room.x + room.w; i++) {
+    if (room.y - 1 >= 0 && cells[room.y * w + i] === FLOOR && cells[(room.y - 1) * w + i] === FLOOR) g.push([i, room.y]);
+    if (room.y + room.h < h && cells[(room.y + room.h - 1) * w + i] === FLOOR && cells[(room.y + room.h) * w + i] === FLOOR) g.push([i, room.y + room.h - 1]);
+  }
+  for (let j = room.y; j < room.y + room.h; j++) {
+    if (room.x - 1 >= 0 && cells[j * w + room.x] === FLOOR && cells[j * w + room.x - 1] === FLOOR) g.push([room.x, j]);
+    if (room.x + room.w < w && cells[j * w + room.x + room.w - 1] === FLOOR && cells[j * w + room.x + room.w] === FLOOR) g.push([room.x + room.w - 1, j]);
+  }
+  return g;
+}
+
 const Dungeon = {
   generate(depth, runSeed) {
     const R = mulberry32(((depth * 2654435761) ^ runSeed) >>> 0);
@@ -2352,6 +2389,34 @@ const Dungeon = {
       if (free(i, j)) { props.push({ kind: 'chest', x: i + 0.5, y: j + 0.5, r: 0.4, solid: true, opened: false }); take(i, j); }
     }
 
+    // --- специални стаи: Съкровищница (%5===3) и Арена (четни етажи) ---
+    const usedRooms = new Set([startRoom, farRoom]);
+    const pickSpecialRoom = () => {
+      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4);
+      if (!avail.length) return null;
+      const r = avail[ri(0, avail.length - 1)];
+      usedRooms.add(r);
+      return r;
+    };
+    const vaultRoom = (depth % 5 === 3) ? pickSpecialRoom() : null;
+    const arenaRoom = (depth % 2 === 0) ? pickSpecialRoom() : null;
+    let vault = null, arena = null;
+    if (vaultRoom) {
+      // заключени врати на всеки вход + 3 сандъка вътре, без обикновени врагове
+      for (const [gi, gj] of roomGates(vaultRoom, cells, w, h)) props.push({ kind: 'vaultdoor', x: gi + 0.5, y: gj + 0.5, r: 0.5, solid: true, opened: false });
+      let placed = 0;
+      for (let tries = 0; tries < 50 && placed < 3; tries++) {
+        const i = ri(vaultRoom.x + 1, vaultRoom.x + vaultRoom.w - 2), j = ri(vaultRoom.y + 1, vaultRoom.y + vaultRoom.h - 2);
+        if (free(i, j)) { props.push({ kind: 'chest', x: i + 0.5, y: j + 0.5, r: 0.4, solid: true, opened: false }); take(i, j); placed++; }
+      }
+      vault = { room: { x: vaultRoom.x, y: vaultRoom.y, w: vaultRoom.w, h: vaultRoom.h } };
+    }
+    if (arenaRoom) {
+      props.push({ kind: 'arena', x: arenaRoom.cx + 0.5, y: arenaRoom.cy + 0.5, r: 0.5, solid: false });
+      take(arenaRoom.cx, arenaRoom.cy);
+      arena = { room: { x: arenaRoom.x, y: arenaRoom.y, w: arenaRoom.w, h: arenaRoom.h } };
+    }
+
     // --- мангали, бъчви, декор ---
     for (const r of rooms) {
       if (R() < 0.75) {
@@ -2389,6 +2454,7 @@ const Dungeon = {
     for (const r of rooms) {
       if (r === startRoom) continue;
       if (bossFloor && r === farRoom) continue; // босовата стая е само за боса
+      if (r === vaultRoom || r === arenaRoom) continue; // специалните стаи нямат обикновени врагове
       const roomN = Math.min(budget, Math.max(1, Math.round(r.w * r.h / 14) + (R() < 0.5 ? 0 : 1)));
       for (let e = 0; e < roomN && budget > 0; e++) {
         const i = ri(r.x, r.x + r.w - 1), j = ri(r.y, r.y + r.h - 1);
@@ -2407,9 +2473,21 @@ const Dungeon = {
       spawns.push({ bossId, x: farRoom.cx + 0.5, y: farRoom.cy - 3 + 0.5 });
     }
 
+    // Съкровищница: един елит носи ключа (маркиран). Ако няма елит — правим един гарантиран.
+    if (vault) {
+      let kg = spawns.find(s => s.elite && !s.bossId);
+      if (!kg) kg = spawns.find(s => !s.bossId);
+      if (!kg) {
+        const rr = rooms.find(r => r !== startRoom && r !== vaultRoom && r !== arenaRoom && !(bossFloor && r === farRoom)) || rooms[1];
+        if (rr) { kg = { kind: 'brute', x: rr.cx + 0.5, y: rr.cy + 0.5 }; spawns.push(kg); }
+      }
+      if (kg) { kg.elite = true; kg.keyGuardian = true; }
+    }
+
     return {
       map, props, spawns, theme: themeIndexFor(depth), bossFloor,
       bossRoom: bossFloor ? { x: farRoom.x, y: farRoom.y, w: farRoom.w, h: farRoom.h } : null,
+      vault, arena,
     };
   },
 };
@@ -2970,6 +3048,13 @@ function killEnemy(e) {
   e.dead = true;
   G.kills++;
   if (e.plagued) addHazard({ type: 'poison', x: e.x, y: e.y, t: 0, life: 3, r: 0.9, dps: 6 + G.depth * 0.4 }); // Poison „Plague": ражда нов малък облак
+  if (e.keyGuardian && G.vault && !G.vaultUnlocked) { // Съкровищница: ключът пада -> вратите се отварят
+    G.vaultUnlocked = true;
+    for (const pr of G.props) if (pr.kind === 'vaultdoor') { pr.opened = true; pr.solid = false; }
+    toast('The Key Guardian falls — the Vault opens!', '#ffd23b');
+    Sfx.play('level'); Sfx.play('open');
+    G.miniDirty = true;
+  }
   G.hitStop = Math.max(G.hitStop, 0.045);
   G.shake = Math.min(8, G.shake + 1.5);
   Sfx.play('die');
@@ -3167,6 +3252,7 @@ function updatePlayer(dt) {
   updatePickups(dt);
   updateInteract();
   checkBossRoom();
+  updateArena(dt);
 }
 
 function tryMelee() {
@@ -3554,13 +3640,14 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
     const reach = INTERACT[pr.kind];
     if (!reach) continue;
     if (pr.kind === 'chest' && pr.opened) continue;
+    if (pr.kind === 'vaultdoor' && pr.opened) continue; // отворената врата вече не подсказва
     const d = dist(p.x, p.y, pr.x, pr.y);
     if (d < reach && d < bd) { bd = d; best = pr; }
   }
@@ -3578,6 +3665,8 @@ function updateInteract() {
   else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
   else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
+  else if (best.kind === 'vaultdoor') G.interactHint = { pr: best, txt: 'Locked — the Key Guardian holds the key' };
+  else if (best.kind === 'arena') G.interactHint = { pr: best, txt: (G.arena && G.arena.state !== 'idle') ? 'Arena — clear the waves!' : 'Arena — step inside to seal the doors' };
 }
 function doInteract() {
   const h = G.interactHint;
@@ -3598,10 +3687,14 @@ function doInteract() {
     pr.opened = true;
     pr.solid = false;
     Sfx.play('open');
+    const boost = pr.arenaReward ? 30 : 10; // наградата от арената е с повишена рядкост
     spawnDrop(pr.x, pr.y, { gold: rndi(10, 20) + G.depth * 4 });
-    spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, 10) });
-    if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
+    spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) });
+    if (pr.arenaReward) { spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) }); spawnDrop(pr.x, pr.y, { shard: rndi(3, 6) }); }
+    else if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
+  } else if (pr.kind === 'vaultdoor') {
+    if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
   } else if (pr.kind === 'vendor' || pr.kind === 'stall') {
     openShop(pr.vtype);
   } else if (pr.kind === 'portal') {
@@ -3910,6 +4003,8 @@ function spawnEnemies(spawns) {
       if (e.mod === 'firetrail') e.trailT = 0;
       if (e.mod === 'mender') e.mendT = 0;
     }
+    if (s.keyGuardian) e.keyGuardian = true; // пази ключа за Съкровищницата
+    if (s.arena) e.arena = true;             // враг от вълна на Арената
     G.enemies.push(e);
   }
 }
@@ -4154,6 +4249,65 @@ function unlockBossRoom() {
   computeFOV();
   G.miniDirty = true;
   toast('The room\'s seal has broken.', '#7fd0a0');
+}
+
+// ---------- АРЕНА: доброволна стая, запечатва се при влизане, 3 вълни, после награда ----------
+function arenaKind() {
+  const pool = ['slime', 'skeleton', 'bat'];
+  if (G.depth >= 3) pool.push('archer');
+  if (G.depth >= 5) pool.push('shaman');
+  if (G.depth >= 6) pool.push('brute');
+  if (G.depth >= 8) pool.push('wraith');
+  return pick(pool);
+}
+function spawnArenaWave(n) {
+  const r = G.arena.room;
+  const cfg = [{ n: 4, e: 0 }, { n: 5, e: 1 }, { n: 6, e: 2 }][n - 1];
+  const specs = [];
+  for (let k = 0; k < cfg.n; k++) {
+    const pos = freeFloorNear(r.x + 1 + Math.random() * (r.w - 2), r.y + 1 + Math.random() * (r.h - 2));
+    specs.push({ kind: arenaKind(), x: pos.x, y: pos.y, elite: k < cfg.e, arena: true });
+  }
+  spawnEnemies(specs);
+}
+function startArena() {
+  const a = G.arena, r = a.room, m = G.map;
+  a.state = 'wave'; a.wave = 1; a.gates = [];
+  for (let i = r.x - 1; i <= r.x + r.w; i++) for (const j of [r.y - 1, r.y + r.h]) { const idx = j * m.w + i; if (m.cells[idx] === FLOOR) { m.cells[idx] = WALL; a.gates.push(idx); } }
+  for (let j = r.y; j < r.y + r.h; j++) for (const i of [r.x - 1, r.x + r.w]) { const idx = j * m.w + i; if (m.cells[idx] === FLOOR) { m.cells[idx] = WALL; a.gates.push(idx); } }
+  spawnArenaWave(1);
+  toast('Arena — Wave 1 / 3!', '#ff8a1f');
+  Sfx.play('roar'); Sfx.play('boom'); G.shake = 8;
+  computeFOV(); G.miniDirty = true;
+}
+function finishArena() {
+  const a = G.arena, r = a.room;
+  for (const idx of a.gates) G.map.cells[idx] = FLOOR;
+  a.gates = [];
+  const ai = G.props.findIndex(pr => pr.kind === 'arena'); if (ai >= 0) G.props.splice(ai, 1);
+  const pos = freeFloorNear(r.x + (r.w >> 1) + 0.5, r.y + (r.h >> 1) + 0.5);
+  G.props.push({ kind: 'chest', x: pos.x, y: pos.y, r: 0.4, solid: true, opened: false, arenaReward: true });
+  toast('Arena cleared! Claim your reward.', '#7fd0a0');
+  Sfx.play('level'); G.shake = 6;
+  G.arena = null;
+  computeFOV(); G.miniDirty = true;
+}
+function updateArena(dt) {
+  const a = G.arena; if (!a) return;
+  const p = G.player, r = a.room;
+  if (a.state === 'idle') {
+    if (p.x > r.x + 0.7 && p.x < r.x + r.w - 0.7 && p.y > r.y + 0.7 && p.y < r.y + r.h - 0.7) startArena();
+    return;
+  }
+  if (a.state === 'wave') {
+    if (!G.enemies.some(e => !e.dead && e.arena)) { // само враговете на арената броят
+      if (a.wave >= 3) finishArena();
+      else { a.state = 'pause'; a.timer = 2; }
+    }
+  } else if (a.state === 'pause') {
+    a.timer -= dt;
+    if (a.timer <= 0) { a.wave++; spawnArenaWave(a.wave); a.state = 'wave'; toast('Wave ' + a.wave + ' / 3!', '#ff8a1f'); Sfx.play('roar'); }
+  }
 }
 
 // ---------- босове: фази по % живот + сигнатурни механики ----------
@@ -4499,6 +4653,9 @@ function startFloor(depth) {
   G.bossRoom = gen.bossRoom || null;
   G.bossRoomLocked = false;
   G.bossGates = [];
+  G.vault = gen.vault || null;                 // Съкровищница (заключена, ключът е у елит)
+  G.vaultUnlocked = false;
+  G.arena = gen.arena ? { room: gen.arena.room, state: 'idle', wave: 0, timer: 0, gates: [] } : null; // Арена
   G.visible = new Uint8Array(gen.map.w * gen.map.h);
   G.explored = new Uint8Array(gen.map.w * gen.map.h);
   G.props = gen.props;
@@ -4730,6 +4887,7 @@ function startSurface() {
   G.bossRoom = null;
   G.bossRoomLocked = false;
   G.bossGates = [];
+  G.vault = null; G.vaultUnlocked = false; G.arena = null; // чисти състояния на специалните стаи
   if (G.player) G.player.usedSecondChance = false; // ново спускане — нов Втори шанс
   initSurfaceSprites();
   initSprites(0); // за икони/герой, ако още не са готови
@@ -8328,6 +8486,8 @@ function renderWorld() {
     else if (pr.kind === 'barrel') spr = Spr.barrel;
     else if (pr.kind === 'crate') spr = Spr.crate;
     else if (pr.kind === 'chest') spr = pr.opened ? Spr.chestOpen : Spr.chest;
+    else if (pr.kind === 'vaultdoor') spr = pr.opened ? null : Spr.vaultdoor; // отворената врата изчезва
+    else if (pr.kind === 'arena') spr = Spr.arena;
     else if (pr.kind === 'fountain') spr = pr.used ? Spr.fountainDry : Spr.fountain[Math.floor(G.time * 4) % 2];
     else if (pr.kind === 'bones') spr = Spr.bones;
     else if (pr.kind === 'rubble') spr = Spr.rubble;
@@ -8505,6 +8665,13 @@ function drawEnemy(e, sx, sy) {
   blit(ctx, spr, sx - spr.width * S / 2 + ox, dy, e.flip);
   ctx.globalAlpha = 1;
   if (e.elite) blit(ctx, Spr.crown, sx - Spr.crown.width * S / 2, dy - 5 * S);
+  if (e.keyGuardian) { // пулсиращ златен пръстен = ПАЗИТЕЛ НА КЛЮЧА
+    ctx.strokeStyle = 'rgba(255,210,59,' + (0.5 + 0.3 * Math.sin(G.time * 5)) + ')';
+    ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, (e.r + 0.3) * TW * 0.5, (e.r + 0.3) * TH * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   // Щитоносец: син ореол докато щитът стои
   if (e.shield) {
     ctx.strokeStyle = 'rgba(138,176,255,' + (0.5 + 0.3 * Math.sin(G.time * 6)) + ')';
@@ -8522,7 +8689,13 @@ function drawEnemy(e, sx, sy) {
     ctx.fillStyle = '#c22836';
     ctx.fillRect(bx, by, bw * clamp(e.hp / e.maxhp, 0, 1), bh);
   }
-  if (e.mod) {
+  if (e.keyGuardian) {
+    ctx.font = fontBold(5);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillText('KEY GUARDIAN', sx, dy - 7 * S);
+    ctx.textAlign = 'left';
+  } else if (e.mod) {
     ctx.font = fontPx(5);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffd23b';
