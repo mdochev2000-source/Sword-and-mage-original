@@ -1178,8 +1178,8 @@ function mysticOffers() {
       },
     });
   });
-  // нулиране на дървото с умения
-  const spent = Object.keys(p.skills || {}).length;
+  // нулиране на дървото с умения — връща реално вложените точки (по новите цени)
+  const spent = skillSpent(p);
   if (spent > 0) out.push({
     t: 'Reset skills (' + spent + ' points back)',
     d: 'the tree clears, the points return', cost: 1,

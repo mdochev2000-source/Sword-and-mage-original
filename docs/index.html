@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-24 10:50 UTC";
+window.__BUILD__ = "2026-07-24 10:58 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -2135,6 +2135,21 @@ const SKILL_TREE = [
   },
 ];
 function skillCount(p, id) { return p.skills && p.skills[id] ? 1 : 0; }
+// цена в точки по ниво в клона (отдолу нагоре): по-силните умения струват повече
+const SKILL_COST = [1, 2, 3, 4, 5];
+function skillCost(id) {
+  for (const br of SKILL_TREE) {
+    const i = br.nodes.findIndex(n => n.id === id);
+    if (i !== -1) return SKILL_COST[i] !== undefined ? SKILL_COST[i] : i + 1;
+  }
+  return 1;
+}
+// колко точки са реално вложени в текущите умения (за връщане при нулиране)
+function skillSpent(p) {
+  let s = 0;
+  if (p.skills) for (const id in p.skills) if (p.skills[id]) s += skillCost(id);
+  return s;
+}
 
 function rollPerkChoices() {
   const pool = PERKS.slice();
@@ -3691,8 +3706,8 @@ function mysticOffers() {
       },
     });
   });
-  // нулиране на дървото с умения
-  const spent = Object.keys(p.skills || {}).length;
+  // нулиране на дървото с умения — връща реално вложените точки (по новите цени)
+  const spent = skillSpent(p);
   if (spent > 0) out.push({
     t: 'Reset skills (' + spent + ' points back)',
     d: 'the tree clears, the points return', cost: 1,
@@ -5865,9 +5880,10 @@ function drawSkillTree() {
     br.nodes.forEach((nd, ni) => {
       // най-слабите са НАЙ-ДОЛУ, капстоунът — най-горе; купува се отдолу нагоре
       const ny = y0 + 38 * S + (br.nodes.length - 1 - ni) * 31 * S;
+      const cost = ni + 1; // ниво в клона 1..5: по-силните умения струват повече точки
       const bought = !!(p.skills && p.skills[nd.id]);
       const prevOk = ni === 0 || !!(p.skills && p.skills[br.nodes[ni - 1].id]);
-      const canBuy = !bought && prevOk && (p.skillPoints || 0) > 0;
+      const canBuy = !bought && prevOk && (p.skillPoints || 0) >= cost;
       // свързваща линия към предишното (което стои ПОД това)
       if (ni > 0) {
         ctx.fillStyle = bought || prevOk ? br.col : '#2a3140';
@@ -5882,6 +5898,13 @@ function drawSkillTree() {
       ctx.font = fontPx(5);
       ctx.fillStyle = bought ? '#a8b2c4' : '#5a677f';
       wrapTextCentered(nd.d, bx + colW / 2, ny + 16 * S, colW - 12 * S, 6 * S);
+      if (!bought) { // цена в точки — горе вдясно на клетката
+        ctx.font = fontBold(5.5);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = (prevOk && (p.skillPoints || 0) >= cost) ? '#ffd23b' : '#5a677f';
+        ctx.fillText(cost + 'p', bx + colW - 6 * S, ny + 8 * S);
+        ctx.textAlign = 'center';
+      }
       if (canBuy) UI.btnRects.push({ x: bx + 3 * S, y: ny, w: colW - 6 * S, h: 26 * S, act: ((node) => () => buySkill(node))(nd) });
     });
   });
@@ -5889,10 +5912,11 @@ function drawSkillTree() {
 }
 function buySkill(nd) {
   const p = G.player;
-  if ((p.skillPoints || 0) <= 0) return;
+  const cost = skillCost(nd.id);
+  if ((p.skillPoints || 0) < cost) return;
   p.skills = p.skills || {};
   p.skills[nd.id] = true;
-  p.skillPoints--;
+  p.skillPoints -= cost;
   calcStats(p);
   toast(nd.n + ': ' + nd.d, '#7fd0a0');
   Sfx.play('level');

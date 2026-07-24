@@ -317,6 +317,21 @@ const SKILL_TREE = [
   },
 ];
 function skillCount(p, id) { return p.skills && p.skills[id] ? 1 : 0; }
+// цена в точки по ниво в клона (отдолу нагоре): по-силните умения струват повече
+const SKILL_COST = [1, 2, 3, 4, 5];
+function skillCost(id) {
+  for (const br of SKILL_TREE) {
+    const i = br.nodes.findIndex(n => n.id === id);
+    if (i !== -1) return SKILL_COST[i] !== undefined ? SKILL_COST[i] : i + 1;
+  }
+  return 1;
+}
+// колко точки са реално вложени в текущите умения (за връщане при нулиране)
+function skillSpent(p) {
+  let s = 0;
+  if (p.skills) for (const id in p.skills) if (p.skills[id]) s += skillCost(id);
+  return s;
+}
 
 function rollPerkChoices() {
   const pool = PERKS.slice();

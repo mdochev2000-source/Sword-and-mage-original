@@ -1271,9 +1271,10 @@ function drawSkillTree() {
     br.nodes.forEach((nd, ni) => {
       // най-слабите са НАЙ-ДОЛУ, капстоунът — най-горе; купува се отдолу нагоре
       const ny = y0 + 38 * S + (br.nodes.length - 1 - ni) * 31 * S;
+      const cost = ni + 1; // ниво в клона 1..5: по-силните умения струват повече точки
       const bought = !!(p.skills && p.skills[nd.id]);
       const prevOk = ni === 0 || !!(p.skills && p.skills[br.nodes[ni - 1].id]);
-      const canBuy = !bought && prevOk && (p.skillPoints || 0) > 0;
+      const canBuy = !bought && prevOk && (p.skillPoints || 0) >= cost;
       // свързваща линия към предишното (което стои ПОД това)
       if (ni > 0) {
         ctx.fillStyle = bought || prevOk ? br.col : '#2a3140';
@@ -1288,6 +1289,13 @@ function drawSkillTree() {
       ctx.font = fontPx(5);
       ctx.fillStyle = bought ? '#a8b2c4' : '#5a677f';
       wrapTextCentered(nd.d, bx + colW / 2, ny + 16 * S, colW - 12 * S, 6 * S);
+      if (!bought) { // цена в точки — горе вдясно на клетката
+        ctx.font = fontBold(5.5);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = (prevOk && (p.skillPoints || 0) >= cost) ? '#ffd23b' : '#5a677f';
+        ctx.fillText(cost + 'p', bx + colW - 6 * S, ny + 8 * S);
+        ctx.textAlign = 'center';
+      }
       if (canBuy) UI.btnRects.push({ x: bx + 3 * S, y: ny, w: colW - 6 * S, h: 26 * S, act: ((node) => () => buySkill(node))(nd) });
     });
   });
@@ -1295,10 +1303,11 @@ function drawSkillTree() {
 }
 function buySkill(nd) {
   const p = G.player;
-  if ((p.skillPoints || 0) <= 0) return;
+  const cost = skillCost(nd.id);
+  if ((p.skillPoints || 0) < cost) return;
   p.skills = p.skills || {};
   p.skills[nd.id] = true;
-  p.skillPoints--;
+  p.skillPoints -= cost;
   calcStats(p);
   toast(nd.n + ': ' + nd.d, '#7fd0a0');
   Sfx.play('level');
