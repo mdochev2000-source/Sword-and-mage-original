@@ -1,0 +1,45 @@
+name: build
+
+# Пуска се само при промяна на ИЗВОРА (js/, index.html, build.py, manifest, икони).
+# Сглобеният bezdna-online.html и docs/ НЕ са в paths -> авто-commit-ът не пуска нов цикъл.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - 'index.html'
+      - 'build.py'
+      - 'make_icons.py'
+      - 'manifest.json'
+      - 'icon-192.png'
+      - 'icon-512.png'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Сглоби bezdna-online.html + docs/
+        run: python build.py
+      - name: Commit-ни сглобката, ако се е променила
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bezdna-online.html docs/
+          if git diff --cached --quiet; then
+            echo "Няма промяна в сглобката."
+          else
+            git commit -m "build: обнови сглобката [skip ci]"
+            git push
+          fi

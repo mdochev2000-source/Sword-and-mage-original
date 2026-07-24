@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# OS / временни
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+shot.jpg
+
+# билд артефакти на телефона (не са нужни в repo, големи са)
+*.apk
+
+# стар ръчно сглобен файл (сега build.py прави bezdna-online.html + docs/)
+dist/
+
+# НЕ игнорираме bezdna-online.html и docs/ — GitHub Pages ги сервира
