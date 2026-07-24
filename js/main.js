@@ -73,7 +73,7 @@ function setupInput() {
         break;
       }
       case 'spellbook':
-        if (e.code === 'Escape' || e.code === kbBind('spellbook')) closeSpellbook();
+        if (e.code === 'Escape' || e.code === kbBind('spellbook')) { if (G.sbConfirm) G.sbConfirm = null; else closeSpellbook(); }
         break;
       case 'skilltree':
         if (e.code === 'Escape' || e.code === kbBind('skilltree')) closeSkillTree();
@@ -293,7 +293,8 @@ let padCentered = [], padRestId = -1;   // кои оси са били в пок
 function closeTopMenu() {
   switch (G.state) {
     case 'inventory': case 'spellbook': case 'skilltree':
-      G.invSel = null; G.state = 'play'; document.body.classList.remove('menu'); break;
+      if (G.state === 'spellbook' && G.sbConfirm) { G.sbConfirm = null; break; } // първо затвори потвърждението
+      G.invSel = null; G.sbConfirm = null; G.state = 'play'; document.body.classList.remove('menu'); break;
     case 'settings': closeSettings(); break; // записва (вкл. силата на звука)
     case 'shop': closeShop(); break;
     case 'binds': saveProfile(); G.state = 'settings'; break;

@@ -65,6 +65,7 @@ function newPlayer() {
     equip: { weapon: startWeapon, armor: null, ring: null, ring2: null, amulet: null },
     spellsKnown: { fireball: true },            // колекцията е завинаги
     activeSpells: ['fireball', null, null],     // трите активни магии
+    spellLvl: { fireball: 1 },                  // ниво на всяка известна магия (1..3) — постоянно, като дървото
     spellCd: [0, 0, 0], dashCharges: 1,
     skills: {}, skillPoints: 0,                 // дървото с умения (губи се при смърт)
     usedSecondChance: false,
@@ -281,6 +282,7 @@ function damagePlayer(amount, sx, sy) {
     dmg -= absorbed;
     addText(p.x, p.y, 'SHIELD', '#8ab0ff');
     burst(p.x, p.y, ['#8ab0ff', '#c9d1d9'], 6, 2.5, 0.3);
+    if (p.ward <= 0 && (p.wardLv || 1) >= 3) wardShatter(); // „Shards": счупването избухва
     if (dmg <= 0) { p.iframes = 0.3; return; }
   }
   p.hp -= dmg;
@@ -292,7 +294,8 @@ function damagePlayer(amount, sx, sy) {
   addText(p.x, p.y, '-' + dmg, '#ff6b7a');
   burst(p.x, p.y, ['#8a1c2a', '#c22836'], 8, 3, 0.4);
   Sfx.play('hurt');
-  if (sx !== undefined && !(p.st && p.st.noKnock)) { // Кожата на голема / Отвара на камъка: неизбутваем
+  // неизбутваем: Кожата на голема / Отвара на камъка / Arcane Shield „Unshakable" (ниво 2) докато щитът държи
+  if (sx !== undefined && !(p.st && p.st.noKnock) && !(p.ward > 0 && (p.wardLv || 1) >= 2)) {
     const a = Math.atan2(p.y - sy, p.x - sx);
     collideMove(p, Math.cos(a) * 0.25, Math.sin(a) * 0.25);
   }
@@ -345,6 +348,8 @@ function damageEnemy(e, dmg, isCrit, kbA, kbF) {
     e.aggro = true;
     return;
   }
+  // Ice Bolt „Brittle" (ниво 2): забавените поемат +25% от ВСИЧКО
+  if (e.slowT > 0 && spellLv(G.player, 'icebolt') >= 2) dmg *= 1.25;
   e.hp -= dmg;
   e.flash = 0.12;
   e.aggro = true;
@@ -366,6 +371,7 @@ function damageEnemy(e, dmg, isCrit, kbA, kbF) {
 function killEnemy(e) {
   e.dead = true;
   G.kills++;
+  if (e.plagued) addHazard({ type: 'poison', x: e.x, y: e.y, t: 0, life: 3, r: 0.9, dps: 6 + G.depth * 0.4 }); // Poison „Plague": ражда нов малък облак
   G.hitStop = Math.max(G.hitStop, 0.045);
   G.shake = Math.min(8, G.shake + 1.5);
   Sfx.play('die');
@@ -391,24 +397,25 @@ function killEnemy(e) {
   if (e.elite && chance(0.06)) spawnDrop(e.x, e.y, { item: genTome() });
   // Осколки на Бездната (единна валута): обикновен моб 15%, елит 2 гарантирано; босовете — по-долу
   if (!e.t.boss) {
-    if (e.elite) spawnDrop(e.x, e.y, { shard: 2 });
-    else if (chance(0.15)) spawnDrop(e.x, e.y, { shard: 1 });
+    // осколките растат с дълбочината (както златото), за да не се наказва слизането надолу
+    if (e.elite) spawnDrop(e.x, e.y, { shard: Math.round(2 + G.depth / 5) });
+    else if (chance(0.15)) spawnDrop(e.x, e.y, { shard: Math.round(1 + G.depth / 10) });
   }
   if (e.t.boss) {
     for (let i = 0; i < 2; i++) spawnDrop(e.x, e.y, { item: Items.gen(G.depth, 25) });
     if (chance(0.4)) spawnDrop(e.x, e.y, { item: genTome() });
     if (G.meta.legendPool && (e.kind === 'arch' || chance(0.25))) spawnDrop(e.x, e.y, { item: genUnique(G.depth) });
     if (G.depth % 10 === 0) {
-      spawnDrop(e.x, e.y, { seal: 2 });      // архибос: 2 Печата на Бездната
-      spawnDrop(e.x, e.y, { shard: 25 });    // + 25 Осколки
+      spawnDrop(e.x, e.y, { seal: 2 });      // архибос: 2 Печата на Бездната (НЕ растат с етажа)
+      spawnDrop(e.x, e.y, { shard: Math.round(25 + G.depth * 1.5) });    // + осколки, растящи с дълбочината
       // портал към лагера: прибираш се без да губиш нивото и уменията си
       // (слага се на валидна подова плочка, за да не се озове в стена = неизползваем)
       const pp = freeFloorNear(e.x, e.y - 1.2);
       G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
       toast('A portal to camp has opened!', '#8ab0ff');
     } else {
-      // пазител (Костен крал/Кървав голем/Архилич — етаж 5/15/25) -> 15 Осколки
-      spawnDrop(e.x, e.y, { shard: 15 });
+      // пазител (Костен крал/Кървав голем/Архилич — етаж 5/15/25) -> осколки, растящи с дълбочината
+      spawnDrop(e.x, e.y, { shard: Math.round(15 + G.depth) });
     }
     // отпечатваме стълбите и стаята
     for (const pr of G.props) if (pr.kind === 'stairs') pr.sealed = false;
@@ -471,6 +478,8 @@ function updatePlayer(dt) {
         if ((e.skullCd || 0) > G.time) continue;
         e.skullCd = G.time + 0.5;
         damageEnemy(e, o.dmg, false, Math.atan2(e.y - p.y, e.x - p.x), 0.15);
+        if (o.leech) { p.hp = Math.min(p.st.maxhp, p.hp + o.dmg * 0.5); addText(p.x, p.y, '+' + Math.round(o.dmg * 0.5), '#7fd0a0'); } // Ненаситност
+
       }
     }
   }
@@ -651,6 +660,8 @@ function resolveMelee() {
       // перкове при попадение
       if (!e.dead && perkCount(p, 'chill')) e.slowT = Math.max(e.slowT, 1);
       if (!e.dead && perkCount(p, 'burncrit') && isCrit) { e.burnT = 2; e.burnDps = dmg * 0.2; }
+      // Chain Lightning „Electrify" (ниво 3): зареденият враг избухва при близък удар
+      if (!e.dead && (e.chargedT || 0) > 0) { e.chargedT = 0; castChain(e, spellDmg(0.7), 4, false, false); burst(e.x, e.y, ['#ffd23b', '#fff2a0'], 6, 3, 0.3); }
     }
     if (perkCount(p, 'static')) {
       p.hitCount = (p.hitCount || 0) + 1;
@@ -683,24 +694,27 @@ function spellDmg(mult) {
   const p = G.player;
   return (p.st.dmg * mult + p.lvl * 1.5) * p.st.spellMult;
 }
+// ниво на магия (1..3): 2 и 3 се купуват с осколки, дават само промяна в поведението
+function spellLv(p, id) { return (p.spellLvl && p.spellLvl[id]) || 1; }
+function freezeFx(e) { burst(e.x, e.y, ['#a8d8ff', '#c9e8ff', '#ffffff'], 8, 2.5, 0.4); }
 const SPELL_CAST = {
-  fireball(p, aim) {
+  fireball(p, aim, target, lv) {
     G.projectiles.push({
-      kind: 'fireball', from: 'player',
+      kind: 'fireball', from: 'player', lv: lv || 1,
       x: p.x + Math.cos(aim) * 0.5, y: p.y + Math.sin(aim) * 0.5,
       vx: Math.cos(aim) * 11, vy: Math.sin(aim) * 11,
       dmg: spellDmg(1.1), r: 0.25, t: 0,
     });
   },
-  icebolt(p, aim) {
+  icebolt(p, aim, target, lv) {
     G.projectiles.push({
-      kind: 'icebolt', from: 'player',
+      kind: 'icebolt', from: 'player', lv: lv || 1,
       x: p.x + Math.cos(aim) * 0.5, y: p.y + Math.sin(aim) * 0.5,
       vx: Math.cos(aim) * 13, vy: Math.sin(aim) * 13,
       dmg: spellDmg(0.85), r: 0.22, t: 0, pierce: 2,
     });
   },
-  nova(p) {
+  nova(p, aim, target, lv) {
     G.novaFx = G.novaFx || [];
     G.novaFx.push({ x: p.x, y: p.y, t: 0, col: '#8ab0ff', maxR: 2.6 });
     for (const e of G.enemies) {
@@ -709,40 +723,49 @@ const SPELL_CAST = {
       damageEnemy(e, spellDmg(1.2), false, Math.atan2(e.y - p.y, e.x - p.x), 0.2);
     }
     G.shake = Math.min(7, G.shake + 3);
+    if (lv >= 2) addHazard({ type: 'icefield', x: p.x, y: p.y, t: 0, life: 5, r: 2.4 });                              // Ледено поле
+    if (lv >= 3) addHazard({ type: 'novawave', x: p.x, y: p.y, t: 0, delay: 0.8, life: 0.3, r: 2.6, dmg: spellDmg(2.4) }); // Двойна вълна (двойна щета)
   },
-  chain(p, aim, target) {
-    castChain(target || null, spellDmg(0.9), 4);
+  chain(p, aim, target, lv) {
+    castChain(target || null, spellDmg(0.9), lv >= 2 ? 7 : 4, lv >= 2, lv >= 3); // Пренасищане: 7 скока + връщане; Наелектризиране: зарежда
   },
-  poison(p, aim, target) {
+  poison(p, aim, target, lv) {
     const tx = target ? target.x : p.x + Math.cos(aim) * 3;
     const ty = target ? target.y : p.y + Math.sin(aim) * 3;
-    addHazard({ type: 'poison', x: tx, y: ty, t: 0, life: 5, r: 1.5, dps: spellDmg(0.4) });
+    addHazard({ type: 'poison', x: tx, y: ty, t: 0, life: 5, r: 1.5, dps: spellDmg(0.4), grow: lv >= 2, plague: lv >= 3 });
   },
-  ward(p) {
+  ward(p, aim, target, lv) {
     p.ward = 30 + p.lvl * 4 + p.st.maxmp * 0.4;
     p.wardT = 8;
+    p.wardLv = lv || 1;
     burst(p.x, p.y, ['#c9d1d9', '#8ab0ff'], 14, 3, 0.6);
   },
-  skull(p) {
+  skull(p, aim, target, lv) {
     G.orbitals = G.orbitals || [];
-    G.orbitals.push({ t: 0, life: 8, a: rnd(Math.PI * 2), dmg: spellDmg(0.7) });
+    const n = lv >= 2 ? 2 : 1; // Глутница: два черепа
+    for (let k = 0; k < n; k++) G.orbitals.push({ t: 0, life: 8, a: rnd(Math.PI * 2) + k * Math.PI, dmg: spellDmg(0.7), leech: lv >= 3 }); // Ненаситност
   },
-  quake(p) {
+  quake(p, aim, target, lv) {
     G.novaFx = G.novaFx || [];
     G.novaFx.push({ x: p.x, y: p.y, t: 0, col: '#a08050', maxR: 3 });
     for (const e of G.enemies) {
       if (e.dead || dist(e.x, e.y, p.x, p.y) > 3 + e.r) continue;
       damageEnemy(e, spellDmg(1.5), false, Math.atan2(e.y - p.y, e.x - p.x), 0.7);
+      if (lv >= 3 && !e.t.boss && !e.dead) e.stunT = Math.max(e.stunT || 0, 1.5); // Съсипване: зашеметяване 1.5с
     }
     for (const pr of G.props) {
       if (pr.hp !== undefined && !pr.broken && dist(pr.x, pr.y, p.x, p.y) < 3) breakProp(pr);
+    }
+    if (lv >= 2) for (let k = 0; k < 4; k++) { // Пукнатини: разломи, които забавят
+      const a = rnd(Math.PI * 2), rr = rnd(1, 2.4);
+      addHazard({ type: 'fissure', x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr, t: 0, life: 5, r: 0.9 });
     }
     G.shake = 9;
     Sfx.play('boom');
   },
 };
 // верижна мълния (ползва се и от перка "Static Charge")
-function castChain(start, dmg, jumps) {
+function castChain(start, dmg, jumps, revisit, charge) {
   const p = G.player;
   let from = { x: p.x, y: p.y };
   let cur = start || nearestEnemy(6);
@@ -753,16 +776,30 @@ function castChain(start, dmg, jumps) {
     hit.add(cur);
     G.zaps.push({ x1: from.x, y1: from.y, x2: cur.x, y2: cur.y, t: 0 });
     damageEnemy(cur, k, false);
+    if (charge && !cur.dead && !cur.t.boss) cur.chargedT = 6; // Наелектризиране: остава зареден
     if (G.zaps.length > 20) G.zaps.shift();
     k *= 0.8;
     from = cur;
     let best = null, bd = 3.5;
     for (const e of G.enemies) {
-      if (e.dead || hit.has(e)) continue;
+      if (e.dead || e === from) continue;          // не скачаме към себе си
+      if (!revisit && hit.has(e)) continue;        // Пренасищане: разрешава връщане към вече ударени
       const d = dist(from.x, from.y, e.x, e.y);
       if (d < bd) { bd = d; best = e; }
     }
     cur = best;
+  }
+}
+// Arcane Shield „Shards" (ниво 3): при счупване на щита — взрив с щети и отблъскване наоколо
+function wardShatter() {
+  const p = G.player;
+  burst(p.x, p.y, ['#c9d1d9', '#8ab0ff', '#ffffff'], 22, 5, 0.6);
+  G.shake = Math.min(8, G.shake + 3);
+  Sfx.play('boom');
+  const dmg = spellDmg(1.3);
+  for (const e of G.enemies) {
+    if (e.dead || dist(e.x, e.y, p.x, p.y) > 2.4 + e.r) continue;
+    damageEnemy(e, dmg, false, Math.atan2(e.y - p.y, e.x - p.x), 0.5);
   }
 }
 
@@ -792,7 +829,7 @@ function castSpell(i) {
   const target = nearestEnemy(9);
   const aim = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.aimA;
   // мишката се цели сама; тъч и контролер ползват авто-мерене
-  SPELL_CAST[spellId](p, useMouseAim() ? p.aimA : aim, target);
+  SPELL_CAST[spellId](p, useMouseAim() ? p.aimA : aim, target, spellLv(p, spellId));
   Sfx.play('fire');
 }
 // научаване на магия от том — остава завинаги в Книгата
@@ -800,6 +837,8 @@ function learnSpell(spellId) {
   const p = G.player;
   if (p.spellsKnown[spellId]) return false;
   p.spellsKnown[spellId] = true;
+  p.spellLvl = p.spellLvl || {};
+  if (!p.spellLvl[spellId]) p.spellLvl[spellId] = 1; // нова магия започва на ниво 1
   // ако има свободен отключен слот — слагаме я веднага
   const unlockedSlots = [true, G.meta.magic3, G.meta.magic4];
   for (let i = 0; i < 3; i++) {
@@ -1299,8 +1338,10 @@ function updateEnemies(dt) {
     e.animT += dt;
     e.pathT -= dt;
     e.blinkCd = Math.max(0, e.blinkCd - dt);
-    // ефекти върху врага: забавяне, отрова, огън
+    // ефекти върху врага: забавяне, замразяване/зашеметяване, зареждане, отрова, огън
     e.slowT = Math.max(0, e.slowT - dt);
+    e.stunT = Math.max(0, (e.stunT || 0) - dt);
+    e.chargedT = Math.max(0, (e.chargedT || 0) - dt);
     if (e.poisonT > 0) {
       e.poisonT -= dt;
       e.dotAcc = (e.dotAcc || 0) + dt;
@@ -1320,6 +1361,12 @@ function updateEnemies(dt) {
     const seesPlayer = d < e.t.aggro && losClear(e.x, e.y, p.x, p.y);
     if (seesPlayer) e.aggro = true;
     if (!e.aggro) continue;
+    // замразен/зашеметен: нито движение, нито атака (само DoT-ите горе продължават)
+    if (e.stunT > 0) {
+      e.windupT = 0;
+      if (chance(0.35)) addParticle({ x: e.x + rnd(-0.2, 0.2), y: e.y + rnd(-0.2, 0.2), z: 10 + rnd(0, 8), vx: rnd(-3, 3), vy: rnd(-3, 3), vz: 5, grav: 3, t: 0, life: 0.5, col: '#a8d8ff', size: 1 });
+      continue;
+    }
 
     // елитни модификатори в действие
     if (e.mod === 'mender') {
@@ -1579,20 +1626,39 @@ function addHazard(h) {
 function updateHazards(dt) {
   if (!G.hazards) return;
   const p = G.player;
+  // маркираме мъртви и филтрираме НАКРАЯ — безопасно е, защото damagePlayer/damageEnemy тук
+  // могат да извикат addHazard (plague/volatile/wardShatter) и да разместят масива по време на цикъла
+  let anyDead = false;
   for (let i = G.hazards.length - 1; i >= 0; i--) {
     const h = G.hazards[i];
+    if (h.dead) { anyDead = true; continue; }
     h.t += dt;
     if (h.delay && h.t < h.delay) continue; // телеграф — още не пари
     if (h.type === 'blast') {
-      // еднократен взрив (избухващ елит)
+      // еднократен взрив (избухващ елит) — маркираме мъртъв ПРЕДИ щетите (те може да добавят хазарди)
+      h.dead = true; anyDead = true;
       if (dist(p.x, p.y, h.x, h.y) < h.r + p.r) damagePlayer(h.dmg, h.x, h.y);
       burst(h.x, h.y, ['#ff8a1f', '#ffd23b', '#c22836'], 22, 5, 0.5);
       G.shake = Math.min(8, G.shake + 3);
       Sfx.play('boom');
-      G.hazards.splice(i, 1);
       continue;
     }
-    if (h.t - (h.delay || 0) > h.life) { G.hazards.splice(i, 1); continue; }
+    if (h.type === 'novawave') {
+      // Frost Nova „Double Wave": еднократна втора вълна с двойна щета
+      h.dead = true; anyDead = true;
+      G.novaFx = G.novaFx || [];
+      G.novaFx.push({ x: h.x, y: h.y, t: 0, col: '#8ab0ff', maxR: h.r });
+      for (const e of G.enemies) {
+        if (e.dead || dist(e.x, e.y, h.x, h.y) > h.r + e.r) continue;
+        e.slowT = Math.max(e.slowT, 2);
+        damageEnemy(e, h.dmg, false, Math.atan2(e.y - h.y, e.x - h.x), 0.2);
+      }
+      G.shake = Math.min(7, G.shake + 2);
+      Sfx.play('boom');
+      continue;
+    }
+    if (h.t - (h.delay || 0) > h.life) { h.dead = true; anyDead = true; continue; }
+    if (h.grow && h.r < 3) h.r += dt * 0.5; // Poison „Spread": облакът се разраства
     h.tick = (h.tick || 0) - dt;
     if (h.tick <= 0) {
       h.tick = 0.5;
@@ -1600,13 +1666,26 @@ function updateHazards(dt) {
         // нашата отрова — разяжда враговете
         for (const e of G.enemies) {
           if (e.dead) continue;
-          if (dist(e.x, e.y, h.x, h.y) < h.r + e.r) { e.poisonT = 1.1; e.poisonDps = h.dps; }
+          if (dist(e.x, e.y, h.x, h.y) < h.r + e.r) { e.poisonT = 1.1; e.poisonDps = h.dps; if (h.plague) e.plagued = true; }
+        }
+      } else if (h.type === 'pyre') {
+        // Fireball „Scorched Earth": горяща земя — пали враговете
+        for (const e of G.enemies) {
+          if (e.dead) continue;
+          if (dist(e.x, e.y, h.x, h.y) < h.r + e.r) { e.burnT = 0.7; e.burnDps = h.dps; }
+        }
+      } else if (h.type === 'icefield' || h.type === 'fissure') {
+        // Ледено поле / Пукнатини: забавят враговете вътре
+        for (const e of G.enemies) {
+          if (e.dead) continue;
+          if (dist(e.x, e.y, h.x, h.y) < h.r + e.r) e.slowT = Math.max(e.slowT, 0.8);
         }
       } else if (dist(p.x, p.y, h.x, h.y) < h.r + p.r) {
-        damagePlayer(h.dmg || 8, h.x, h.y); // огън/кръв пари играча
+        damagePlayer(h.dmg || 8, h.x, h.y); // огън/кръв на враговете пари играча (firetrail/blood)
       }
     }
   }
+  if (anyDead) G.hazards = G.hazards.filter(h => !h.dead);
 }
 
 function enemyStrike(e, dNow) {
@@ -1678,7 +1757,8 @@ function updateProjectiles(dt) {
             pr.hitSet = pr.hitSet || new Set();
             if (!pr.hitSet.has(e)) {
               pr.hitSet.add(e);
-              e.slowT = Math.max(e.slowT, 1.5);
+              if ((pr.lv || 1) >= 3 && !e.t.boss) { e.stunT = Math.max(e.stunT || 0, 1.5); freezeFx(e); } // Вкочаняване
+              else e.slowT = Math.max(e.slowT, 1.5);
               damageEnemy(e, pr.dmg * rnd(0.9, 1.1), chance(G.player.st.crit / 200), Math.atan2(e.y - pr.y, e.x - pr.x), 0.1);
               pr.pierce--;
               if (pr.pierce < 0) kill = true;
@@ -1728,6 +1808,20 @@ function explodeFireball(pr) {
   for (const prop of G.props) {
     if (prop.hp === undefined || prop.broken) continue;
     if (dist(pr.x, pr.y, prop.x, prop.y) < 1.3) breakProp(prop);
+  }
+  const lv = pr.lv || 1;
+  if (lv >= 2) addHazard({ type: 'pyre', x: pr.x, y: pr.y, t: 0, life: 4, r: 1.2, dps: pr.dmg * 0.35 }); // Пепелище: горяща земя
+  if (lv >= 3 && !pr.split) { // Разцепване: 3 по-малки кълба встрани (ниво 1 -> без по-нататъшно цепене/палене)
+    const base = Math.atan2(pr.vy, pr.vx);
+    for (const off of [-1.15, 0, 1.15]) {
+      const a = base + off;
+      G.projectiles.push({
+        kind: 'fireball', from: 'player', lv: 1, split: true,
+        x: pr.x + Math.cos(a) * 0.3, y: pr.y + Math.sin(a) * 0.3,
+        vx: Math.cos(a) * 9, vy: Math.sin(a) * 9,
+        dmg: pr.dmg * 0.5, r: 0.2, t: 0,
+      });
+    }
   }
 }
 
@@ -1867,6 +1961,9 @@ function startGame(slot, freshName) {
     G.checkpoint = prof.checkpoint || 1;
     p.spellsKnown = prof.spellsKnown || { fireball: true };
     p.activeSpells = prof.activeSpells || ['fireball', null, null];
+    // нива на магиите: стар запис без spellLvl -> всички известни магии на ниво 1
+    p.spellLvl = (prof.spellLvl && typeof prof.spellLvl === 'object' && !Array.isArray(prof.spellLvl)) ? prof.spellLvl : {};
+    for (const _sid in p.spellsKnown) if (p.spellsKnown[_sid]) p.spellLvl[_sid] = p.spellLvl[_sid] || 1;
     // уменията са постоянни (стари записи ги пазеха в hero)
     p.skills = prof.skills || (prof.hero && prof.hero.skills) || {};
     p.skillPoints = prof.skillPoints !== undefined ? prof.skillPoints : ((prof.hero && prof.hero.skillPoints) || 0);
@@ -1922,7 +2019,7 @@ function saveProfile() {
       name: G.charName || 'Exile',
       gold: p.gold, equip: p.equip, inv: p.inv, meta: G.meta,
       potionsOwned: p.potionsOwned, potionSlots: p.potionSlots, potionUp: p.potionUp, // постоянни отвари
-      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells,
+      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома

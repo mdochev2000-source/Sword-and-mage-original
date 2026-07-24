@@ -1115,7 +1115,7 @@ function drawSpellbook() {
   const S = SCALE, p = G.player;
   UI.btnRects = [];
   rcx(0, 0, CW, CH, 'rgba(4,6,11,0.75)');
-  const pw = 262 * S, ph = 190 * S;
+  const pw = 262 * S, ph = 230 * S;
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -1124,7 +1124,7 @@ function drawSpellbook() {
   ctx.fillText('SPELLBOOK', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('choose a slot, then a spell  |  ESC — close', x0 + 78 * S, y0 + 14 * S);
+  ctx.fillText('tap spell: view · tap again: equip  |  ESC — close', x0 + 78 * S, y0 + 14 * S);
   // ✕
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -1194,9 +1194,94 @@ function drawSpellbook() {
     wrapTextCentered(sp.d, rcx0, ry + 33 * S, cw2 - 8 * S, 6.5 * S);
     ctx.fillStyle = known ? '#7fb0ff' : '#454e63';
     ctx.fillText(known ? (sp.cost + ' mana · ' + sp.cd + 's') : 'give a tome to Zahari', rcx0, ry + chh - 5 * S);
+    if (known) { // ниво на магията горе-вдясно (2=зелено, 3=лилаво)
+      const lv = spellLv(p, id);
+      ctx.textAlign = 'right';
+      ctx.font = fontPx(4.5);
+      ctx.fillStyle = lv >= 3 ? '#c9a0ff' : lv >= 2 ? '#7fd0a0' : '#5a677f';
+      ctx.fillText(lv + '/3', rx + cw2 - 3 * S, ry + 7 * S);
+    }
     ctx.textAlign = 'left';
-    if (known) UI.btnRects.push({ x: rx, y: ry, w: cw2, h: chh, act: ((sid) => () => assignSpell(sid))(id) });
+    if (known) UI.btnRects.push({ x: rx, y: ry, w: cw2, h: chh, act: ((sid) => () => { if (G.sbSpell === sid) assignSpell(sid); else G.sbSpell = sid; })(id) }); // 1-во докосване: покажи ъпгрейда; 2-ро: екипирай
   });
+
+  // ---- ДЕТАЙЛ + НАДГРАЖДАНЕ на избраната магия (с осколки) ----
+  let sel = G.sbSpell;
+  if (!sel || !p.spellsKnown[sel]) sel = p.activeSpells.find(s => s && p.spellsKnown[s]) || Object.keys(p.spellsKnown)[0];
+  G.sbSpell = sel;
+  const dy = y0 + 178 * S, dh = 46 * S;
+  panel(x0 + 8 * S, dy, pw - 16 * S, dh);
+  if (sel) {
+    const lv = spellLv(p, sel), sp = SPELLS[sel];
+    ctx.textAlign = 'left';
+    ctx.font = fontBold(7); ctx.fillStyle = sp.col;
+    ctx.fillText(sp.n + '   ' + lv + '/3', x0 + 12 * S, dy + 11 * S);
+    ctx.font = fontPx(5); ctx.fillStyle = '#7fd0a0';
+    const taken = [];
+    for (let t = 0; t < lv - 1; t++) taken.push('✓ ' + SPELL_UP[sel][t].n);
+    ctx.fillText(taken.join('    ') || 'base spell', x0 + 12 * S, dy + 19 * S);
+    if (lv >= 3) {
+      ctx.font = fontBold(6.5); ctx.fillStyle = '#7fd0a0';
+      ctx.fillText('Fully upgraded (3/3)', x0 + 12 * S, dy + 32 * S);
+    } else {
+      const up = SPELL_UP[sel][lv - 1], cost = SPELL_UP_COST[lv - 1], have = G.meta.shards || 0, afford = have >= cost;
+      ctx.font = fontBold(6); ctx.fillStyle = '#e8e4d0';
+      ctx.fillText('Next — ' + up.n, x0 + 12 * S, dy + 29 * S);
+      ctx.font = fontPx(5); ctx.fillStyle = '#a8b2c4';
+      wrapText(up.d, x0 + 12 * S, dy + 37 * S, pw - 92 * S, 6 * S);
+      const bw = 62 * S, bh = 18 * S, bxu = x0 + pw - bw - 14 * S, byu = dy + dh / 2 - bh / 2;
+      panel(bxu, byu, bw, bh);
+      strokeRect(bxu, byu, bw, bh, afford ? '#c9a0ff' : '#454e63', S);
+      ctx.textAlign = 'center';
+      ctx.font = fontBold(6); ctx.fillStyle = afford ? '#c9a0ff' : '#5a677f';
+      ctx.fillText('Upgrade · ' + cost, bxu + bw / 2, byu + 8 * S);
+      ctx.font = fontPx(5); ctx.fillStyle = afford ? '#57e6c8' : '#ff6b7a';
+      ctx.fillText(afford ? ('you have ' + have) : ('need ' + (cost - have) + ' more'), bxu + bw / 2, byu + 14.5 * S);
+      ctx.textAlign = 'left';
+      UI.btnRects.push({ x: bxu, y: byu, w: bw, h: bh, act: ((s, c, af) => () => { if (af) G.sbConfirm = { spell: s, cost: c }; else { toast('You need ' + c + ' Abyss Shards.', '#ff6b7a'); Sfx.play('deny'); } })(sel, cost, afford) });
+    }
+  }
+
+  // ---- потвърждение при покупка (700 осколки не бива с едно случайно натискане) ----
+  if (G.sbConfirm) {
+    rcx(0, 0, CW, CH, 'rgba(4,6,11,0.6)');
+    const mw = 158 * S, mh = 66 * S, mx0 = (CW - mw) / 2, my0 = (CH - mh) / 2;
+    panel(mx0, my0, mw, mh);
+    const cf = G.sbConfirm;
+    ctx.textAlign = 'center';
+    ctx.font = fontBold(7); ctx.fillStyle = '#e8e4d0';
+    ctx.fillText('Upgrade for ' + cf.cost + ' shards?', CW / 2, my0 + 16 * S);
+    ctx.font = fontPx(5.5); ctx.fillStyle = '#a8b2c4';
+    ctx.fillText('Permanent — survives death.', CW / 2, my0 + 27 * S);
+    const bw2 = 58 * S, bh2 = 16 * S, gap = 8 * S, by2 = my0 + mh - bh2 - 8 * S;
+    const yesX = CW / 2 - bw2 - gap / 2, noX = CW / 2 + gap / 2;
+    panel(yesX, by2, bw2, bh2); strokeRect(yesX, by2, bw2, bh2, '#c9a0ff', S);
+    ctx.font = fontBold(6.5); ctx.fillStyle = '#c9a0ff';
+    ctx.fillText('Upgrade', yesX + bw2 / 2, by2 + 10.5 * S);
+    panel(noX, by2, bw2, bh2); strokeRect(noX, by2, bw2, bh2, '#7d8899', S);
+    ctx.fillStyle = '#a8b2c4';
+    ctx.fillText('Cancel', noX + bw2 / 2, by2 + 10.5 * S);
+    ctx.textAlign = 'left';
+    UI.btnRects = [ // докато модалът стои, само двата бутона са активни
+      { x: yesX, y: by2, w: bw2, h: bh2, act: () => buySpellLevel(cf.spell) },
+      { x: noX, y: by2, w: bw2, h: bh2, act: () => { G.sbConfirm = null; } },
+    ];
+  }
+}
+function buySpellLevel(spell) {
+  const p = G.player;
+  const cur = spellLv(p, spell);
+  G.sbConfirm = null;
+  if (cur >= 3) return;
+  const cost = SPELL_UP_COST[cur - 1];
+  if ((G.meta.shards || 0) < cost) { toast('You need ' + cost + ' Abyss Shards.', '#ff6b7a'); Sfx.play('deny'); return; }
+  G.meta.shards -= cost;
+  p.spellLvl = p.spellLvl || {};
+  p.spellLvl[spell] = cur + 1;
+  const up = SPELL_UP[spell][cur - 1];
+  toast(SPELLS[spell].n + ' → ' + up.n + '!', '#c9a0ff');
+  Sfx.play('level');
+  saveProfile();
 }
 function wrapTextCentered(str, cx0, y, maxW, lineH) {
   const words = str.split(' ');
@@ -1224,10 +1309,12 @@ function assignSpell(id) {
 }
 function openSpellbook() {
   G.sbSel = 0;
+  G.sbConfirm = null;
   G.state = 'spellbook';
   document.body.classList.add('menu');
 }
 function closeSpellbook() {
+  G.sbConfirm = null;
   G.state = 'play';
   document.body.classList.remove('menu');
   saveProfile();

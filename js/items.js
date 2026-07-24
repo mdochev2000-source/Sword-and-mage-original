@@ -154,6 +154,42 @@ function genTome(spellId, depth) {
   const id = spellId || pick(Object.keys(SPELLS));
   return { id: Items._id++, slot: 'spell', spell: id, icon: 'tome', rarity: 2, lvl: depth || G.depth || 1, name: 'Tome: ' + SPELLS[id].n, affixes: [] };
 }
+// --- НИВА НА МАГИИТЕ: ниво 1 = базовата; 2 и 3 се купуват с осколки. Дават САМО промяна в поведението, не голи числа. ---
+const SPELL_UP = {
+  fireball: [
+    { n: 'Scorched Earth', d: 'the blast ignites the ground, burning enemies on it for 4s' },
+    { n: 'Split', d: 'on impact it splits into 3 smaller orbs to the sides' },
+  ],
+  icebolt: [
+    { n: 'Brittle', d: 'slowed enemies take +25% damage from everything' },
+    { n: 'Deep Freeze', d: 'instead of slowing, it fully freezes for 1.5s' },
+  ],
+  nova: [
+    { n: 'Ice Field', d: 'leaves a field that slows enemies who enter' },
+    { n: 'Double Wave', d: 'a second blast follows after 0.8s with double damage' },
+  ],
+  chain: [
+    { n: 'Overload', d: 'arcs to 7 enemies instead of 4 and can return to hit ones' },
+    { n: 'Electrify', d: 'hit enemies stay charged; your next melee on them releases a new bolt' },
+  ],
+  poison: [
+    { n: 'Spread', d: 'the cloud grows wider over time' },
+    { n: 'Plague', d: 'enemies that die inside burst into a new small cloud' },
+  ],
+  ward: [
+    { n: 'Unshakable', d: 'while the shield holds, nothing can knock you back' },
+    { n: 'Shards', d: 'when it breaks it bursts: damage and knockback around you' },
+  ],
+  skull: [
+    { n: 'Pack', d: 'two skulls circle you instead of one' },
+    { n: 'Insatiable', d: 'the bite steals life for you' },
+  ],
+  quake: [
+    { n: 'Fissures', d: 'leaves rifts in the ground that slow' },
+    { n: 'Devastation', d: 'knocked-down enemies are stunned on the ground for 1.5s' },
+  ],
+};
+const SPELL_UP_COST = [300, 700]; // цена в осколки за ниво 2 и ниво 3
 
 // ---------- ОТВАРИ: постоянни флакони с презареждане (не се трупат, не свършват) ----------
 // restore = моментално възстановяване; buff = ефект с траене. unlock = ниво на сергията на Яна.
