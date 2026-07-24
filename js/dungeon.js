@@ -172,9 +172,11 @@ const Dungeon = {
 
     // --- специални стаи: Съкровищница (%5===3) и Арена (четни етажи) ---
     const usedRooms = new Set([startRoom, farRoom]);
+    // разширената босова стая може да е погълнала съседни стаи -> изключваме всяка, която я застъпва
+    const intersects = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     const pickSpecialRoom = () => {
-      // само стаи, чието запечатване НЕ отрязва достъпа до останалите (иначе играчът засяда)
-      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4 && sealKeepsConnected(r, rooms, cells, w, h, sx, sy));
+      // само стаи, чието запечатване НЕ отрязва достъпа до останалите (иначе играчът засяда), и които не застъпват босовата/стълбищната стая
+      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4 && !intersects(r, farRoom) && sealKeepsConnected(r, rooms, cells, w, h, sx, sy));
       if (!avail.length) return null;
       const r = avail[ri(0, avail.length - 1)];
       usedRooms.add(r);

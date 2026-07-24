@@ -187,6 +187,13 @@ function hitsWall(x, y, r, ghost) {
   return false;
 }
 function collideMove(e, dx, dy, ghost) {
+  // разбий бързи стъпки (отскок/силно отблъскване) на под-стъпки, да не тунелират през плътни врати/стени
+  const len = Math.abs(dx) + Math.abs(dy);
+  if (len > 0.4) {
+    const n = Math.ceil(len / 0.4);
+    for (let k = 0; k < n; k++) collideMove(e, dx / n, dy / n, ghost);
+    return;
+  }
   if (dx) { const nx = e.x + dx; if (!hitsWall(nx, e.y, e.r, ghost)) e.x = nx; }
   if (dy) { const ny = e.y + dy; if (!hitsWall(e.x, ny, e.r, ghost)) e.y = ny; }
 }
@@ -235,6 +242,12 @@ function findPath(sx, sy, tx, ty) {
   const m = G.map, w = m.w;
   const s = sy * w + sx, t = ty * w + tx;
   if (s === t) return [];
+  // заключените врати на съкровищницата са плътни -> A* да не маршрутира през тях (иначе враг засяда на вратата)
+  let blocked = null;
+  if (G.vault && !G.vaultUnlocked && G.props) {
+    blocked = new Set();
+    for (const pr of G.props) if (pr.kind === 'vaultdoor' && pr.solid && !pr.broken) blocked.add(Math.floor(pr.y) * w + Math.floor(pr.x));
+  }
   const open = [s];
   const openSet = new Set([s]); // паралелна проверка за членство (по-бърза от open.includes)
   const came = new Map();
@@ -257,6 +270,7 @@ function findPath(sx, sy, tx, ty) {
       const nx = cx + dx, ny = cy + dy;
       if (cellAt(nx, ny) !== FLOOR) continue;
       const ni = ny * w + nx;
+      if (blocked && blocked.has(ni)) continue; // не през заключена врата на съкровищница
       const ng = gS.get(cur) + 1;
       if (ng < (gS.get(ni) === undefined ? 1e9 : gS.get(ni))) {
         came.set(ni, cur);
@@ -1473,6 +1487,10 @@ function updateEnemies(dt) {
           const vr = G.vault.room;
           if (nx >= vr.x && nx < vr.x + vr.w && ny >= vr.y && ny < vr.y + vr.h) continue;
         }
+        if (e.arena && G.arena && G.arena.state !== 'idle') { // да НЕ излиза от запечатаната арена (иначе вълната не се чисти)
+          const ar = G.arena.room;
+          if (nx < ar.x + 0.7 || nx > ar.x + ar.w - 0.7 || ny < ar.y + 0.7 || ny > ar.y + ar.h - 0.7) continue;
+        }
         if (!hitsWall(nx, ny, e.r)) {
           burst(e.x, e.y, ['#c84fff', '#f0b0ff'], 10, 3, 0.4);
           e.x = nx; e.y = ny;
@@ -1721,7 +1739,8 @@ function updateCharge(e, dt) {
 function addHazard(h) {
   G.hazards = G.hazards || [];
   G.hazards.push(h);
-  if (G.hazards.length > 120) G.hazards.shift();
+  // при препълване маркирай най-стария мъртъв (updateHazards го филтрира) — да не shift-ваме масива по време на цикъл
+  if (G.hazards.length > 120) G.hazards[0].dead = true;
 }
 function updateHazards(dt) {
   if (!G.hazards) return;
@@ -1861,7 +1880,7 @@ function updateProjectiles(dt) {
               else e.slowT = Math.max(e.slowT, 1.5);
               damageEnemy(e, pr.dmg * rnd(0.9, 1.1), chance(G.player.st.crit / 200), Math.atan2(e.y - pr.y, e.x - pr.x), 0.1);
               pr.pierce--;
-              if (pr.pierce < 0) kill = true;
+              if (pr.pierce < 0) { kill = true; break; } // изчерпан пробив -> спри този кадър (иначе удря всички)
             }
             continue;
           }
