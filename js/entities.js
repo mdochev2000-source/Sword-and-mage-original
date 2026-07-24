@@ -1469,6 +1469,10 @@ function updateEnemies(dt) {
           const br = G.bossRoom;
           if (nx < br.x + 0.7 || nx > br.x + br.w - 0.7 || ny < br.y + 0.7 || ny > br.y + br.h - 0.7) continue;
         }
+        if (e.keyGuardian && G.vault && !G.vaultUnlocked) { // да НЕ се телепортира в собствената си заключена съкровищница
+          const vr = G.vault.room;
+          if (nx >= vr.x && nx < vr.x + vr.w && ny >= vr.y && ny < vr.y + vr.h) continue;
+        }
         if (!hitsWall(nx, ny, e.r)) {
           burst(e.x, e.y, ['#c84fff', '#f0b0ff'], 10, 3, 0.4);
           e.x = nx; e.y = ny;

@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-24 12:44 UTC";
+window.__BUILD__ = "2026-07-24 12:58 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -4133,6 +4133,10 @@ function updateEnemies(dt) {
         if (e.bossDef && G.bossRoom && G.bossRoomLocked) {
           const br = G.bossRoom;
           if (nx < br.x + 0.7 || nx > br.x + br.w - 0.7 || ny < br.y + 0.7 || ny > br.y + br.h - 0.7) continue;
+        }
+        if (e.keyGuardian && G.vault && !G.vaultUnlocked) { // да НЕ се телепортира в собствената си заключена съкровищница
+          const vr = G.vault.room;
+          if (nx >= vr.x && nx < vr.x + vr.w && ny >= vr.y && ny < vr.y + vr.h) continue;
         }
         if (!hitsWall(nx, ny, e.r)) {
           burst(e.x, e.y, ['#c84fff', '#f0b0ff'], 10, 3, 0.4);
