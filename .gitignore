@@ -15,4 +15,7 @@ shot.jpg
 # стар ръчно сглобен файл (сега build.py прави bezdna-online.html + docs/)
 dist/
 
+# празен вложен клон, който GitHub Desktop направи тук (не ни трябва — качваме от главната папка)
+Sword-and-mage/
+
 # НЕ игнорираме bezdna-online.html и docs/ — GitHub Pages ги сервира
