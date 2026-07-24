@@ -76,7 +76,7 @@ const G = {
   isTouch: (typeof window !== 'undefined') && ('ontouchstart' in window),
   portrait: false,
   // герои (до 3), контролни точки и банкиран прогрес
-  charSlot: 0, charName: 'Изгнаник',
+  charSlot: 0, charName: 'Exile',
   checkpoint: 1,            // най-дълбокият отключен вход в Бездната
   heroBank: null,           // ниво/перкове/умения, прибрани у дома през портала
   sbSel: 0,                 // избран активен слот в книгата с магии
@@ -110,23 +110,23 @@ function defaultMeta() {
 // ---------- действия и биндове (клавиатура + контролер) ----------
 // kb = код по подразбиране (KeyboardEvent.code), pad = индекс на бутон (standard mapping)
 const ACTIONS = [
-  { id: 'up', n: 'Нагоре', kb: 'KeyW' },
-  { id: 'down', n: 'Надолу', kb: 'KeyS' },
-  { id: 'left', n: 'Наляво', kb: 'KeyA' },
-  { id: 'right', n: 'Надясно', kb: 'KeyD' },
-  { id: 'attack', n: 'Атака', kb: null, pad: 0 },      // на клавиатура атаката е ляв бутон на мишката
-  { id: 'dash', n: 'Отскок', kb: 'Space', pad: 1 },
-  { id: 'interact', n: 'Действие', kb: 'KeyE', pad: 2 },
-  { id: 'spell1', n: 'Магия 1', kb: 'KeyQ', pad: 3 },
-  { id: 'spell2', n: 'Магия 2', kb: 'Digit3', pad: 5 },
-  { id: 'spell3', n: 'Магия 3', kb: 'Digit4', pad: 7 },
-  { id: 'potion1', n: 'Отвара живот', kb: 'Digit1', pad: 4 },
-  { id: 'potion2', n: 'Отвара мана', kb: 'Digit2', pad: 6 },
-  { id: 'inventory', n: 'Инвентар', kb: 'KeyI', pad: 8 },
-  { id: 'spellbook', n: 'Книга с магии', kb: 'KeyB' },
-  { id: 'skilltree', n: 'Умения', kb: 'KeyT' },
-  { id: 'settings', n: 'Настройки', kb: null, pad: 9 },
-  { id: 'mute', n: 'Звук вкл/изкл', kb: 'KeyM' },
+  { id: 'up', n: 'Up', kb: 'KeyW' },
+  { id: 'down', n: 'Down', kb: 'KeyS' },
+  { id: 'left', n: 'Left', kb: 'KeyA' },
+  { id: 'right', n: 'Right', kb: 'KeyD' },
+  { id: 'attack', n: 'Attack', kb: null, pad: 0 },      // на клавиатура атаката е ляв бутон на мишката
+  { id: 'dash', n: 'Dash', kb: 'Space', pad: 1 },
+  { id: 'interact', n: 'Action', kb: 'KeyE', pad: 2 },
+  { id: 'spell1', n: 'Spell 1', kb: 'KeyQ', pad: 3 },
+  { id: 'spell2', n: 'Spell 2', kb: 'Digit3', pad: 5 },
+  { id: 'spell3', n: 'Spell 3', kb: 'Digit4', pad: 7 },
+  { id: 'potion1', n: 'Life potion', kb: 'Digit1', pad: 4 },
+  { id: 'potion2', n: 'Mana potion', kb: 'Digit2', pad: 6 },
+  { id: 'inventory', n: 'Inventory', kb: 'KeyI', pad: 8 },
+  { id: 'spellbook', n: 'Spellbook', kb: 'KeyB' },
+  { id: 'skilltree', n: 'Skills', kb: 'KeyT' },
+  { id: 'settings', n: 'Settings', kb: null, pad: 9 },
+  { id: 'mute', n: 'Sound on/off', kb: 'KeyM' },
 ];
 const ACTION_MAP = {};
 for (const a of ACTIONS) ACTION_MAP[a.id] = a;
@@ -156,7 +156,7 @@ function assignBind(dev, actionId, val) {
   const prev = dev === 'kb' ? actionForKey(val) : actionForPad(val);
   if (prev && prev !== actionId) {
     G.meta[key][prev] = null;
-    toast('„' + ACTION_MAP[prev].n + '" остана без бутон', '#e0a458');
+    toast('"' + ACTION_MAP[prev].n + '" is now unbound', '#e0a458');
   }
   G.meta[key][actionId] = val;
   if (typeof saveProfile === 'function') saveProfile();

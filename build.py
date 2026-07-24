@@ -43,7 +43,7 @@ def build():
 
     parts = []
     parts.append('<!DOCTYPE html>')
-    parts.append('<html lang="bg">')
+    parts.append('<html lang="en">')
     parts.append('<head>')
     parts.append('<meta charset="utf-8">')
     parts.append('<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">')

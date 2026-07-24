@@ -12,27 +12,27 @@ const ENEMY_TYPES = {
   totem:    { hp: 45, dmg: 10, spd: 0,   xp: 10, r: 0.35, aggro: 99, range: 7,   atkCd: 2.4, windup: 0.6, spr: 'totem',   anim: 2, animSpd: 3, ranged: 'bolt', keep: 0, static: true },
 };
 const ENEMY_NAMES = {
-  slime: 'Слуз', bat: 'Прилеп', skeleton: 'Скелет', archer: 'Скелет-стрелец',
-  shaman: 'Шаман', brute: 'Бруталник', wraith: 'Призрак', totem: 'Тотем',
+  slime: 'Slime', bat: 'Bat', skeleton: 'Skeleton', archer: 'Skeleton Archer',
+  shaman: 'Shaman', brute: 'Brute', wraith: 'Ghost', totem: 'Totem',
 };
 
 // ---------- БОСОВЕ: отделна структура с фази и сигнатурни механики ----------
 // пазители на всеки 5-и етаж (ротация от 3), архибос на всеки 10-и
 const BOSS_TYPES = {
-  bonek: { name: 'КОСТЕН КРАЛ', spr: 'boss', hp: 340, dmg: 24, spd: 2.1, r: 0.55, range: 1.7, atkCd: 2.2, windup: 0.8, aoe: 1.9, xp: 140, sig: 'adds', anim: 4, animSpd: 5 },
-  golem: { name: 'КЪРВАВ ГОЛЕМ', spr: 'boss2', hp: 440, dmg: 30, spd: 1.7, r: 0.6, range: 1.8, atkCd: 2.6, windup: 1.0, aoe: 2.3, xp: 160, sig: 'zones', anim: 4, animSpd: 4 },
-  lich: { name: 'АРХИЛИЧ', spr: 'boss3', hp: 280, dmg: 18, spd: 2.3, r: 0.5, range: 7, atkCd: 1.9, windup: 0.7, xp: 160, sig: 'totems', ranged: 'bolt', spread: 5, keep: 4.5, blink: true, fly: true, anim: 4, animSpd: 5 },
-  arch: { name: 'ВЛАДЕТЕЛЯТ НА БЕЗДНАТА', spr: 'boss4', hp: 560, dmg: 30, spd: 2.3, r: 0.6, range: 1.8, atkCd: 2.4, windup: 0.9, aoe: 2.0, xp: 320, sig: 'charge', anim: 4, animSpd: 5 },
+  bonek: { name: 'BONE KING', spr: 'boss', hp: 340, dmg: 24, spd: 2.1, r: 0.55, range: 1.7, atkCd: 2.2, windup: 0.8, aoe: 1.9, xp: 140, sig: 'adds', anim: 4, animSpd: 5 },
+  golem: { name: 'BLOOD GOLEM', spr: 'boss2', hp: 440, dmg: 30, spd: 1.7, r: 0.6, range: 1.8, atkCd: 2.6, windup: 1.0, aoe: 2.3, xp: 160, sig: 'zones', anim: 4, animSpd: 4 },
+  lich: { name: 'ARCHLICH', spr: 'boss3', hp: 280, dmg: 18, spd: 2.3, r: 0.5, range: 7, atkCd: 1.9, windup: 0.7, xp: 160, sig: 'totems', ranged: 'bolt', spread: 5, keep: 4.5, blink: true, fly: true, anim: 4, animSpd: 5 },
+  arch: { name: 'THE LORD OF THE ABYSS', spr: 'boss4', hp: 560, dmg: 30, spd: 2.3, r: 0.6, range: 1.8, atkCd: 2.4, windup: 0.9, aoe: 2.0, xp: 320, sig: 'charge', anim: 4, animSpd: 5 },
 };
 const BOSS_POOL = ['bonek', 'golem', 'lich'];
 
 // ---------- ЕЛИТНИ МОДИФИКАТОРИ: флаг върху елита, не нов вид враг ----------
 const ELITE_MODS = {
-  volatile: { n: 'Избухващ' },     // при смърт: закъснял взрив
-  shielded: { n: 'Щитоносец' },    // първият удар се поглъща
-  mender: { n: 'Лечител' },        // лекува съседите си
-  firetrail: { n: 'Огнена диря' }, // оставя горяща следа
-  swift: { n: 'Устремен' },        // по-бърз и по-яростен
+  volatile: { n: 'Volatile' },     // при смърт: закъснял взрив
+  shielded: { n: 'Shielded' },    // първият удар се поглъща
+  mender: { n: 'Mender' },        // лекува съседите си
+  firetrail: { n: 'Firetrail' }, // оставя горяща следа
+  swift: { n: 'Swift' },        // по-бърз и по-яростен
 };
 
 // проверка за уникална сила в екипировката
@@ -46,7 +46,7 @@ function hasPower(uid) { return G.player ? hasPowerEq(G.player, uid) : false; }
 
 // ---------- герой ----------
 function newPlayer() {
-  const startWeapon = { id: 0, slot: 'weapon', type: 'sword', icon: 'sword', rarity: 0, name: 'Ръждив меч', dmg: 10, cd: 0.38, range: 1.6, arc: 1.25, affixes: [] };
+  const startWeapon = { id: 0, slot: 'weapon', type: 'sword', icon: 'sword', rarity: 0, name: 'Rusty Sword', dmg: 10, cd: 0.38, range: 1.6, arc: 1.25, affixes: [] };
   const p = {
     x: 0, y: 0, r: 0.3,
     hp: 100, mp: 40,
@@ -279,7 +279,7 @@ function damagePlayer(amount, sx, sy) {
     const absorbed = Math.min(p.ward, dmg);
     p.ward -= absorbed;
     dmg -= absorbed;
-    addText(p.x, p.y, 'ЩИТ', '#8ab0ff');
+    addText(p.x, p.y, 'SHIELD', '#8ab0ff');
     burst(p.x, p.y, ['#8ab0ff', '#c9d1d9'], 6, 2.5, 0.3);
     if (dmg <= 0) { p.iframes = 0.3; return; }
   }
@@ -302,7 +302,7 @@ function damagePlayer(amount, sx, sy) {
       p.usedSecondChance = true;
       p.hp = Math.round(p.st.maxhp * 0.3);
       p.iframes = 1.5;
-      toast('ВТОРИ ШАНС! Съдбата те задържа.', '#5fd97a');
+      toast('SECOND CHANCE! Fate holds you back.', '#5fd97a');
       burst(p.x, p.y, ['#5fd97a', '#fff2a0'], 24, 4, 0.8);
       Sfx.play('level');
       return;
@@ -332,14 +332,14 @@ function playerDie() {
 function damageEnemy(e, dmg, isCrit, kbA, kbF) {
   if (e.dormant) {
     // спящият бос е неуязвим, докато не влезеш в стаята му
-    addText(e.x, e.y, 'ВЛЕЗ В СТАЯТА', '#7d8899');
+    addText(e.x, e.y, 'ENTER THE ROOM', '#7d8899');
     return;
   }
   if (e.shield) {
     // Щитоносец: първият удар се поглъща
     e.shield = false;
     e.flash = 0.15;
-    addText(e.x, e.y, 'ЩИТ', '#8ab0ff');
+    addText(e.x, e.y, 'SHIELD', '#8ab0ff');
     burst(e.x, e.y, ['#8ab0ff', '#c9d1d9'], 8, 3, 0.35);
     Sfx.play('deny');
     e.aggro = true;
@@ -373,7 +373,7 @@ function killEnemy(e) {
   // Избухващ елит: закъснял взрив със сигнал
   if (e.mod === 'volatile') {
     addHazard({ type: 'blast', x: e.x, y: e.y, t: 0, delay: 0.9, r: 1.5, dmg: e.dmg * 1.2 });
-    toast('Ще избухне!', '#ff8a1f');
+    toast('About to explode!', '#ff8a1f');
   }
   // перкове при убийство
   if (perkCount(p, 'harvest') && dist(p.x, p.y, e.x, e.y) < p.st.range + 1) {
@@ -405,7 +405,7 @@ function killEnemy(e) {
       // (слага се на валидна подова плочка, за да не се озове в стена = неизползваем)
       const pp = freeFloorNear(e.x, e.y - 1.2);
       G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
-      toast('Отвори се портал към лагера!', '#8ab0ff');
+      toast('A portal to camp has opened!', '#8ab0ff');
     } else {
       // пазител (Костен крал/Кървав голем/Архилич — етаж 5/15/25) -> 15 Осколки
       spawnDrop(e.x, e.y, { shard: 15 });
@@ -413,7 +413,7 @@ function killEnemy(e) {
     // отпечатваме стълбите и стаята
     for (const pr of G.props) if (pr.kind === 'stairs') pr.sealed = false;
     unlockBossRoom();
-    toast('Пазителят падна! Стълбите са отворени.', '#7fd0a0');
+    toast('The Guardian has fallen! The stairs are open.', '#7fd0a0');
     G.bossName = null;
     Sfx.play('level');
     // слугите умират с господаря си
@@ -633,7 +633,7 @@ function resolveMelee() {
     const kbF = chaosbind ? 0.5 : (mountain ? 0.65 : 0.25);
     damageEnemy(e, dmg, isCrit, kbA, kbF);
     // Гробарят на крале: убийство с екзекуция разтриса земята
-    if (execute && e.dead) { G.shake = Math.min(9, G.shake + 4); Sfx.play('boom'); addText(e.x, e.y + 0.4, 'ЕКЗЕКУЦИЯ', '#ff4757', true); }
+    if (execute && e.dead) { G.shake = Math.min(9, G.shake + 4); Sfx.play('boom'); addText(e.x, e.y + 0.4, 'EXECUTION', '#ff4757', true); }
     // Втори замах: мигновен повторен удар
     if (!e.dead && p.st.doubleStrike && chance(p.st.doubleStrike)) {
       damageEnemy(e, dmg * 0.8, false, a, 0.1);
@@ -644,7 +644,7 @@ function resolveMelee() {
       // Гневът на планината: удар в стена = двойни щети
       if (mountain && hitsWall(e.x + Math.cos(a) * 0.18, e.y + Math.sin(a) * 0.18, e.r)) {
         damageEnemy(e, dmg, false);
-        addText(e.x, e.y + 0.4, 'ТРЯС!', '#ff8a1f', true);
+        addText(e.x, e.y + 0.4, 'SLAM!', '#ff8a1f', true);
         G.shake = Math.min(8, G.shake + 3);
         Sfx.play('boom');
       }
@@ -741,7 +741,7 @@ const SPELL_CAST = {
     Sfx.play('boom');
   },
 };
-// верижна мълния (ползва се и от перка "Статичен заряд")
+// верижна мълния (ползва се и от перка "Static Charge")
 function castChain(start, dmg, jumps) {
   const p = G.player;
   let from = { x: p.x, y: p.y };
@@ -769,10 +769,10 @@ function castChain(start, dmg, jumps) {
 function castSpell(i) {
   const p = G.player;
   if (G.state !== 'play') return;
-  if (i === 1 && !G.meta.magic3) { toast('Слотът е заключен — Майсторът го отваря срещу Печат.', '#c84fff'); Sfx.play('deny'); return; }
-  if (i === 2 && !G.meta.magic4) { toast('Слотът е заключен — Майсторът го отваря срещу Печат.', '#c84fff'); Sfx.play('deny'); return; }
+  if (i === 1 && !G.meta.magic3) { toast('This slot is locked — the Master opens it for a Seal.', '#c84fff'); Sfx.play('deny'); return; }
+  if (i === 2 && !G.meta.magic4) { toast('This slot is locked — the Master opens it for a Seal.', '#c84fff'); Sfx.play('deny'); return; }
   const spellId = p.activeSpells && p.activeSpells[i];
-  if (!spellId) { toast('Празен слот — избери магия от Книгата.', '#7d8899'); Sfx.play('deny'); return; }
+  if (!spellId) { toast('Empty slot — choose a spell from the Spellbook.', '#7d8899'); Sfx.play('deny'); return; }
   p.spellCd = p.spellCd || [0, 0, 0];
   if (p.spellCd[i] > 0) return;
   const sp = SPELLS[spellId];
@@ -805,7 +805,7 @@ function learnSpell(spellId) {
   for (let i = 0; i < 3; i++) {
     if (unlockedSlots[i] && !p.activeSpells[i]) { p.activeSpells[i] = spellId; break; }
   }
-  toast('Нова магия: ' + SPELLS[spellId].n + '! Виж Книгата.', '#8ab0ff');
+  toast('New spell: ' + SPELLS[spellId].n + '! Check the Spellbook.', '#8ab0ff');
   Sfx.play('level');
   saveProfile();
   return true;
@@ -836,7 +836,7 @@ function tryDash() {
   p.dashA = (mx || my) ? Math.atan2(my, mx) : G.player.aimA;
   p.dashT = 0.16;
   p.dashCd = p.st.dashCd;
-  p.lastDashT = G.time; // за "Шепот в мрака"
+  p.lastDashT = G.time; // за "Whisper in the Dark"
   p.iframes = Math.max(p.iframes, 0.25);
   Sfx.play('dash');
 }
@@ -891,20 +891,20 @@ function updatePickups(dt) {
       else if (g.seal) {
         const n = (typeof g.seal === 'number' ? g.seal : 1);
         G.meta.seals += n;
-        toast('+' + n + ' Печат на Бездната! За отключвания при Захари.', '#c84fff');
+        toast('+' + n + ' Abyss Seal! For unlocks at Zahari.', '#c84fff');
         burst(g.x, g.y, ['#c84fff', '#f0b0ff', '#6a4f9e'], 20, 4, 0.8);
         Sfx.play('level');
         saveProfile();
       }
       else if (g.shard) {
         G.meta.shards = (G.meta.shards || 0) + g.shard;
-        toast('+' + g.shard + ' Осколка на Бездната! За омагьосване при Захари.', '#57e6c8');
+        toast('+' + g.shard + ' Abyss Shard! For enchanting at Zahari.', '#57e6c8');
         burst(g.x, g.y, ['#57e6c8', '#b6f5e6', '#2f8f7d'], 18, 4, 0.7);
         Sfx.play('coin');
         saveProfile();
       }
       else if (g.item) {
-        if (p.inv.length >= G.meta.invSlots) { if (!g.warned) { toast('Инвентарът е пълен!', '#ff6b7a'); g.warned = true; } continue; }
+        if (p.inv.length >= G.meta.invSlots) { if (!g.warned) { toast('Inventory is full!', '#ff6b7a'); g.warned = true; } continue; }
         p.inv.push(g.item);
         toast(g.item.name, Items.rarityCol(g.item));
         Sfx.play('pickup');
@@ -928,34 +928,34 @@ function updateInteract() {
     if (d < reach && d < bd) { bd = d; best = pr; }
   }
   if (!best) return;
-  if (best.kind === 'stairs') G.interactHint = { pr: best, txt: best.sealed ? 'Запечатано — победи пазителя!' : 'E — слез надолу' };
+  if (best.kind === 'stairs') G.interactHint = { pr: best, txt: best.sealed ? 'Sealed — defeat the Guardian!' : 'E — go down' };
   else if (best.kind === 'fountain') {
     // многократен, но всяка глътка поскъпва — реален смисъл за златото
     const price = Math.round((25 + 12 * G.depth) * Math.pow(1.6, best.uses || 0));
-    G.interactHint = { pr: best, txt: 'E — пий (' + price + ' злато, пълно лекуване)', price };
+    G.interactHint = { pr: best, txt: 'E — drink (' + price + ' gold, full heal)', price };
   }
-  else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — отвори сандъка' };
+  else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
-  else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — влез в Бездната (етаж ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
-  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — към лагера (пазиш нивото и уменията)' };
-  else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — почини си (пълно лекуване)' };
+  else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
+  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — to camp (keep your level and skills)' };
+  else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
 }
 function doInteract() {
   const h = G.interactHint;
   if (!h) return;
   const pr = h.pr, p = G.player;
   if (pr.kind === 'stairs') {
-    if (pr.sealed) { toast('Стълбите са запечатани! Победи пазителя.', '#ff6b7a'); Sfx.play('deny'); return; }
+    if (pr.sealed) { toast('The stairs are sealed! Defeat the Guardian.', '#ff6b7a'); Sfx.play('deny'); return; }
     startTransition();
   } else if (pr.kind === 'fountain') {
-    if (p.gold < h.price) { toast('Нужни са ' + h.price + ' злато.', '#ff6b7a'); Sfx.play('deny'); return; }
+    if (p.gold < h.price) { toast('You need ' + h.price + ' gold.', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= h.price;
     pr.uses = (pr.uses || 0) + 1;
     p.hp = p.st.maxhp; p.mp = p.st.maxmp;
     burst(p.x, p.y, ['#4f9cff', '#a8d8ff', '#7fd0a0'], 24, 4, 0.9);
-    toast('Изворът те изцели напълно.', '#7fd0a0');
+    toast('The spring healed you completely.', '#7fd0a0');
     Sfx.play('potion');
   } else if (pr.kind === 'chest') {
     pr.opened = true;
@@ -975,7 +975,7 @@ function doInteract() {
   } else if (pr.kind === 'campfire') {
     p.hp = p.st.maxhp; p.mp = p.st.maxmp;
     burst(p.x, p.y, ['#ff8a1f', '#ffd23b', '#7fd0a0'], 18, 3.5, 0.8);
-    toast('Огънят те стопли. Готов си.', '#7fd0a0');
+    toast('The fire warmed you. You\'re ready.', '#7fd0a0');
     Sfx.play('potion');
   }
 }
@@ -999,16 +999,16 @@ function shopBuy(entry) {
   const p = G.player;
   if (entry.unlock) { mysticBuy(entry.unlock); return; }
   if (entry.upgrade) { shopUpgrade(entry.upgrade); return; }
-  if (p.gold < entry.price) { toast('Нямаш достатъчно злато.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (p.gold < entry.price) { toast('You don\'t have enough gold.', '#ff6b7a'); Sfx.play('deny'); return; }
   if (entry.potion) {
     // отварите се отключват ЕДНОКРАТНО (после са завинаги)
-    if (p.potionsOwned && p.potionsOwned[entry.potion]) { toast('Вече я имаш.', '#7d8899'); Sfx.play('deny'); return; }
+    if (p.potionsOwned && p.potionsOwned[entry.potion]) { toast('You already have it.', '#7d8899'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.potionsOwned = p.potionsOwned || {};
     p.potionsOwned[entry.potion] = true;
-    toast(POTIONS[entry.potion].n + ' — отключена! Избери я от лагера.', '#7fd0a0');
+    toast(POTIONS[entry.potion].n + ' — unlocked! Choose it from camp.', '#7fd0a0');
   } else {
-    if (p.inv.length >= G.meta.invSlots) { toast('Инвентарът е пълен!', '#ff6b7a'); Sfx.play('deny'); return; }
+    if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);
     const stock = G.shops[G.shopVendor];
@@ -1023,17 +1023,17 @@ function shopUpgrade(vtype) {
   const lvl = G.meta.vendorLvl[vtype] || 1;
   if (lvl >= 5) return;
   const cost = VENDOR_UP_COST[lvl];
-  if (p.gold < cost) { toast('Нужни са ' + cost + ' злато.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (p.gold < cost) { toast('You need ' + cost + ' gold.', '#ff6b7a'); Sfx.play('deny'); return; }
   p.gold -= cost;
   G.meta.vendorLvl[vtype] = lvl + 1;
   G.shops[vtype] = genShopStock(vtype);
-  toast(VENDOR_DEFS[vtype].name + ' — лагерът расте! (ниво ' + (lvl + 1) + ')', '#7fd0a0');
+  toast(VENDOR_DEFS[vtype].name + ' — the camp grows! (level ' + (lvl + 1) + ')', '#7fd0a0');
   burst(p.x, p.y, ['#7fd0a0', '#ffd23b'], 16, 3.5, 0.7);
   Sfx.play('level');
   saveProfile();
 }
 function mysticBuy(offer) {
-  if (offer.cost > 0 && G.meta.seals < offer.cost) { toast('Нужни са ' + offer.cost + ' Печата на Бездната.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (offer.cost > 0 && G.meta.seals < offer.cost) { toast('You need ' + offer.cost + ' Abyss Seals.', '#ff6b7a'); Sfx.play('deny'); return; }
   if (offer.cost > 0) G.meta.seals -= offer.cost;
   offer.apply();
   burst(G.player.x, G.player.y, ['#c84fff', '#f0b0ff'], 20, 4, 0.8);
@@ -1047,14 +1047,14 @@ function enchantAffix(it, ai) {
   if (!it || !it.affixes) return;
   const a = it.affixes[ai];
   if (!a) return;
-  if ((a.up || 0) >= 3) { toast('Този афикс е напълно вдигнат (3/3).', '#ff6b7a'); Sfx.play('deny'); return; }
+  if ((a.up || 0) >= 3) { toast('This affix is fully upgraded (3/3).', '#ff6b7a'); Sfx.play('deny'); return; }
   const cost = enchantCost(a);
-  if ((G.meta.shards || 0) < cost) { toast('Нужни са ' + cost + ' Осколки на пазителя.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if ((G.meta.shards || 0) < cost) { toast('You need ' + cost + ' Guardian Shards.', '#ff6b7a'); Sfx.play('deny'); return; }
   G.meta.shards -= cost;
   a.v = Math.max(a.v + 1, Math.round(a.v * 1.15)); // +15% (поне +1) — може над тавана на находката
   a.up = (a.up || 0) + 1;
   calcStats(G.player);
-  toast((AFFIXES[a.k] ? AFFIXES[a.k].n : 'афикс') + ' → ' + a.v + '  (' + a.up + '/3)', '#57e6c8');
+  toast((AFFIXES[a.k] ? AFFIXES[a.k].n : 'affix') + ' → ' + a.v + '  (' + a.up + '/3)', '#57e6c8');
   burst(G.player.x, G.player.y, ['#57e6c8', '#b6f5e6'], 16, 3.5, 0.6);
   Sfx.play('level');
   saveProfile();
@@ -1066,12 +1066,12 @@ function enchantPotion(key) {
   if (!key || !POTIONS[key] || !(p.potionsOwned && p.potionsOwned[key])) { Sfx.play('deny'); return; }
   p.potionUp = p.potionUp || {};
   const up = p.potionUp[key] || 0;
-  if (up >= 3) { toast('Тази отвара е напълно вдигната (3/3).', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (up >= 3) { toast('This potion is fully upgraded (3/3).', '#ff6b7a'); Sfx.play('deny'); return; }
   const cost = potionEnchantCost(up);
-  if ((G.meta.shards || 0) < cost) { toast('Нужни са ' + cost + ' Осколки на Бездната.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if ((G.meta.shards || 0) < cost) { toast('You need ' + cost + ' Abyss Shards.', '#ff6b7a'); Sfx.play('deny'); return; }
   G.meta.shards -= cost;
   p.potionUp[key] = up + 1;
-  toast(POTIONS[key].n + ' → ниво ' + (up + 1) + '/3', '#57e6c8');
+  toast(POTIONS[key].n + ' → level ' + (up + 1) + '/3', '#57e6c8');
   burst(p.x, p.y, ['#57e6c8', '#b6f5e6'], 16, 3.5, 0.6);
   Sfx.play('level');
   saveProfile();
@@ -1079,12 +1079,12 @@ function enchantPotion(key) {
 // ПРЕПРАВЯНЕ (Част 4): хвърля наново всички афикси на предмета — 10 осколки, плоска цена
 const SCRAMBLE_COST = 10;
 function enchantScramble(it) {
-  if (!it || !it.affixes || !it.affixes.length) { toast('Този предмет няма афикси за преправяне.', '#ff6b7a'); Sfx.play('deny'); return; }
-  if ((G.meta.shards || 0) < SCRAMBLE_COST) { toast('Нужни са ' + SCRAMBLE_COST + ' Осколки на Бездната.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (!it || !it.affixes || !it.affixes.length) { toast('This item has no affixes to reforge.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if ((G.meta.shards || 0) < SCRAMBLE_COST) { toast('You need ' + SCRAMBLE_COST + ' Abyss Shards.', '#ff6b7a'); Sfx.play('deny'); return; }
   G.meta.shards -= SCRAMBLE_COST;
   rerollAffixes(it);
   calcStats(G.player);
-  toast('Афиксите са преправени наново!', '#57e6c8');
+  toast('The affixes have been reforged!', '#57e6c8');
   burst(G.player.x, G.player.y, ['#57e6c8', '#b6f5e6'], 18, 4, 0.7);
   Sfx.play('level');
   saveProfile();
@@ -1117,9 +1117,9 @@ function upgradeItemLevel(it, vtype) {
   const p = G.player;
   if (!it || !vendorUpgradesSlot(vtype, it.slot)) { Sfx.play('deny'); return; }
   const cap = itemLevelCap(vtype);
-  if ((it.lvl || 1) >= cap) { toast('Сергията вдига до ниво ' + cap + '. Развий я за повече.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if ((it.lvl || 1) >= cap) { toast('The stall upgrades to level ' + cap + '. Upgrade it for more.', '#ff6b7a'); Sfx.play('deny'); return; }
   const cost = itemUpgradeCost(it);
-  if (p.gold < cost) { toast('Нужни са ' + cost + ' злато.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (p.gold < cost) { toast('You need ' + cost + ' gold.', '#ff6b7a'); Sfx.play('deny'); return; }
   p.gold -= cost;
   const f = itemUpgradeFactor(it);
   const hasBase = !!(it.dmg || it.armor);
@@ -1129,7 +1129,7 @@ function upgradeItemLevel(it, vtype) {
   // пръстен/амулет нямат база -> вдигаме афиксите им (иначе нивото е безполезно)
   if (!hasBase && it.affixes) for (const a of it.affixes) a.v = Math.max(a.v + 1, Math.round(a.v * f));
   calcStats(p);
-  toast((it.name || 'Предмет') + ' → ниво ' + it.lvl, '#ffd23b');
+  toast((it.name || 'Item') + ' → level ' + it.lvl, '#ffd23b');
   burst(p.x, p.y, ['#ffd23b', '#fff2a0'], 16, 3.5, 0.6);
   Sfx.play('level');
   saveProfile();
@@ -1138,29 +1138,29 @@ function mysticOffers() {
   const m = G.meta;
   const out = [];
   if (m.invSlots < 20) out.push({
-    t: '+2 слота в инвентара (' + m.invSlots + ' → ' + (m.invSlots + 2) + ')',
-    d: 'място за още плячка', cost: 1,
-    apply: () => { m.invSlots = Math.min(20, m.invSlots + 2); toast('Инвентарът порасна: ' + m.invSlots + ' слота.', '#7fd0a0'); },
+    t: '+2 inventory slots (' + m.invSlots + ' → ' + (m.invSlots + 2) + ')',
+    d: 'room for more loot', cost: 1,
+    apply: () => { m.invSlots = Math.min(20, m.invSlots + 2); toast('Inventory grew: ' + m.invSlots + ' slots.', '#7fd0a0'); },
   });
   if (!m.magic3) out.push({
-    t: 'Отключи слот за магия — 3',
-    d: 'готов за бъдещо заклинание', cost: 1,
-    apply: () => { m.magic3 = true; toast('Слот 3 е отключен!', '#c84fff'); },
+    t: 'Unlock spell slot — 3',
+    d: 'ready for a future spell', cost: 1,
+    apply: () => { m.magic3 = true; toast('Slot 3 unlocked!', '#c84fff'); },
   });
   else if (!m.magic4) out.push({
-    t: 'Отключи слот за магия — 4',
-    d: 'трета магия в хотбара', cost: 2,
-    apply: () => { m.magic4 = true; toast('Слот 4 е отключен!', '#c84fff'); },
+    t: 'Unlock spell slot — 4',
+    d: 'a third spell in the hotbar', cost: 2,
+    apply: () => { m.magic4 = true; toast('Slot 4 unlocked!', '#c84fff'); },
   });
   if (!m.dash2) out.push({
-    t: 'Втори заряд на отскока',
-    d: 'два отскока един след друг', cost: 2,
-    apply: () => { m.dash2 = true; calcStats(G.player); G.player.dashCharges = G.player.st.dashMax; toast('Краката ти помнят вятъра.', '#7fd0a0'); },
+    t: 'Second dash charge',
+    d: 'two dashes in a row', cost: 2,
+    apply: () => { m.dash2 = true; calcStats(G.player); G.player.dashCharges = G.player.st.dashMax; toast('Your legs remember the wind.', '#7fd0a0'); },
   });
   if (!m.legendPool) out.push({
-    t: 'Пътят на реликвите',
-    d: 'уникатите започват да падат', cost: 1,
-    apply: () => { m.legendPool = true; toast('Реликвите на Бездната се пробуждат!', '#ff7a1f'); },
+    t: 'The Path of Relics',
+    d: 'uniques begin to drop', cost: 1,
+    apply: () => { m.legendPool = true; toast('The Relics of the Abyss awaken!', '#ff7a1f'); },
   });
   // разчитане на донесените томове (даром) — така се отключват магиите
   const p = G.player;
@@ -1169,8 +1169,8 @@ function mysticOffers() {
     if (it.slot !== 'spell' || p.spellsKnown[it.spell] || seen.has(it.spell)) return;
     seen.add(it.spell);
     out.push({
-      t: 'Разчети: ' + SPELLS[it.spell].n,
-      d: 'магията остава твоя завинаги', cost: 1,
+      t: 'Decipher: ' + SPELLS[it.spell].n,
+      d: 'the spell stays yours forever', cost: 1,
       apply: () => {
         const k = p.inv.findIndex(x => x.slot === 'spell' && x.spell === it.spell);
         if (k !== -1) p.inv.splice(k, 1);
@@ -1181,13 +1181,13 @@ function mysticOffers() {
   // нулиране на дървото с умения
   const spent = Object.keys(p.skills || {}).length;
   if (spent > 0) out.push({
-    t: 'Нулирай уменията (' + spent + ' точки обратно)',
-    d: 'дървото се изчиства, точките се връщат', cost: 1,
+    t: 'Reset skills (' + spent + ' points back)',
+    d: 'the tree clears, the points return', cost: 1,
     apply: () => {
       p.skillPoints = (p.skillPoints || 0) + spent;
       p.skills = {};
       calcStats(p);
-      toast('Умът ти е чист лист. +' + spent + ' точки.', '#7fd0a0');
+      toast('Your mind is a blank slate. +' + spent + ' points.', '#7fd0a0');
     },
   });
   return out;
@@ -1198,7 +1198,7 @@ function shopSell(idx) {
   if (!it) return;
   p.inv.splice(idx, 1);
   p.gold += shopSellPrice(it);
-  toast('Продадено: ' + it.name + ' (+' + shopSellPrice(it) + ' злато)', '#ffd23b');
+  toast('Sold: ' + it.name + ' (+' + shopSellPrice(it) + ' gold)', '#ffd23b');
   Sfx.play('coin');
   saveProfile();
 }
@@ -1343,7 +1343,7 @@ function updateEnemies(dt) {
     if (e.t.boss && !e.roared && seesPlayer) {
       e.roared = true;
       G.bossName = e.bossDef.name;
-      toast(e.bossDef.name + ' се пробужда!', '#ff6b7a');
+      toast(e.bossDef.name + ' awakens!', '#ff6b7a');
       Sfx.play('roar');
       G.shake = 8;
     }
@@ -1484,7 +1484,7 @@ function lockBossRoom(boss) {
   boss.aggro = true;
   boss.roared = true;
   G.bossName = boss.bossDef.name;
-  toast(boss.bossDef.name + ' — стаята се запечата!', '#ff6b7a');
+  toast(boss.bossDef.name + ' — the room is sealed!', '#ff6b7a');
   Sfx.play('roar');
   Sfx.play('boom');
   G.shake = 9;
@@ -1499,7 +1499,7 @@ function unlockBossRoom() {
   G.bossRoom = null;
   computeFOV();
   G.miniDirty = true;
-  toast('Печатът на стаята се разпадна.', '#7fd0a0');
+  toast('The room\'s seal has broken.', '#7fd0a0');
 }
 
 // ---------- босове: фази по % живот + сигнатурни механики ----------
@@ -1513,7 +1513,7 @@ function updateBoss(e, dt, d) {
     G.shake = 9;
     Sfx.play('roar');
     burst(e.x, e.y, ['#c22836', '#c84fff', '#ffd23b'], 30, 5, 0.8);
-    toast(e.bossDef.name + ' — фаза ' + ph + '!', '#ff6b7a');
+    toast(e.bossDef.name + ' — phase ' + ph + '!', '#ff6b7a');
     e.sigT = Math.min(e.sigT, 1.5); // фазата веднага показва зъби
   }
   e.sigT -= dt;
@@ -1524,7 +1524,7 @@ function updateBoss(e, dt, d) {
     const alive = G.enemies.filter(a => a.summoned && !a.dead && a.kind === 'skeleton').length;
     const want = Math.min(1 + e.phase, 5 - alive);
     for (let i = 0; i < want; i++) summonEnemy('skeleton', e.x + rnd(-2, 2), e.y + rnd(-2, 2));
-    if (want > 0) { toast('Стани и служи!', '#a39d8a'); Sfx.play('tp'); }
+    if (want > 0) { toast('Rise and serve!', '#a39d8a'); Sfx.play('tp'); }
     e.sigT = 15 - e.phase * 2;
   } else if (sig === 'zones') {
     // Кървав голем: кипяща кръв по пода
@@ -1537,7 +1537,7 @@ function updateBoss(e, dt, d) {
     // Архилич: тотеми, които стрелят
     const alive = G.enemies.filter(a => a.kind === 'totem' && !a.dead).length;
     for (let i = alive; i < 2; i++) summonEnemy('totem', e.x + rnd(-3, 3), e.y + rnd(-3, 3));
-    if (alive < 2) toast('Тотемите пият светлина!', '#c84fff');
+    if (alive < 2) toast('The totems drink the light!', '#c84fff');
     e.sigT = 17 - e.phase * 2;
   } else if (sig === 'charge') {
     // Владетелят: телеграфиран щурм (във фаза 3 — двоен)
@@ -1783,7 +1783,7 @@ function startTransition(target) {
   G.transTarget = target === undefined ? G.depth + 1 : target;
   // надписът показва СЛЕДВАЩИЯ етаж още от началото на фейда
   const nd = G.transTarget, ti = themeIndexFor(nd);
-  G.transMsg = 'Етаж ' + nd + ' — ' + THEMES[ti].name;
+  G.transMsg = 'Floor ' + nd + ' — ' + THEMES[ti].name;
   G.transSub = THEMES[ti].sub;
   Sfx.play('stairs');
 }
@@ -1825,7 +1825,7 @@ function startFloor(depth) {
   G.camInit = false;
   G.miniDirty = true;
   const th = THEMES[gen.theme];
-  G.transMsg = 'Етаж ' + depth + ' — ' + th.name;
+  G.transMsg = 'Floor ' + depth + ' — ' + th.name;
   G.transSub = th.sub;
 }
 
@@ -1845,14 +1845,14 @@ function startGame(slot, freshName) {
   G.heroBank = null;
   if (freshName !== undefined) {
     // чисто нов герой
-    G.charName = freshName || 'Изгнаник';
+    G.charName = freshName || 'Exile';
     G.meta = defaultMeta();
     saveProfile();
   }
   const prof = freshName === undefined ? loadProfile() : null;
   if (prof) {
     const p = G.player;
-    G.charName = prof.name || 'Изгнаник';
+    G.charName = prof.name || 'Exile';
     p.gold = prof.gold || 0;
     // отвари: нови постоянни флакони; стар запис с брой { hp:N, mp:M } -> само отключване
     p.potionsOwned = prof.potionsOwned || { hp: true, mp: true };
@@ -1905,7 +1905,7 @@ function goHomeViaPortal() {
   G.heroBank = { lvl: p.lvl, xp: p.xp, xpNext: p.xpNext, perks: p.perks };
   G.meta.bestDepth = Math.max(G.meta.bestDepth, G.maxDepth);
   saveProfile();
-  toast('Прибра се със славата си. Входът от етаж ' + G.checkpoint + ' е отворен.', '#7fd0a0');
+  toast('Returned home with their glory. The entrance from floor ' + G.checkpoint + ' is open.', '#7fd0a0');
   startSurface();
   G.state = 'play';
 }
@@ -1919,7 +1919,7 @@ function saveProfile() {
     const p = G.player;
     localStorage.setItem(charKey(G.charSlot || 0), JSON.stringify({
       v: SAVE_VERSION,                             // версия на записа — за бъдещи миграции
-      name: G.charName || 'Изгнаник',
+      name: G.charName || 'Exile',
       gold: p.gold, equip: p.equip, inv: p.inv, meta: G.meta,
       potionsOwned: p.potionsOwned, potionSlots: p.potionSlots, potionUp: p.potionUp, // постоянни отвари
       spellsKnown: p.spellsKnown, activeSpells: p.activeSpells,
@@ -1942,7 +1942,7 @@ function migrateChar(c) {
     switch (v) {
       case 0: {
         // версия 0: дозапълваме липсващите полета с безопасни стойности и валидираме типове
-        if (typeof c.name !== 'string') c.name = 'Изгнаник';
+        if (typeof c.name !== 'string') c.name = 'Exile';
         if (typeof c.gold !== 'number') c.gold = Number(c.gold) || 0;
         if (c.potions == null || typeof c.potions !== 'object') c.potions = { hp: 2, mp: 1 };
         // екипировката е обект със слотове (не масив); нормализираме предметите
@@ -1973,7 +1973,7 @@ function loadCharList() {
   for (let i = 0; i < 3; i++) {
     try {
       const c = migrateChar(JSON.parse(localStorage.getItem(charKey(i)) || 'null'));
-      out.push(c ? { slot: i, name: c.name || 'Изгнаник', gold: c.gold || 0, depth: (c.meta && c.meta.bestDepth) || 1, deaths: (c.meta && c.meta.deaths) || 0 } : null);
+      out.push(c ? { slot: i, name: c.name || 'Exile', gold: c.gold || 0, depth: (c.meta && c.meta.bestDepth) || 1, deaths: (c.meta && c.meta.deaths) || 0 } : null);
     } catch (e) { out.push(null); }
   }
   return out;
@@ -1993,7 +1993,7 @@ function migrateOldProfile() {
     const old = localStorage.getItem('bezdna_profile');
     if (old && !localStorage.getItem(charKey(0))) {
       const c = JSON.parse(old);
-      c.name = 'Изгнаник';
+      c.name = 'Exile';
       localStorage.setItem(charKey(0), JSON.stringify(c));
       localStorage.removeItem('bezdna_profile');
     }
@@ -2039,8 +2039,8 @@ function startSurface() {
   G.miniDirty = true;
   // стоката се опреснява при всяко завръщане
   G.shops = {};
-  G.transMsg = 'Лагерът на изгнаниците';
-  G.transSub = 'тук мъртвите си отдъхват';
+  G.transMsg = 'Camp of the Exiles';
+  G.transSub = 'here the dead take their rest';
   saveProfile();
 }
 
@@ -2062,7 +2062,7 @@ function respawnAtCamp() {
   startSurface();
   G.state = 'play';
   document.body.classList.remove('menu');
-  toast('Бездната те изплю. Екипировката ти оцеля.', '#7fd0a0');
+  toast('The Abyss spat you out. Your gear survived.', '#7fd0a0');
 }
 
 function saveBest() {

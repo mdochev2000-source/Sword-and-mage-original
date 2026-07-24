@@ -1,14 +1,14 @@
 'use strict';
-// ================= ПОВЪРХНОСТТА: отворен свят "Лагерът на изгнаниците" =================
+// ================= ПОВЪРХНОСТТА: отворен свят "Camp of the Exiles" =================
 
 const VENDOR_DEFS = {
-  weapon: { name: 'Ковачът Драган', flavor: 'Стомана, закалена в кръв.', slots: ['weapon'] },
-  armor:  { name: 'Бронарят Богдан', flavor: 'Желязо между теб и зъбите им.', slots: ['armor'] },
-  potion: { name: 'Алхимичката Яна', flavor: 'Отвари и дрънкулки — всичко за оцеляване.', slots: ['ring', 'amulet'] },
-  jewel:  { name: 'Майсторът Захари', flavor: 'Не продавам вещи. Строя пътища към силата.', slots: [] },
+  weapon: { name: 'Dragan the Blacksmith', flavor: 'Steel tempered in blood.', slots: ['weapon'] },
+  armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
+  potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
+  jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
 };
 const VENDOR_UP_COST = [0, 300, 900, 2700, 8000]; // цена в злато за ниво 2..5 (индекс = текущо ниво)
-const STALL_NAMES = ['количка', 'малка палатка', 'палатка', 'голяма палатка', 'шатра'];
+const STALL_NAMES = ['cart', 'small tent', 'tent', 'large tent', 'pavilion'];
 
 const Surface = {
   SIZE: 46,

@@ -39,7 +39,7 @@ function setupInput() {
       return;
     }
 
-    if (e.code === kbBind('mute')) { const m = Sfx.toggleMute(); toast(m ? 'Звук: изключен' : 'Звук: включен', '#7d8899'); return; }
+    if (e.code === kbBind('mute')) { const m = Sfx.toggleMute(); toast(m ? 'Sound: off' : 'Sound: on', '#7d8899'); return; }
 
     switch (G.state) {
       case 'title':
@@ -145,7 +145,7 @@ function setupInput() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   setupTouch();
   window.addEventListener('gamepadconnected', e => {
-    toast('Контролер: ' + (e.gamepad.id || '').slice(0, 30), '#7fd0a0');
+    toast('Controller: ' + (e.gamepad.id || '').slice(0, 30), '#7fd0a0');
     Sfx.play('pickup');
   });
   window.addEventListener('gamepaddisconnected', () => {
@@ -1062,10 +1062,10 @@ function render() {
     ctx.fillText('⟳', CW / 2, CH * 0.42);
     ctx.font = fontBold(10);
     ctx.fillStyle = '#e8e4d0';
-    ctx.fillText('Завърти телефона', CW / 2, CH * 0.52);
+    ctx.fillText('Rotate your phone', CW / 2, CH * 0.52);
     ctx.font = fontPx(7);
     ctx.fillStyle = '#7d8899';
-    ctx.fillText('sword and MAGE се играе в пейзажен режим', CW / 2, CH * 0.58);
+    ctx.fillText('sword and MAGE is played in landscape mode', CW / 2, CH * 0.58);
     ctx.textAlign = 'left';
     return;
   }

@@ -93,9 +93,9 @@ function drawPotionSelect() {
   const pw = 236 * S, ph = 186 * S, x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left'; ctx.font = fontBold(9); ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('ОТВАРИ — избери двете, които носиш', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('POTIONS — choose the two you carry', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
-  ctx.fillText('само в лагера · ESC — затвори', x0 + 10 * S, y0 + 22 * S);
+  ctx.fillText('only in camp · ESC — close', x0 + 10 * S, y0 + 22 * S);
   // ✕
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h); ctx.textAlign = 'center'; ctx.font = fontBold(9); ctx.fillStyle = '#ff6b7a';
@@ -112,12 +112,12 @@ function drawPotionSelect() {
     if (def) drawPotionGlyph(sx + sw / 2, sy + sw / 2 + 2 * S, def.col, 2.2 * S);
     else { ctx.fillStyle = '#454e63'; ctx.fillRect(sx + sw / 2 - S, sy + sw / 2 - S, 2 * S, 2 * S); }
     ctx.textAlign = 'center'; ctx.font = fontPx(6); ctx.fillStyle = '#a8b2c4';
-    ctx.fillText('Слот ' + (s + 1), sx + sw / 2, sy + sw + 8 * S);
+    ctx.fillText('Slot ' + (s + 1), sx + sw / 2, sy + sw + 8 * S);
     UI.btnRects.push({ x: sx, y: sy, w: sw, h: sw, act: ((si) => () => { G.potionSelSlot = si; })(s) });
   }
   // колекция от отключени отвари
   ctx.textAlign = 'left'; ctx.font = fontPx(6.5); ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('Твоята колекция (клик — в слот ' + (G.potionSelSlot + 1) + '):', x0 + 10 * S, y0 + 88 * S);
+  ctx.fillText('Your collection (click — into slot ' + (G.potionSelSlot + 1) + '):', x0 + 10 * S, y0 + 88 * S);
   const owned = (p.potionsOwned && POTION_KEYS.filter(k => p.potionsOwned[k])) || [];
   let ry = y0 + 94 * S; const rw = pw - 20 * S, rh = 15 * S;
   for (const key of owned) {
@@ -130,14 +130,14 @@ function drawPotionSelect() {
     ctx.font = fontPx(6.5); ctx.fillStyle = def.col;
     ctx.fillText(def.n + (up ? ' ' + '★'.repeat(up) : ''), x0 + 28 * S, ry + 7 * S);
     ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899';
-    ctx.fillText(def.d + ' · ' + Math.round(potionCooldown(p, key)) + 'с', x0 + 28 * S, ry + 13 * S);
+    ctx.fillText(def.d + ' · ' + Math.round(potionCooldown(p, key)) + 's', x0 + 28 * S, ry + 13 * S);
     UI.btnRects.push({ x: x0 + 10 * S, y: ry, w: rw, h: rh, act: ((k) => () => setPotionSlot(G.potionSelSlot, k))(key) });
     ry += rh + 2 * S;
   }
   // изпразни слота
   const eb = { x: x0 + 10 * S, y: ry + 2 * S, w: 74 * S, h: 14 * S };
   panel(eb.x, eb.y, eb.w, eb.h); ctx.textAlign = 'center'; ctx.font = fontBold(6.5); ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Изпразни слота', eb.x + eb.w / 2, eb.y + 10 * S);
+  ctx.fillText('Empty the slot', eb.x + eb.w / 2, eb.y + 10 * S);
   UI.btnRects.push({ x: eb.x, y: eb.y, w: eb.w, h: eb.h, act: () => setPotionSlot(G.potionSelSlot, null) });
   ctx.textAlign = 'left';
 }
@@ -179,8 +179,8 @@ function drawHUD() {
     };
   };
   const slots = [
-    { key: 'ЛБ', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
-    spellSlot(0, 'ДБ', true),
+    { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
+    spellSlot(0, 'RMB', true),
     spellSlot(1, '3', G.meta.magic3),
     spellSlot(2, '4', G.meta.magic4),
     { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
@@ -254,10 +254,10 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(8);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText(G.onSurface ? 'ЛАГЕРЪТ' : 'ЕТАЖ ' + G.depth, 10 * S, 12 * S);
+  ctx.fillText(G.onSurface ? 'THE CAMP' : 'FLOOR ' + G.depth, 10 * S, 12 * S);
   ctx.font = fontPx(7);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText(G.onSurface ? 'на изгнаниците' : THEMES[Spr.themeIdx].name, 10 * S, 21 * S);
+  ctx.fillText(G.onSurface ? 'of the Exiles' : THEMES[Spr.themeIdx].name, 10 * S, 21 * S);
   blit(ctx, Spr.icons.gold, 10 * S, 25 * S);
   ctx.fillStyle = '#ffd23b';
   ctx.font = fontBold(7);
@@ -278,7 +278,7 @@ function drawHUD() {
     }
   }
   ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('Ниво на героя: ' + p.lvl, 10 * S, (hasSeal || hasShard) ? 54 * S : 43 * S);
+  ctx.fillText('Hero level: ' + p.lvl, 10 * S, (hasSeal || hasShard) ? 54 * S : 43 * S);
 
   // активни бъфове от отвари: флаконче + лента с оставащото време
   if (p.buffs) {
@@ -346,7 +346,7 @@ function drawHUD() {
   // етикети на предмети по земята (близо до мишката)
   drawGroundLabels();
 
-  // тъч бутони по шаблона (или изрично избран режим "виртуални бутони")
+  // тъч бутони по шаблона (или изрично избран режим "virtual buttons")
   if (useTouchUI() && G.state === 'play') drawTouchControls(false);
 
   // зъбчато колело за настройки (едро) + чанта за инвентара
@@ -474,7 +474,7 @@ function drawMinimap() {
 }
 
 // ---------- инвентар ----------
-const SLOT_NAMES = { weapon: 'Оръжие', armor: 'Броня', ring: 'Пръстен', ring2: 'Пръстен 2', amulet: 'Амулет', spell: 'Том с магия', spell1: 'Магия', spell2: 'Магия', spell3: 'Магия' };
+const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
 function drawInventory() {
   const p = G.player, S = SCALE;
   UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null;
@@ -485,10 +485,10 @@ function drawInventory() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('ГЕРОЙ', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('HERO', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText(G.isTouch ? 'пипни предмет, после бутоните долу' : 'I / ESC — затвори | клик — екипирай | десен клик — изхвърли', x0 + 60 * S, y0 + 14 * S);
+  ctx.fillText(G.isTouch ? 'tap an item, then the buttons below' : 'I / ESC — close | click — equip | right-click — drop', x0 + 60 * S, y0 + 14 * S);
   // ✕ за затваряне
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -519,14 +519,14 @@ function drawInventory() {
   // статистики
   const st = p.st;
   const lines = [
-    ['Щети', Math.round(st.dmg)],
-    ['Атаки/сек', (1 / st.atkCd).toFixed(2)],
-    ['Броня', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
-    ['Крит', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
-    ['Кражба на живот', st.vamp + '%'],
-    ['Скорост', Math.round(st.spd * 10) / 10],
-    ['Злато бонус', Math.round(st.gold) + '%'],
-    ['Опит', p.xp + ' / ' + p.xpNext],
+    ['Damage', Math.round(st.dmg)],
+    ['Attacks/sec', (1 / st.atkCd).toFixed(2)],
+    ['Armor', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
+    ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
+    ['Life Steal', st.vamp + '%'],
+    ['Speed', Math.round(st.spd * 10) / 10],
+    ['Gold Bonus', Math.round(st.gold) + '%'],
+    ['Experience', p.xp + ' / ' + p.xpNext],
   ];
   let ly = y0 + 30 * S;
   ctx.font = fontPx(6.5);
@@ -542,7 +542,7 @@ function drawInventory() {
   // активни магии (от Книгата) — клик отваря Книгата
   ly += 4 * S;
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('Магии:', x0 + 52 * S, ly);
+  ctx.fillText('Spells:', x0 + 52 * S, ly);
   const spw = 16 * S;
   for (let si = 0; si < 3; si++) {
     const rx = x0 + 76 * S + si * (spw + 3 * S), ry2 = ly - 11 * S;
@@ -568,24 +568,24 @@ function drawInventory() {
   panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
   ctx.fillStyle = '#8ab0ff';
   ctx.font = fontBold(6.5);
-  ctx.fillText('КНИГА С МАГИИ (B)', x0 + 56 * S, ly + 1 * S);
+  ctx.fillText('SPELLBOOK (B)', x0 + 56 * S, ly + 1 * S);
   UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openBook: true });
   ly += 15 * S;
   panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
   ctx.fillStyle = (p.skillPoints || 0) > 0 ? '#ffd23b' : '#7fd0a0';
-  ctx.fillText('УМЕНИЯ (' + (p.skillPoints || 0) + ' т.) (T)', x0 + 56 * S, ly + 1 * S);
+  ctx.fillText('SKILLS (' + (p.skillPoints || 0) + ' pts) (T)', x0 + 56 * S, ly + 1 * S);
   UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openTree: true });
   ly += 15 * S;
   // дарбите от вдигане на ниво
   ctx.font = fontPx(6.5);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('Дарби (от нови нива):', x0 + 52 * S, ly);
+  ctx.fillText('Perks (from level-ups):', x0 + 52 * S, ly);
   ly += 9 * S;
   ctx.fillStyle = '#7fd0a0';
   const perkStr = Object.keys(p.perks).map(id => {
     const perk = PERKS.find(pp => pp.id === id);
     return (perk ? perk.n : id) + (p.perks[id] > 1 ? ' x' + p.perks[id] : '');
-  }).join(', ') || 'още нямаш — вдигай нива';
+  }).join(', ') || 'none yet — level up';
   wrapText(perkStr, x0 + 52 * S, ly, 80 * S, 8 * S);
 
   // мрежа с предмети (капацитетът расте при Мистика)
@@ -637,13 +637,13 @@ function drawInventory() {
     strokeRect(eqR.x, eqR.y, eqR.w, eqR.h, canEq ? '#7fd0a0' : '#454e63', S);
     ctx.font = fontBold(6.5); ctx.textAlign = 'center';
     ctx.fillStyle = canEq ? '#7fd0a0' : '#5a6478';
-    ctx.fillText('ЕКИПИРАЙ', eqR.x + bw / 2, by + 9.5 * S);
+    ctx.fillText('EQUIP', eqR.x + bw / 2, by + 9.5 * S);
     UI.invEquipRect = canEq ? eqR : null;
     const drR = { x: gx0 + bw + 4 * S, y: by, w: bw, h: bh };
     panel(drR.x, drR.y, drR.w, drR.h);
     strokeRect(drR.x, drR.y, drR.w, drR.h, '#ff6b7a', S);
     ctx.fillStyle = '#ff6b7a';
-    ctx.fillText('ИЗХВЪРЛИ', drR.x + bw / 2, by + 9.5 * S);
+    ctx.fillText('DROP', drR.x + bw / 2, by + 9.5 * S);
     UI.invDropRect = drR;
     ctx.textAlign = 'left';
   }
@@ -674,7 +674,7 @@ function tooltipPanel(it, x, y, header, extraLines) {
   let ly = y + 11 * S;
   if (header) {
     ctx.font = fontBold(6);
-    ctx.fillStyle = header === 'НОВО' ? '#7fd0a0' : '#a8b2c4';
+    ctx.fillStyle = header === 'NEW' ? '#7fd0a0' : '#a8b2c4';
     ctx.fillText(header, x + 6 * S, ly);
     ly += 9 * S;
   }
@@ -684,7 +684,7 @@ function tooltipPanel(it, x, y, header, extraLines) {
   ly += 8 * S;
   ctx.font = fontPx(5.5);
   ctx.fillStyle = it.uid ? '#ff7a1f' : '#7d8899';
-  ctx.fillText((it.lvl ? 'Ниво ' + it.lvl + ' · ' : '') + (it.uid ? 'УНИКАЛЕН' : RARITY[it.rarity].n) + ' · ' + (SLOT_NAMES[it.slot] || ''), x + 6 * S, ly);
+  ctx.fillText((it.lvl ? 'Level ' + it.lvl + ' · ' : '') + (it.uid ? 'UNIQUE' : RARITY[it.rarity].n) + ' · ' + (SLOT_NAMES[it.slot] || ''), x + 6 * S, ly);
   ly += 10 * S;
   ctx.font = fontPx(6);
   for (const L of lines) { ctx.fillStyle = L.c; ctx.fillText(L.s, x + 6 * S, ly); ly += 9 * S; }
@@ -705,11 +705,11 @@ function drawTooltip(it, mx, my, isEquipped) {
   const cmp = [];
   if (cur && it.slot === 'weapon') {
     const d = Math.round(it.dmg / it.cd - cur.dmg / cur.cd);
-    if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' щети/сек срещу носеното', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
+    if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' damage/sec vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
   }
   if (cur && it.slot === 'armor') {
     const d = it.armor - cur.armor;
-    if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' броня срещу носената', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
+    if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' armor vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
   }
   const w = 96 * S;
   const estH = (26 + 9 + 5 * 9) * S;
@@ -718,8 +718,8 @@ function drawTooltip(it, mx, my, isEquipped) {
   if (x < 2 * S) x = 2 * S;
   if (y + estH > CH) y = Math.max(2 * S, CH - estH - 4 * S);
   // сравнение: НОВО + НОСЕНО едно до друго
-  const main = tooltipPanel(it, x, y, cur && !isEquipped ? 'НОВО' : null, cmp);
-  if (cur && !isEquipped) tooltipPanel(cur, x + main.w + 4 * S, y, 'НОСЕНО');
+  const main = tooltipPanel(it, x, y, cur && !isEquipped ? 'NEW' : null, cmp);
+  if (cur && !isEquipped) tooltipPanel(cur, x + main.w + 4 * S, y, 'EQUIPPED');
 }
 
 function equipItem(idx) {
@@ -731,7 +731,7 @@ function equipItem(idx) {
   if (it.slot === 'ring') slot = !p.equip.ring ? 'ring' : (!p.equip.ring2 ? 'ring2' : 'ring');
   // томовете се разчитат само при Майстора
   if (it.slot === 'spell') {
-    toast('Занеси тома на Майстора Захари, за да го разчете.', '#c84fff');
+    toast('Take the tome to Master Zahari to decipher it.', '#c84fff');
     Sfx.play('deny');
     return;
   }
@@ -818,7 +818,7 @@ function drawShop() {
   ctx.fillText(def.name + (isMystic ? '' : '  ·  ' + STALL_NAMES[lvl - 1]), x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('„' + def.flavor + '"   |   E / ESC — затвори', x0 + 10 * S, y0 + 23 * S);
+  ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
   // злато и печати
   blit(ctx, Spr.icons.gold, x0 + pw - 58 * S, y0 + 6 * S);
   ctx.font = fontBold(8);
@@ -852,7 +852,7 @@ function drawShop() {
     // --- Мистикът: отключвания срещу Печати на Бездната ---
     ctx.font = fontBold(6.5);
     ctx.fillStyle = '#c84fff';
-    ctx.fillText('СИЛАТА НА ПЕЧАТИТЕ (клик — вземи)', x0 + 10 * S, y0 + 35 * S);
+    ctx.fillText('THE POWER OF SEALS (click — take)', x0 + 10 * S, y0 + 35 * S);
     const offers = mysticOffers();
     for (const of2 of offers) {
       const hov = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
@@ -868,7 +868,7 @@ function drawShop() {
       ctx.textAlign = 'right';
       ctx.font = fontBold(6.5);
       ctx.fillStyle = of2.cost === 0 ? '#7fd0a0' : (G.meta.seals >= of2.cost ? '#c84fff' : '#ff6b7a');
-      ctx.fillText(of2.cost === 0 ? 'даром' : of2.cost + ' печат' + (of2.cost > 1 ? 'а' : ''), x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+      ctx.fillText(of2.cost === 0 ? 'free' : of2.cost + ' seal' + (of2.cost > 1 ? 's' : ''), x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
       ctx.textAlign = 'left';
       UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry: { unlock: of2 } });
       ry += rowH + 2 * S;
@@ -876,14 +876,14 @@ function drawShop() {
     if (!offers.length) {
       ctx.fillStyle = '#7d8899';
       ctx.font = fontPx(6.5);
-      ctx.fillText('Всичко структурно е отключено.', x0 + 10 * S, ry + 8 * S);
+      ctx.fillText('Everything structural is unlocked.', x0 + 10 * S, ry + 8 * S);
       ry += rowH;
     }
     // --- омагьосване на ОТВАРИ (осколки): -12% презареждане / +12% сила на ниво ---
     UI.enchPotRects = [];
     ry += 4 * S;
     ctx.font = fontBold(6.5); ctx.fillStyle = '#57e6c8';
-    ctx.fillText('ОТВАРИ (клик — вдигни, осколки)', x0 + 10 * S, ry); ry += 6 * S;
+    ctx.fillText('POTIONS (click — upgrade, shards)', x0 + 10 * S, ry); ry += 6 * S;
     const ownedP = POTION_KEYS.filter(k => p.potionsOwned && p.potionsOwned[k]);
     for (const key of ownedP) {
       if (ry + rowH > y0 + ph - 8 * S) break; // не излизаме извън панела
@@ -895,11 +895,11 @@ function drawShop() {
       ctx.textAlign = 'left'; ctx.font = fontPx(6.5); ctx.fillStyle = pd.col;
       ctx.fillText(pd.n + ' ' + '★'.repeat(up) + '☆'.repeat(3 - up), x0 + 26 * S, ry + 8 * S);
       ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899';
-      ctx.fillText(maxed ? 'напълно вдигната' : '−12% cd · +12% сила', x0 + 26 * S, ry + 15 * S);
+      ctx.fillText(maxed ? 'fully upgraded' : '−12% cd · +12% power', x0 + 26 * S, ry + 15 * S);
       if (!maxed) {
         ctx.textAlign = 'right'; ctx.font = fontBold(6.5);
         ctx.fillStyle = (G.meta.shards || 0) >= cost ? '#57e6c8' : '#ff6b7a';
-        ctx.fillText(cost + ' оск.', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+        ctx.fillText(cost + ' shd', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
         ctx.textAlign = 'left';
         UI.enchPotRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, key });
       }
@@ -909,7 +909,7 @@ function drawShop() {
   // --- стока (ляво) ---
   ctx.font = fontBold(6.5);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('СТОКА (клик — купи)', x0 + 10 * S, y0 + 35 * S);
+  ctx.fillText('WARES (click — buy)', x0 + 10 * S, y0 + 35 * S);
   for (const entry of stock) {
     const hov = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
     rcx(x0 + 8 * S, ry, rowW, rowH, hov ? 'rgba(60,70,95,0.5)' : 'rgba(20,25,38,0.7)');
@@ -919,7 +919,7 @@ function drawShop() {
       const pd = POTIONS[entry.potion];
       drawPotionGlyph(x0 + 15 * S, ry + 9 * S, pd.col);
       ctx.fillStyle = pd.col;
-      ctx.fillText(pd.n + ' (отключване)', x0 + 26 * S, ry + 8 * S);
+      ctx.fillText(pd.n + ' (unlock)', x0 + 26 * S, ry + 8 * S);
       ctx.fillStyle = '#7d8899';
       ctx.font = fontPx(5.5);
       ctx.fillText(pd.d, x0 + 26 * S, ry + 15 * S);
@@ -929,13 +929,13 @@ function drawShop() {
       ctx.fillText(entry.item.name, x0 + 26 * S, ry + 8 * S);
       ctx.fillStyle = '#7d8899';
       ctx.font = fontPx(5.5);
-      const st = entry.item.dmg ? entry.item.dmg + ' щети' : entry.item.armor ? entry.item.armor + ' броня' : RARITY[entry.item.rarity].n;
-      ctx.fillText(st + (entry.item.affixes.length ? ' · +' + entry.item.affixes.length + ' свойства' : ''), x0 + 26 * S, ry + 15 * S);
+      const st = entry.item.dmg ? entry.item.dmg + ' damage' : entry.item.armor ? entry.item.armor + ' armor' : RARITY[entry.item.rarity].n;
+      ctx.fillText(st + (entry.item.affixes.length ? ' · +' + entry.item.affixes.length + ' properties' : ''), x0 + 26 * S, ry + 15 * S);
     }
     ctx.textAlign = 'right';
     ctx.font = fontBold(6.5);
     ctx.fillStyle = p.gold >= entry.price ? '#ffd23b' : '#ff6b7a';
-    ctx.fillText(entry.price + ' зл.', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+    ctx.fillText(entry.price + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
     ctx.textAlign = 'left';
     UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry });
     if (hov && entry.item) hoverStockItem = entry.item;
@@ -944,7 +944,7 @@ function drawShop() {
   if (!stock.length) {
     ctx.fillStyle = '#5a677f';
     ctx.font = fontPx(6.5);
-    ctx.fillText('Разпродадено. Върни се след следващата смърт.', x0 + 10 * S, ry + 8 * S);
+    ctx.fillText('Sold out. Come back after your next death.', x0 + 10 * S, ry + 8 * S);
     ry += 12 * S;
   }
   // ред за надграждане на сергията
@@ -955,14 +955,14 @@ function drawShop() {
     if (hovU) strokeRect(x0 + 8 * S, ry, rowW, rowH, '#7fd0a0', 1);
     ctx.font = fontBold(6.5);
     ctx.fillStyle = '#7fd0a0';
-    ctx.fillText('⌂ Надгради: ' + STALL_NAMES[lvl - 1] + ' → ' + STALL_NAMES[lvl], x0 + 12 * S, ry + 8 * S);
+    ctx.fillText('⌂ Upgrade: ' + STALL_NAMES[lvl - 1] + ' → ' + STALL_NAMES[lvl], x0 + 12 * S, ry + 8 * S);
     ctx.font = fontPx(5.5);
     ctx.fillStyle = '#7d8899';
-    ctx.fillText('повече и по-силна стока', x0 + 12 * S, ry + 15 * S);
+    ctx.fillText('more and stronger wares', x0 + 12 * S, ry + 15 * S);
     ctx.textAlign = 'right';
     ctx.font = fontBold(6.5);
     ctx.fillStyle = p.gold >= cost ? '#ffd23b' : '#ff6b7a';
-    ctx.fillText(cost + ' зл.', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+    ctx.fillText(cost + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
     ctx.textAlign = 'left';
     UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry: { upgrade: G.shopVendor } });
   }
@@ -985,7 +985,7 @@ function drawShop() {
   if (G.selItem && gridItems.indexOf(G.selItem) === -1) G.selItem = null;
   ctx.font = fontBold(6.5);
   ctx.fillStyle = isMystic ? '#57e6c8' : '#a8b2c4';
-  ctx.fillText(isMystic ? 'ОМАГЬОСВАНЕ (осколки)' : 'ТВОИТЕ ВЕЩИ (избери)', gx0, y0 + 35 * S);
+  ctx.fillText(isMystic ? 'ENCHANTING (shards)' : 'YOUR ITEMS (choose)', gx0, y0 + 35 * S);
   let gi = 0;
   for (const it of gridItems) {
     const rx = gx0 + (gi % cols) * (cw2 + gp), ryy = gy0 + ((gi / cols) | 0) * (cw2 + gp);
@@ -998,8 +998,8 @@ function drawShop() {
     gi++;
   }
   let ay = gy0 + (Math.ceil(gridItems.length / cols) || 1) * (cw2 + gp) + 6 * S;
-  if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'Няма предмети с афикси.' : 'Инвентарът е празен.', gx0, gy0 + 8 * S, rw, 8 * S); }
-  else if (!G.selItem) { ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899'; wrapText(isMystic ? 'Избери предмет, за да вдигнеш афикс или го омагьосаш.' : 'Избери предмет за продан или вдигане на ниво.', gx0, ay + 4 * S, rw, 8 * S); }
+  if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'No items with affixes.' : 'Inventory is empty.', gx0, gy0 + 8 * S, rw, 8 * S); }
+  else if (!G.selItem) { ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899'; wrapText(isMystic ? 'Choose an item to upgrade an affix or enchant it.' : 'Choose an item to sell or level up.', gx0, ay + 4 * S, rw, 8 * S); }
   else {
     const sit = G.selItem;
     ctx.textAlign = 'left'; ctx.font = fontPx(6); ctx.fillStyle = Items.rarityCol(sit);
@@ -1015,7 +1015,7 @@ function drawShop() {
         const stars = '★'.repeat(a.up || 0) + '☆'.repeat(3 - (a.up || 0));
         ctx.fillText('+' + a.v + ' ' + d.n + ' ' + stars, gx0 + 3 * S, ay + 6 * S);
         ctx.font = fontPx(5); ctx.fillStyle = maxed ? '#7fd0a0' : ((G.meta.shards || 0) >= cost ? '#57e6c8' : '#ff6b7a');
-        ctx.fillText(maxed ? 'напълно вдигнат' : '→ ' + Math.max(a.v + 1, Math.round(a.v * 1.15)) + '   (' + cost + ' оск.)', gx0 + 3 * S, ay + 12 * S);
+        ctx.fillText(maxed ? 'fully upgraded' : '→ ' + Math.max(a.v + 1, Math.round(a.v * 1.15)) + '   (' + cost + ' shd)', gx0 + 3 * S, ay + 12 * S);
         if (!maxed) UI.enchAffixRects.push({ x: gx0, y: ay, w: rw, h: rh, ai });
         ay += rh + 2 * S;
       });
@@ -1025,9 +1025,9 @@ function drawShop() {
       rcx(gx0, ay, rw, bh, 'rgba(50,30,70,0.6)');
       strokeRect(gx0, ay, rw, bh, canScr ? '#b34fff' : '#5a677f', 1);
       ctx.font = fontBold(6); ctx.fillStyle = canScr ? '#c084ff' : '#7d8899';
-      ctx.fillText('Омагьосай — хвърли афиксите наново', gx0 + 3 * S, ay + 7 * S);
+      ctx.fillText('Enchant — reroll the affixes', gx0 + 3 * S, ay + 7 * S);
       ctx.font = fontPx(5); ctx.fillStyle = '#a8b2c4';
-      ctx.fillText('10 осколки · нулира вдиганията', gx0 + 3 * S, ay + 14 * S);
+      ctx.fillText('10 shards · resets upgrades', gx0 + 3 * S, ay + 14 * S);
       UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'scramble' });
     } else {
       const inInv = p.inv.indexOf(sit) !== -1;
@@ -1035,7 +1035,7 @@ function drawShop() {
         const bh = 15 * S;
         rcx(gx0, ay, rw, bh, 'rgba(60,40,20,0.6)'); strokeRect(gx0, ay, rw, bh, '#e8c04a', 1);
         ctx.font = fontBold(6); ctx.fillStyle = '#ffd23b';
-        ctx.fillText('Продай за ' + shopSellPrice(sit) + ' зл.', gx0 + 3 * S, ay + 9 * S);
+        ctx.fillText('Sell for ' + shopSellPrice(sit) + ' g', gx0 + 3 * S, ay + 9 * S);
         UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'sell' });
         ay += bh + 3 * S;
       }
@@ -1045,15 +1045,15 @@ function drawShop() {
           const cost = itemUpgradeCost(sit), nv = itemUpgradePreview(sit), can = p.gold >= cost, bh2 = 20 * S;
           rcx(gx0, ay, rw, bh2, 'rgba(30,50,60,0.6)'); strokeRect(gx0, ay, rw, bh2, can ? '#8ab0ff' : '#5a677f', 1);
           ctx.font = fontBold(6); ctx.fillStyle = can ? '#8ab0ff' : '#7d8899';
-          ctx.fillText('Вдигни ниво ' + (sit.lvl || 1) + ' → ' + ((sit.lvl || 1) + 1), gx0 + 3 * S, ay + 7 * S);
+          ctx.fillText('Level up ' + (sit.lvl || 1) + ' → ' + ((sit.lvl || 1) + 1), gx0 + 3 * S, ay + 7 * S);
           ctx.font = fontPx(5); ctx.fillStyle = '#a8b2c4';
-          const num = nv.dmg != null ? (sit.dmg + '→' + nv.dmg + ' щети')
-            : nv.armor != null ? (sit.armor + '→' + nv.armor + ' броня')
+          const num = nv.dmg != null ? (sit.dmg + '→' + nv.dmg + ' damage')
+            : nv.armor != null ? (sit.armor + '→' + nv.armor + ' armor')
             : nv.aff ? (nv.aff.from + '→' + nv.aff.to + ' ' + (AFFIXES[nv.aff.k] ? AFFIXES[nv.aff.k].n : ''))
-            : 'по-силен';
-          ctx.fillText(num + ' · ' + cost + ' зл.', gx0 + 3 * S, ay + 14 * S);
+            : 'stronger';
+          ctx.fillText(num + ' · ' + cost + ' g', gx0 + 3 * S, ay + 14 * S);
           UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh2, act: 'levelup' });
-        } else { ctx.font = fontPx(5); ctx.fillStyle = '#5a677f'; ctx.fillText('Ниво ' + cap + ' — развий сергията.', gx0 + 3 * S, ay + 6 * S); }
+        } else { ctx.font = fontPx(5); ctx.fillStyle = '#5a677f'; ctx.fillText('Level ' + cap + ' — upgrade the stall.', gx0 + 3 * S, ay + 6 * S); }
       }
     }
   }
@@ -1071,14 +1071,14 @@ function drawShop() {
     const mw = 180 * S, mh = 84 * S, mx0 = x0 + (pw - mw) / 2, my0 = y0 + (ph - mh) / 2;
     panel(mx0, my0, mw, mh);
     ctx.textAlign = 'center'; ctx.font = fontBold(7.5); ctx.fillStyle = '#e8e4d0';
-    ctx.fillText('Омагьосване (необратимо)', mx0 + mw / 2, my0 + 14 * S);
+    ctx.fillText('Enchanting (irreversible)', mx0 + mw / 2, my0 + 14 * S);
     ctx.font = fontPx(6); ctx.fillStyle = '#a8b2c4';
-    wrapTextCentered('Всички афикси ще се хвърлят наново и вдиганията ще се нулират. Сигурен ли си?', mx0 + mw / 2, my0 + 26 * S, mw - 16 * S, 9 * S);
+    wrapTextCentered('All affixes will be rerolled and upgrades reset. Are you sure?', mx0 + mw / 2, my0 + 26 * S, mw - 16 * S, 9 * S);
     const bw = 66 * S, bh = 16 * S, by = my0 + mh - 22 * S;
     const yb = { x: mx0 + mw / 2 - bw - 5 * S, y: by, w: bw, h: bh };
     const nb = { x: mx0 + mw / 2 + 5 * S, y: by, w: bw, h: bh };
-    panel(yb.x, yb.y, yb.w, yb.h); ctx.font = fontBold(7); ctx.fillStyle = '#c084ff'; ctx.fillText('Омагьосай', yb.x + yb.w / 2, yb.y + 11 * S);
-    panel(nb.x, nb.y, nb.w, nb.h); ctx.fillStyle = '#a8b2c4'; ctx.fillText('Отказ', nb.x + nb.w / 2, nb.y + 11 * S);
+    panel(yb.x, yb.y, yb.w, yb.h); ctx.font = fontBold(7); ctx.fillStyle = '#c084ff'; ctx.fillText('Enchant', yb.x + yb.w / 2, yb.y + 11 * S);
+    panel(nb.x, nb.y, nb.w, nb.h); ctx.fillStyle = '#a8b2c4'; ctx.fillText('Cancel', nb.x + nb.w / 2, nb.y + 11 * S);
     ctx.textAlign = 'left';
     UI.shopConfirmRects = [{ x: yb.x, y: yb.y, w: yb.w, h: yb.h, act: 'yes' }, { x: nb.x, y: nb.y, w: nb.w, h: nb.h, act: 'no' }];
   }
@@ -1121,10 +1121,10 @@ function drawSpellbook() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#8ab0ff';
-  ctx.fillText('КНИГА С МАГИИ', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('SPELLBOOK', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('избери слот, после магия  |  ESC — затвори', x0 + 78 * S, y0 + 14 * S);
+  ctx.fillText('choose a slot, then a spell  |  ESC — close', x0 + 78 * S, y0 + 14 * S);
   // ✕
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -1159,7 +1159,7 @@ function drawSpellbook() {
     ctx.font = fontPx(5.5);
     ctx.fillStyle = '#7d8899';
     ctx.textAlign = 'center';
-    ctx.fillText(['ДБ', '3', '4'][i], ax + asw / 2, ay + asw + 6 * S);
+    ctx.fillText(['RMB', '3', '4'][i], ax + asw / 2, ay + asw + 6 * S);
     ctx.textAlign = 'left';
   }
 
@@ -1193,7 +1193,7 @@ function drawSpellbook() {
     ctx.fillStyle = known ? '#a8b2c4' : '#454e63';
     wrapTextCentered(sp.d, rcx0, ry + 33 * S, cw2 - 8 * S, 6.5 * S);
     ctx.fillStyle = known ? '#7fb0ff' : '#454e63';
-    ctx.fillText(known ? (sp.cost + ' мана · ' + sp.cd + 'с') : 'дай том на Захари', rcx0, ry + chh - 5 * S);
+    ctx.fillText(known ? (sp.cost + ' mana · ' + sp.cd + 's') : 'give a tome to Zahari', rcx0, ry + chh - 5 * S);
     ctx.textAlign = 'left';
     if (known) UI.btnRects.push({ x: rx, y: ry, w: cw2, h: chh, act: ((sid) => () => assignSpell(sid))(id) });
   });
@@ -1214,7 +1214,7 @@ function assignSpell(id) {
   const p = G.player;
   const i = G.sbSel || 0;
   const unlocked = i === 0 || (i === 1 ? G.meta.magic3 : G.meta.magic4);
-  if (!unlocked) { toast('Този слот е заключен — при Майстора.', '#c84fff'); return; }
+  if (!unlocked) { toast('This slot is locked — see the Master.', '#c84fff'); return; }
   // ако магията вече е в друг слот — разменяме
   const other = p.activeSpells.indexOf(id);
   if (other !== -1) p.activeSpells[other] = p.activeSpells[i];
@@ -1244,12 +1244,12 @@ function drawSkillTree() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('ДЪРВО С УМЕНИЯ', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('SKILL TREE', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#ffd23b';
-  ctx.fillText('точки: ' + (p.skillPoints || 0), x0 + 84 * S, y0 + 14 * S);
+  ctx.fillText('points: ' + (p.skillPoints || 0), x0 + 84 * S, y0 + 14 * S);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('остават завинаги; нулиране — при Майстора', x0 + 112 * S, y0 + 14 * S);
+  ctx.fillText('kept forever; reset at the Master', x0 + 112 * S, y0 + 14 * S);
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
   ctx.textAlign = 'center';
@@ -1267,7 +1267,7 @@ function drawSkillTree() {
     ctx.fillText(br.n, bx + colW / 2, y0 + 30 * S);
     ctx.font = fontPx(4.5);
     ctx.fillStyle = '#5a677f';
-    ctx.fillText('расте отдолу нагоре', bx + colW / 2, y0 + 36 * S);
+    ctx.fillText('grows from the bottom up', bx + colW / 2, y0 + 36 * S);
     br.nodes.forEach((nd, ni) => {
       // най-слабите са НАЙ-ДОЛУ, капстоунът — най-горе; купува се отдолу нагоре
       const ny = y0 + 38 * S + (br.nodes.length - 1 - ni) * 31 * S;
@@ -1320,10 +1320,10 @@ function drawLevelup() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(12);
   ctx.fillStyle = '#ffd23b';
-  ctx.fillText('НОВО НИВО!', CW / 2, CH / 2 - 66 * S);
+  ctx.fillText('LEVEL UP!', CW / 2, CH / 2 - 66 * S);
   ctx.font = fontPx(7);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Избери дарба  ·  получаваш и +1 точка за Дървото с умения', CW / 2, CH / 2 - 54 * S);
+  ctx.fillText('Choose a perk  ·  you also get +1 Skill Tree point', CW / 2, CH / 2 - 54 * S);
   const cw2 = 74 * S, chh = 74 * S, gap = 10 * S;
   const total = 3 * cw2 + 2 * gap;
   let x = (CW - total) / 2;
@@ -1359,7 +1359,7 @@ function drawLevelup() {
     if (lvlHave > 0) {
       ctx.fillStyle = '#7d8899';
       ctx.font = fontPx(5.5);
-      ctx.fillText('имаш x' + lvlHave, x + cw2 / 2, y + chh - 6 * S);
+      ctx.fillText('you have x' + lvlHave, x + cw2 / 2, y + chh - 6 * S);
     }
     UI.perkRects.push({ x, y, w: cw2, h: chh, idx: i });
     x += cw2 + gap;
@@ -1367,8 +1367,8 @@ function drawLevelup() {
   // ред с подсказки — какъв бутон какво прави (според реалния вход в момента)
   const pr = padRecent();
   drawControlHints(CW / 2, y + chh + 16 * S, [
-    pr ? { b: '◀ ▶', t: 'избери' } : { b: '1 2 3', t: 'избери' },
-    pr ? { b: padGlyph('attack', 'A'), t: 'потвърди' } : { b: 'клик', t: 'потвърди' },
+    pr ? { b: '◀ ▶', t: 'select' } : { b: '1 2 3', t: 'select' },
+    pr ? { b: padGlyph('attack', 'A'), t: 'confirm' } : { b: 'click', t: 'confirm' },
   ]);
   ctx.textAlign = 'left';
 }
@@ -1440,13 +1440,13 @@ function drawMenuCursor() {
   if (ti) drawTooltip(ti, r.x + r.w + 4 * S, r.y + r.h / 2, !!r.equip);
   const volSel = r.kind === 'volume';
   drawControlHints(CW / 2, CH - 9 * S, volSel ? [
-    { b: '◀ ▶', t: 'сила на звука' },
-    { b: 'B', t: 'назад' },
-    { b: '✛', t: 'движение' },
+    { b: '◀ ▶', t: 'volume' },
+    { b: 'B', t: 'back' },
+    { b: '✛', t: 'move' },
   ] : [
-    { b: padGlyph('attack', 'A'), t: 'избери' },
-    { b: 'B', t: 'назад' },
-    { b: '✛', t: 'движение' },
+    { b: padGlyph('attack', 'A'), t: 'select' },
+    { b: 'B', t: 'back' },
+    { b: '✛', t: 'move' },
   ]);
 }
 // централизиран ред с подсказки „бутон — действие"
@@ -1638,16 +1638,16 @@ function drawTitle() {
   };
   // изчистено: само логото и двата бутона
   const anyChar = loadCharList().some(c => c);
-  btn('ПРОДЪЛЖИ', CH * 0.56, 100 * S, () => {
+  btn('CONTINUE', CH * 0.56, 100 * S, () => {
     G.delArm = null; // да не остане „въоръжено" триене
     if (anyChar) { G.state = 'charselect'; }
     else { G.state = 'newchar'; startNameInput(); }
   });
-  btn('НОВА ИГРА', CH * 0.56 + 26 * S, 100 * S, () => {
+  btn('NEW GAME', CH * 0.56 + 26 * S, 100 * S, () => {
     G.delArm = null;
     const list = loadCharList();
     const free = list.findIndex(c => !c);
-    if (free === -1) { toast('Имаш 3 герои — изтрий някой от "Продължи".', '#ff6b7a'); G.state = 'charselect'; return; }
+    if (free === -1) { toast('You have 3 heroes — delete one from "Continue".', '#ff6b7a'); G.state = 'charselect'; return; }
     G.newSlot = free;
     G.state = 'newchar';
     startNameInput();
@@ -1664,7 +1664,7 @@ function drawCharSelect() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(11);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('ИЗБЕРИ ГЕРОЙ', CW / 2, CH * 0.16);
+  ctx.fillText('CHOOSE A HERO', CW / 2, CH * 0.16);
   const list = loadCharList();
   const rw = 170 * S, rh = 30 * S;
   let y = CH * 0.24;
@@ -1681,7 +1681,7 @@ function drawCharSelect() {
       ctx.fillText(c.name, x + 10 * S, y + 13 * S);
       ctx.font = fontPx(6);
       ctx.fillStyle = '#7d8899';
-      ctx.fillText('злато ' + c.gold + ' · етаж ' + c.depth + ' · смърти ' + c.deaths, x + 10 * S, y + 23 * S);
+      ctx.fillText('gold ' + c.gold + ' · floor ' + c.depth + ' · deaths ' + c.deaths, x + 10 * S, y + 23 * S);
       ctx.textAlign = 'center';
       UI.btnRects.push({ x, y, w: rw - 26 * S, h: rh, act: ((slot) => () => startGame(slot))(i) });
       // изтриване (две натискания за сигурност)
@@ -1690,13 +1690,13 @@ function drawCharSelect() {
       ctx.fillStyle = armed ? '#ff6b7a' : '#5a677f';
       ctx.fillText(armed ? '?!' : '✕', x + rw - 13 * S, y + rh / 2 + 3 * S);
       UI.btnRects.push({ x: x + rw - 24 * S, y, w: 24 * S, h: rh, act: ((slot) => () => {
-        if (G.delArm === slot) { deleteChar(slot); G.delArm = null; toast('Героят е изтрит.', '#7d8899'); }
-        else { G.delArm = slot; toast('Натисни пак ✕, за да изтриеш.', '#ff6b7a'); }
+        if (G.delArm === slot) { deleteChar(slot); G.delArm = null; toast('Hero deleted.', '#7d8899'); }
+        else { G.delArm = slot; toast('Press ✕ again to delete.', '#ff6b7a'); }
       })(i) });
     } else {
       ctx.font = fontPx(7);
       ctx.fillStyle = '#3a4456';
-      ctx.fillText('— празно място —', CW / 2, y + rh / 2 + 2 * S);
+      ctx.fillText('— empty slot —', CW / 2, y + rh / 2 + 2 * S);
       UI.btnRects.push({ x, y, w: rw, h: rh, act: ((slot) => () => { G.newSlot = slot; G.state = 'newchar'; startNameInput(); })(i) });
     }
     y += rh + 8 * S;
@@ -1705,7 +1705,7 @@ function drawCharSelect() {
   panel(bx, y + 4 * S, 60 * S, 16 * S);
   ctx.font = fontBold(8);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Назад', CW / 2, y + 15 * S);
+  ctx.fillText('Back', CW / 2, y + 15 * S);
   UI.btnRects.push({ x: bx, y: y + 4 * S, w: 60 * S, h: 16 * S, act: () => { G.state = 'title'; G.delArm = null; } });
   ctx.textAlign = 'left';
 }
@@ -1734,7 +1734,7 @@ function startNameInput() {
 }
 function confirmNewChar() {
   const name = (G.newName || '').trim();
-  if (!name) { toast('Дай име на героя си.', '#ff6b7a'); if (nameInputEl) nameInputEl.focus(); return; }
+  if (!name) { toast('Name your hero.', '#ff6b7a'); if (nameInputEl) nameInputEl.focus(); return; }
   if (nameInputEl) nameInputEl.blur();
   G.keys = Object.create(null); // да не тръгне героят сам от буквите на името
   G.mouse.down = G.mouse.rdown = false;
@@ -1746,8 +1746,8 @@ const NAMEKB = [
   'QWERTYUIOP'.split('').map(v => ({ v, k: 'ch' })),
   'ASDFGHJKL'.split('').map(v => ({ v, k: 'ch' })),
   'ZXCVBNM'.split('').map(v => ({ v, k: 'ch' })),
-  [{ v: 'ИНТЕРВАЛ', k: 'space', w: 66 }, { v: '⌫', k: 'del', w: 30 }],
-  [{ v: 'Създай', k: 'ok', w: 78 }, { v: 'Назад', k: 'cancel', w: 78 }],
+  [{ v: 'SPACE', k: 'space', w: 66 }, { v: '⌫', k: 'del', w: 30 }],
+  [{ v: 'Create', k: 'ok', w: 78 }, { v: 'Back', k: 'cancel', w: 78 }],
 ];
 function typeNameChar(ch) {
   const name = G.newName || '';
@@ -1813,7 +1813,7 @@ function drawNewChar() {
   if (G.nameKbOn) {
     ctx.font = fontBold(11);
     ctx.fillStyle = '#e8e4d0';
-    ctx.fillText('НОВ ГЕРОЙ', CW / 2, CH * 0.08);
+    ctx.fillText('NEW HERO', CW / 2, CH * 0.08);
     const fw = 170 * S, fh = 20 * S;
     const fx = (CW - fw) / 2, fy = CH * 0.14;
     panel(fx, fy, fw, fh);
@@ -1821,12 +1821,12 @@ function drawNewChar() {
     ctx.font = fontBold(9);
     ctx.fillStyle = G.newName ? '#e8e4d0' : '#5a677f';
     const caret = Math.floor(G.time * 2) % 2 === 0 ? '|' : ' ';
-    ctx.fillText((G.newName || 'име на героя') + (G.newName ? caret : ''), CW / 2, fy + 13.5 * S);
+    ctx.fillText((G.newName || 'hero name') + (G.newName ? caret : ''), CW / 2, fy + 13.5 * S);
     drawNameKeyboard(fy + fh + 12 * S);
     drawControlHints(CW / 2, CH - 9 * S, [
-      { b: padGlyph('attack', 'A'), t: 'избери' },
-      { b: 'B', t: 'изтрий' },
-      { b: 'D-pad', t: 'движение' },
+      { b: padGlyph('attack', 'A'), t: 'select' },
+      { b: 'B', t: 'delete' },
+      { b: 'D-pad', t: 'move' },
     ]);
     ctx.textAlign = 'left';
     return;
@@ -1835,7 +1835,7 @@ function drawNewChar() {
   // --- класически екран (клавиатура / мишка / телефон) ---
   ctx.font = fontBold(11);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('НОВ ГЕРОЙ', CW / 2, CH * 0.2);
+  ctx.fillText('NEW HERO', CW / 2, CH * 0.2);
   // героят по средата, уголемен
   if (Spr.player && Spr.player.sword) {
     const spr = Spr.player.sword.down[Math.floor(G.time * 3) % 4];
@@ -1851,18 +1851,18 @@ function drawNewChar() {
   ctx.font = fontBold(9);
   ctx.fillStyle = G.newName ? '#e8e4d0' : '#5a677f';
   const caret = Math.floor(G.time * 2) % 2 === 0 ? '|' : ' ';
-  ctx.fillText((G.newName || 'име на героя') + (G.newName ? caret : ''), CW / 2, fy + 12.5 * S);
+  ctx.fillText((G.newName || 'hero name') + (G.newName ? caret : ''), CW / 2, fy + 12.5 * S);
   UI.btnRects.push({ x: fx, y: fy, w: fw, h: fh, act: () => { if (nameInputEl) nameInputEl.focus(); } });
   // бутони
   const bw = 74 * S, bh = 18 * S;
   const bx1 = CW / 2 - bw - 5 * S, bx2 = CW / 2 + 5 * S, by2 = fy + 28 * S;
   panel(bx1, by2, bw, bh);
   ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('Създай', bx1 + bw / 2, by2 + 12.5 * S);
+  ctx.fillText('Create', bx1 + bw / 2, by2 + 12.5 * S);
   UI.btnRects.push({ x: bx1, y: by2, w: bw, h: bh, act: () => confirmNewChar() });
   panel(bx2, by2, bw, bh);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Назад', bx2 + bw / 2, by2 + 12.5 * S);
+  ctx.fillText('Back', bx2 + bw / 2, by2 + 12.5 * S);
   UI.btnRects.push({ x: bx2, y: by2, w: bw, h: bh, act: () => { G.state = 'title'; if (nameInputEl) nameInputEl.blur(); } });
   ctx.textAlign = 'left';
 }
@@ -1878,7 +1878,7 @@ function drawDescend() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('НАКЪДЕ, ' + (G.charName || 'страннико').toUpperCase() + '?', CW / 2, y0 + 14 * S);
+  ctx.fillText('WHERE TO, ' + (G.charName || 'stranger').toUpperCase() + '?', CW / 2, y0 + 14 * S);
   const row = (label, y, act) => {
     const rx = x0 + 10 * S, rw = pw - 20 * S, rh = 18 * S;
     const hov = G.mouse.x >= rx && G.mouse.x < rx + rw && G.mouse.y >= y && G.mouse.y < y + rh;
@@ -1889,9 +1889,9 @@ function drawDescend() {
     ctx.fillText(label, CW / 2, y + 12 * S);
     UI.btnRects.push({ x: rx, y, w: rw, h: rh, act });
   };
-  row('Отначало — Етаж 1', y0 + 24 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); startTransition(1); });
-  row('Контролна точка — Етаж ' + G.checkpoint, y0 + 46 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); startTransition(G.checkpoint); });
-  row('Назад', y0 + 68 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); });
+  row('From the start — Floor 1', y0 + 24 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); startTransition(1); });
+  row('Checkpoint — Floor ' + G.checkpoint, y0 + 46 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); startTransition(G.checkpoint); });
+  row('Back', y0 + 68 * S, () => { G.state = 'play'; document.body.classList.remove('menu'); });
   ctx.textAlign = 'left';
 }
 
@@ -1903,21 +1903,21 @@ function drawDead() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(16);
   ctx.fillStyle = '#c22836';
-  ctx.fillText('ЗАГИНА', CW / 2, CH * 0.32);
+  ctx.fillText('YOU DIED', CW / 2, CH * 0.32);
   ctx.font = fontPx(8);
   ctx.fillStyle = '#e8e4d0';
   const mins = Math.floor((performance.now() - G.startTime) / 60000);
   const secs = Math.floor((performance.now() - G.startTime) / 1000) % 60;
-  ctx.fillText('Етаж: ' + G.maxDepth + '  ·  Убийства: ' + G.kills + '  ·  Герой: ниво ' + G.player.lvl, CW / 2, CH * 0.42);
+  ctx.fillText('Floor: ' + G.maxDepth + '  ·  Kills: ' + G.kills + '  ·  Hero: level ' + G.player.lvl, CW / 2, CH * 0.42);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('Злато: ' + G.player.gold + '  ·  Време: ' + mins + ':' + String(secs).padStart(2, '0'), CW / 2, CH * 0.47);
+  ctx.fillText('Gold: ' + G.player.gold + '  ·  Time: ' + mins + ':' + String(secs).padStart(2, '0'), CW / 2, CH * 0.47);
   if (G.best) {
     ctx.fillStyle = '#c8a832';
-    ctx.fillText('Рекорд: етаж ' + G.best.depth + ' · ' + G.best.kills + ' убийства', CW / 2, CH * 0.53);
+    ctx.fillText('Record: floor ' + G.best.depth + ' · ' + G.best.kills + ' kills', CW / 2, CH * 0.53);
   }
   ctx.fillStyle = '#7fd0a0';
   ctx.font = fontPx(7);
-  ctx.fillText('Златото и предметите ти оцеляха. Бездната те чака от етаж 1.', CW / 2, CH * 0.57);
+  ctx.fillText('Your gold and items survived. The Abyss awaits you from floor 1.', CW / 2, CH * 0.57);
   const btnW = 100 * S, btnH = 18 * S;
   const bx = (CW - btnW) / 2, by = CH * 0.62;
   const hov = G.mouse.x >= bx && G.mouse.x < bx + btnW && G.mouse.y >= by && G.mouse.y < by + btnH;
@@ -1925,7 +1925,7 @@ function drawDead() {
   if (hov) strokeRect(bx, by, btnW, btnH, '#ffd23b', S);
   ctx.font = fontBold(9);
   ctx.fillStyle = hov ? '#ffd23b' : '#e8e4d0';
-  ctx.fillText('КЪМ ЛАГЕРА (ENTER)', CW / 2, by + 12.5 * S);
+  ctx.fillText('TO CAMP (ENTER)', CW / 2, by + 12.5 * S);
   UI.btnRects.push({ x: bx, y: by, w: btnW, h: btnH, act: () => respawnAtCamp() });
   ctx.textAlign = 'left';
 }
@@ -1937,15 +1937,15 @@ function drawPause() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(13);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('ПАУЗА', CW / 2, CH * 0.4);
+  ctx.fillText('PAUSE', CW / 2, CH * 0.4);
   ctx.font = fontPx(7);
   ctx.fillStyle = '#7d8899';
   if (padRecent()) {
-    ctx.fillText('Start — продължи', CW / 2, CH * 0.47);
-    ctx.fillText('ляв стик движение · ' + padGlyph('attack', 'A') + ' удар · ' + padGlyph('dash', 'B') + ' отскок · ' + padGlyph('interact', 'X') + ' действие · ' + padGlyph('inventory', 'Back') + ' инвентар', CW / 2, CH * 0.53);
+    ctx.fillText('Start — resume', CW / 2, CH * 0.47);
+    ctx.fillText('left stick move · ' + padGlyph('attack', 'A') + ' attack · ' + padGlyph('dash', 'B') + ' dash · ' + padGlyph('interact', 'X') + ' action · ' + padGlyph('inventory', 'Back') + ' inventory', CW / 2, CH * 0.53);
   } else {
-    ctx.fillText('ESC — продължи', CW / 2, CH * 0.47);
-    ctx.fillText('WASD движение · ЛБ удар · ДБ огън · SPACE отскок · E действие · I инвентар', CW / 2, CH * 0.53);
+    ctx.fillText('ESC — resume', CW / 2, CH * 0.47);
+    ctx.fillText('WASD move · LMB attack · RMB fire · SPACE dash · E action · I inventory', CW / 2, CH * 0.53);
   }
   ctx.textAlign = 'left';
 }
@@ -1974,14 +1974,14 @@ function drawTransition() {
 
 // ---------- тъч бутони: подредба по шаблона (дъга вдясно), мести се и оразмерява ----------
 const CTRL_DEFS = {
-  joy:  { fx: 0.115, fy: 0.775, fr: 0.135, name: 'Джойстик' },
-  atk:  { fx: 0.905, fy: 0.795, fr: 0.105, name: 'Атака' },
-  m1:   { fx: 0.775, fy: 0.875, fr: 0.062, name: 'Огнено кълбо' },
-  m2:   { fx: 0.728, fy: 0.705, fr: 0.062, name: 'Магия 3' },
-  m3:   { fx: 0.772, fy: 0.545, fr: 0.062, name: 'Магия 4' },
-  dash: { fx: 0.868, fy: 0.435, fr: 0.06,  name: 'Отскок' },
-  hp:   { fx: 0.90,  fy: 0.305, fr: 0.055, name: 'Живот' },
-  mp:   { fx: 0.953, fy: 0.205, fr: 0.055, name: 'Мана' },
+  joy:  { fx: 0.115, fy: 0.775, fr: 0.135, name: 'Joystick' },
+  atk:  { fx: 0.905, fy: 0.795, fr: 0.105, name: 'Attack' },
+  m1:   { fx: 0.775, fy: 0.875, fr: 0.062, name: 'Fireball' },
+  m2:   { fx: 0.728, fy: 0.705, fr: 0.062, name: 'Spell 3' },
+  m3:   { fx: 0.772, fy: 0.545, fr: 0.062, name: 'Spell 4' },
+  dash: { fx: 0.868, fy: 0.435, fr: 0.06,  name: 'Dash' },
+  hp:   { fx: 0.90,  fy: 0.305, fr: 0.055, name: 'Life' },
+  mp:   { fx: 0.953, fy: 0.205, fr: 0.055, name: 'Mana' },
 };
 function ctrlLayout() {
   const out = {};
@@ -2140,10 +2140,10 @@ function drawSettings() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('НАСТРОЙКИ', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('SETTINGS', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('ESC — затвори', x0 + 70 * S, y0 + 14 * S);
+  ctx.fillText('ESC — close', x0 + 70 * S, y0 + 14 * S);
 
   const row = (label, y, act) => {
     const rx = x0 + 10 * S, rw = pw - 20 * S, rh = 16 * S;
@@ -2157,13 +2157,13 @@ function drawSettings() {
     ctx.textAlign = 'left';
     UI.btnRects.push({ x: rx, y, w: rw, h: rh, act });
   };
-  row(document.fullscreenElement ? 'Изход от цял екран' : 'Цял екран', y0 + 22 * S, () => toggleFullscreen());
+  row(document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen', y0 + 22 * S, () => toggleFullscreen());
 
   // звук: слайдер
   const sy = y0 + 46 * S;
   ctx.font = fontBold(7);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Звук: ' + Math.round((G.meta.volume !== undefined ? G.meta.volume : 0.8) * 100) + '%' + (Sfx.muted ? ' (заглушен — M)' : ''), x0 + 10 * S, sy);
+  ctx.fillText('Sound: ' + Math.round((G.meta.volume !== undefined ? G.meta.volume : 0.8) * 100) + '%' + (Sfx.muted ? ' (muted — M)' : ''), x0 + 10 * S, sy);
   const bx = x0 + 10 * S, bw = pw - 20 * S, bh = 8 * S, by2 = sy + 4 * S;
   rcx(bx, by2, bw, bh, '#171c28');
   const vol = G.meta.volume !== undefined ? G.meta.volume : 0.8;
@@ -2174,22 +2174,22 @@ function drawSettings() {
   // спирка за курсора на контролера (ляво/дясно мени силата) — вмъква се на правилния ред
   UI.btnRects.push({ x: bx - 2 * S, y: sy - 9 * S, w: bw + 4 * S, h: 25 * S, kind: 'volume', act: () => {} });
 
-  const modeNames = { auto: 'автоматично', kbm: 'мишка и клавиатура', pad: 'контролер', touch: 'виртуални бутони' };
-  row('Управление: ' + modeNames[inputMode()], y0 + 70 * S, () => { G.state = 'inputmode'; });
-  row('Клавиши и бутони', y0 + 92 * S, () => {
+  const modeNames = { auto: 'automatic', kbm: 'mouse and keyboard', pad: 'controller', touch: 'virtual buttons' };
+  row('Controls: ' + modeNames[inputMode()], y0 + 70 * S, () => { G.state = 'inputmode'; });
+  row('Keys and buttons', y0 + 92 * S, () => {
     G.bindTab = G.bindTab || 'kb';
     G.bindWait = null;
     G.state = 'binds';
   });
-  row('Редактор на контролите', y0 + 114 * S, () => {
+  row('Control editor', y0 + 114 * S, () => {
     ensureCtrl();
-    G.editBackup = JSON.parse(JSON.stringify(G.meta.ctrl)); // за "Отказ"
+    G.editBackup = JSON.parse(JSON.stringify(G.meta.ctrl)); // за "Cancel"
     G.editSel = null;
     G.state = 'ctrledit';
   });
   // смяна на герой — само от безопасния лагер
   if (G.onSurface) {
-    row('Смени героя', y0 + 136 * S, () => {
+    row('Switch hero', y0 + 136 * S, () => {
       saveProfile();
       document.body.classList.add('menu');
       G.delArm = null;
@@ -2199,10 +2199,10 @@ function drawSettings() {
     ctx.font = fontPx(6);
     ctx.fillStyle = '#5a677f';
     ctx.textAlign = 'center';
-    ctx.fillText('Смяната на герой става само в лагера', CW / 2, y0 + 146 * S);
+    ctx.fillText('You can only switch hero in camp', CW / 2, y0 + 146 * S);
     ctx.textAlign = 'left';
   }
-  row('Затвори', y0 + 158 * S, () => closeSettings());
+  row('Close', y0 + 158 * S, () => closeSettings());
 }
 
 // ---------- избор на управление ----------
@@ -2216,16 +2216,16 @@ function drawInputMode() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#e8e4d0';
-  ctx.fillText('УПРАВЛЕНИЕ', x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText('CONTROLS', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('ESC — назад', x0 + 78 * S, y0 + 14 * S);
+  ctx.fillText('ESC — back', x0 + 78 * S, y0 + 14 * S);
 
   const opts = [
-    { id: 'auto', n: 'Автоматично', d: 'играта решава според устройството' },
-    { id: 'kbm', n: 'Мишка и клавиатура', d: 'WASD + мишка за прицел' },
-    { id: 'pad', n: 'Контролер', d: 'A атака · B отскок · X действие · Y/RB/RT магии' },
-    { id: 'touch', n: 'Виртуални бутони', d: 'джойстик и бутони на екрана' },
+    { id: 'auto', n: 'Automatic', d: 'the game decides based on your device' },
+    { id: 'kbm', n: 'Mouse and keyboard', d: 'WASD + mouse to aim' },
+    { id: 'pad', n: 'Controller', d: 'A attack · B dash · X action · Y/RB/RT spells' },
+    { id: 'touch', n: 'Virtual buttons', d: 'on-screen joystick and buttons' },
   ];
   let y = y0 + 22 * S;
   for (const o of opts) {
@@ -2244,7 +2244,7 @@ function drawInputMode() {
     UI.btnRects.push({ x: rx, y, w: rw, h: rh, act: ((mid) => () => {
       G.meta.inputMode = mid;
       saveProfile();
-      toast('Управление: ' + o.n, '#7fd0a0');
+      toast('Controls: ' + o.n, '#7fd0a0');
     })(o.id) });
     y += rh + 4 * S;
   }
@@ -2252,13 +2252,13 @@ function drawInputMode() {
   ctx.font = fontPx(6);
   if (G.padInfo) {
     ctx.fillStyle = '#7fd0a0';
-    ctx.fillText('Контролер: ' + (G.padInfo.id || '').slice(0, 34), x0 + 10 * S, y + 6 * S);
+    ctx.fillText('Controller: ' + (G.padInfo.id || '').slice(0, 34), x0 + 10 * S, y + 6 * S);
     ctx.fillStyle = '#a8b2c4';
-    const lastB = (G.padLastBtnT && G.time - G.padLastBtnT < 2) ? ('натиснат бутон #' + G.padLastBtn) : 'натисни бутон за проверка';
-    ctx.fillText(lastB + ' · стикове: ' + (G.padInfo.axes || []).slice(0, 4).join(', '), x0 + 10 * S, y + 14 * S);
+    const lastB = (G.padLastBtnT && G.time - G.padLastBtnT < 2) ? ('button pressed #' + G.padLastBtn) : 'press a button to test';
+    ctx.fillText(lastB + ' · sticks: ' + (G.padInfo.axes || []).slice(0, 4).join(', '), x0 + 10 * S, y + 14 * S);
   } else {
     ctx.fillStyle = '#5a677f';
-    ctx.fillText('Няма засечен контролер — натисни бутон на него.', x0 + 10 * S, y + 6 * S);
+    ctx.fillText('No controller detected — press a button on it.', x0 + 10 * S, y + 6 * S);
   }
   // затвори
   const bx = x0 + pw / 2 - 30 * S, byy = y0 + ph - 18 * S;
@@ -2266,7 +2266,7 @@ function drawInputMode() {
   ctx.textAlign = 'center';
   ctx.font = fontBold(7.5);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('Назад', x0 + pw / 2, byy + 10 * S);
+  ctx.fillText('Back', x0 + pw / 2, byy + 10 * S);
   UI.btnRects.push({ x: bx, y: byy, w: 60 * S, h: 14 * S, act: () => { G.state = 'settings'; } });
   ctx.textAlign = 'left';
 }
@@ -2278,7 +2278,7 @@ const KB_ROWS = [
   { ox: 12, keys: [['KeyZ', 'Z'], ['KeyX', 'X'], ['KeyC', 'C'], ['KeyV', 'V'], ['KeyB', 'B'], ['KeyN', 'N'], ['KeyM', 'M']] },
   { ox: 0, keys: [['Tab', 'TAB', 1.6], ['Space', 'SPACE', 6], ['Enter', 'ENTER', 1.8]] },
 ];
-const PAD_BTN_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', 'D-пад ↑', 'D-пад ↓', 'D-пад ←', 'D-пад →'];
+const PAD_BTN_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', 'D-pad ↑', 'D-pad ↓', 'D-pad ←', 'D-pad →'];
 function keyLabel(code) {
   if (code == null) return '—';
   if (code.startsWith('Key')) return code.slice(3);
@@ -2304,7 +2304,7 @@ function drawBinds() {
   let hovInfo = null; // "какво прави този бутон" под схемата
 
   // табове + нулирай + назад
-  const tabs = [['kb', 'Клавиатура'], ['pad', 'Контролер']];
+  const tabs = [['kb', 'Keyboard'], ['pad', 'Controller']];
   let tx = x0 + 6 * S;
   for (const t of tabs) {
     const tw = 58 * S, th = 13 * S, ty = y0 + 5 * S;
@@ -2328,8 +2328,8 @@ function drawBinds() {
     ctx.fillText(label, bx + w / 2, ty + 9 * S);
     UI.btnRects.push({ x: bx, y: ty, w, h: th, act });
   };
-  topBtn('Назад', 40 * S, () => { G.bindWait = null; saveProfile(); G.state = 'settings'; }, x0 + pw - 46 * S);
-  topBtn('Нулирай', 46 * S, () => { resetBinds(tab); toast('Бутоните са върнати по подразбиране.', '#7fd0a0'); }, x0 + pw - 97 * S);
+  topBtn('Back', 40 * S, () => { G.bindWait = null; saveProfile(); G.state = 'settings'; }, x0 + pw - 46 * S);
+  topBtn('Reset', 46 * S, () => { resetBinds(tab); toast('Buttons reset to default.', '#7fd0a0'); }, x0 + pw - 97 * S);
   ctx.textAlign = 'left';
 
   const dy0 = y0 + 24 * S;
@@ -2352,7 +2352,7 @@ function drawBinds() {
       ctx.fillText(label, kx + kw / 2, ky + 9 * S);
       if (hov) {
         strokeRect(kx, ky, kw, kh, '#ffd23b', S);
-        hovInfo = keyLabel(code) + ' — ' + (act ? ACTION_MAP[act].n : (code === 'Escape' ? 'пауза (фиксиран)' : 'свободен'));
+        hovInfo = keyLabel(code) + ' — ' + (act ? ACTION_MAP[act].n : (code === 'Escape' ? 'pause (fixed)' : 'unbound'));
         // клик върху зает клавиш започва смяна на неговото действие
         if (act) UI.btnRects.push({ x: kx, y: ky, w: kw, h: kh, act: () => { G.bindWait = { dev: 'kb', action: act }; } });
       }
@@ -2376,7 +2376,7 @@ function drawBinds() {
     ctx.font = fontPx(5);
     ctx.fillStyle = '#5a677f';
     ctx.textAlign = 'center';
-    ctx.fillText('стрелките винаги движат', ax0 + 22 * S, dy0 + 40 * S);
+    ctx.fillText('arrow keys always move', ax0 + 22 * S, dy0 + 40 * S);
     listY = dy0 + 5 * 15 * S + 6 * S;
   } else {
     // ---- схема на контролера ----
@@ -2442,10 +2442,10 @@ function drawBinds() {
     ctx.font = fontPx(5);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#5a677f';
-    ctx.fillText('ляв стик / D-пад — движение · десен стик — прицел', cx, cy + 32 * S);
+    ctx.fillText('left stick / D-pad — move · right stick — aim', cx, cy + 32 * S);
     if (!G.padInfo) {
       ctx.fillStyle = '#e0a458';
-      ctx.fillText('Няма засечен контролер — натисни бутон на него.', cx, dy0 + 2 * S);
+      ctx.fillText('No controller detected — press a button on it.', cx, dy0 + 2 * S);
     } else {
       ctx.fillStyle = '#7fd0a0';
       ctx.fillText((G.padInfo.id || '').slice(0, 40), cx, dy0 + 2 * S);
@@ -2455,7 +2455,7 @@ function drawBinds() {
       if (hovIn(rg.x, rg.y, rg.w, rg.h)) {
         strokeRect(rg.x, rg.y, rg.w, rg.h, '#ffd23b', S);
         const act = actionForPad(rg.idx);
-        hovInfo = padName(rg.idx) + ' — ' + (act ? ACTION_MAP[act].n : 'свободен');
+        hovInfo = padName(rg.idx) + ' — ' + (act ? ACTION_MAP[act].n : 'unbound');
         if (act) UI.btnRects.push({ x: rg.x, y: rg.y, w: rg.w, h: rg.h, act: () => { G.bindWait = { dev: 'pad', action: act }; } });
       }
     }
@@ -2480,11 +2480,11 @@ function drawBinds() {
     ctx.textAlign = 'right';
     if (waiting) {
       ctx.fillStyle = (G.time % 0.8 < 0.4) ? '#ffd23b' : '#e0a458';
-      ctx.fillText(tab === 'kb' ? 'натисни клавиш…' : 'натисни бутон…', rx + colW - 2 * S, ry + 7 * S);
+      ctx.fillText(tab === 'kb' ? 'press a key…' : 'press a button…', rx + colW - 2 * S, ry + 7 * S);
     } else {
       const bound = tab === 'kb' ? keyLabel(kbBind(a.id)) : padName(padBind(a.id));
       ctx.fillStyle = bound === '—' ? '#5a677f' : '#7fd0a0';
-      ctx.fillText(bound + (a.id === 'attack' && tab === 'kb' ? ' (мишка)' : ''), rx + colW - 2 * S, ry + 7 * S);
+      ctx.fillText(bound + (a.id === 'attack' && tab === 'kb' ? ' (mouse)' : ''), rx + colW - 2 * S, ry + 7 * S);
     }
     UI.btnRects.push({ x: rx, y: ry, w: colW, h: rowH, act: ((id) => () => { G.bindWait = { dev: tab, action: id }; })(a.id) });
   }
@@ -2495,13 +2495,13 @@ function drawBinds() {
   ctx.textAlign = 'center';
   if (G.bindWait) {
     ctx.fillStyle = '#ffd23b';
-    ctx.fillText((G.bindWait.dev === 'kb' ? 'Натисни клавиш за „' : 'Натисни бутон на контролера за „') + ACTION_MAP[G.bindWait.action].n + '"  ·  ' + (G.bindWait.dev === 'pad' ? 'Back / ESC — отказ' : 'ESC / B — отказ'), x0 + pw / 2, y0 + ph - 6 * S);
+    ctx.fillText((G.bindWait.dev === 'kb' ? 'Press a key for "' : 'Press a controller button for "') + ACTION_MAP[G.bindWait.action].n + '"  ·  ' + (G.bindWait.dev === 'pad' ? 'Back / ESC — cancel' : 'ESC / B — cancel'), x0 + pw / 2, y0 + ph - 6 * S);
   } else if (hovInfo) {
     ctx.fillStyle = '#e8e4d0';
     ctx.fillText(hovInfo, x0 + pw / 2, y0 + ph - 6 * S);
   } else {
     ctx.fillStyle = '#5a677f';
-    ctx.fillText('Натисни бутон — свети на схемата. Пипни действие от списъка, за да го смениш.', x0 + pw / 2, y0 + ph - 6 * S);
+    ctx.fillText('Press a button — it lights up on the diagram. Tap an action in the list to rebind it.', x0 + pw / 2, y0 + ph - 6 * S);
   }
   ctx.textAlign = 'left';
 }
@@ -2534,9 +2534,9 @@ function drawCtrlEdit() {
   // жестови зони на Android (горен и долен ръб поглъщат докосвания)
   const bh = 26 * S, by = Math.round(CH * 0.5 - bh / 2);
   const bar = [
-    { label: 'Отказ', w: 52 * S, act: () => { G.meta.ctrl = G.editBackup ? JSON.parse(JSON.stringify(G.editBackup)) : null; G.editSel = null; G.editDrag = null; G.state = 'settings'; } },
-    { label: 'Нулирай', w: 60 * S, act: () => { G.meta.ctrl = null; ensureCtrl(); G.editSel = null; } },
-    { label: 'Готово', w: 58 * S, act: () => { G.editDrag = null; saveProfile(); G.state = 'settings'; toast('Контролите са записани.', '#7fd0a0'); } },
+    { label: 'Cancel', w: 52 * S, act: () => { G.meta.ctrl = G.editBackup ? JSON.parse(JSON.stringify(G.editBackup)) : null; G.editSel = null; G.editDrag = null; G.state = 'settings'; } },
+    { label: 'Reset', w: 60 * S, act: () => { G.meta.ctrl = null; ensureCtrl(); G.editSel = null; } },
+    { label: 'Done', w: 58 * S, act: () => { G.editDrag = null; saveProfile(); G.state = 'settings'; toast('Controls saved.', '#7fd0a0'); } },
   ];
   const totW = bar.reduce((s, b) => s + b.w, 0) + (bar.length - 1) * 10 * S;
   let bx = (CW - totW) / 2;
@@ -2554,7 +2554,7 @@ function drawCtrlEdit() {
   }
   ctx.font = fontPx(7);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText(G.editSel ? 'Влачи го, или пипни − / + до него.' : 'Пипни бутон, за да го избереш. Влачи, за да го преместиш.', CW / 2, by - 8 * S);
+  ctx.fillText(G.editSel ? 'Drag it, or tap − / + next to it.' : 'Tap a button to select it. Drag to move it.', CW / 2, by - 8 * S);
   ctx.textAlign = 'left';
 
   // маркери: къде играта регистрира допирите (диагностика)
@@ -2601,7 +2601,7 @@ function drawCtrlEdit() {
   }
 }
 function resizeSel(d) {
-  if (!G.editSel) { toast('Първо избери бутон.', '#7d8899'); return; }
+  if (!G.editSel) { toast('First select a button.', '#7d8899'); return; }
   ensureCtrl();
   const c = G.meta.ctrl[G.editSel];
   c.fr = clamp(c.fr + d, 0.035, 0.22);

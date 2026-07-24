@@ -58,19 +58,19 @@ function inDiamond(x, y) {
 
 // ---------- теми по дълбочина ----------
 const THEMES = [
-  { name: 'Тъмница', sub: 'студен камък',
+  { name: 'Dungeon', sub: 'cold stone',
     base: '#3b4254', dark: '#323848', light: '#4a5268', crack: '#272c3a', edge: '#2a2f3e', accent: '#5a6a85',
     top: '#4d566c', topLight: '#5f6a84', topDark: '#414a5e', faceL: '#2e3546', faceR: '#252b3a', mortar: '#1b202e' },
-  { name: 'Катакомби', sub: 'мъх и кости',
+  { name: 'Catacombs', sub: 'moss and bones',
     base: '#3c4a41', dark: '#324038', light: '#4a5c4e', crack: '#252f28', edge: '#2a352d', accent: '#55804c',
     top: '#4b5c50', topLight: '#5d7060', topDark: '#3f4f44', faceL: '#2c3830', faceR: '#242e27', mortar: '#1a221c' },
-  { name: 'Кървави зали', sub: 'обсидиан и жар',
+  { name: 'Bloody Halls', sub: 'obsidian and embers',
     base: '#4a3138', dark: '#3b262c', light: '#5c3f45', crack: '#2a1a1e', edge: '#31212a', accent: '#8a3040',
     top: '#553a42', topLight: '#6a4750', topDark: '#452e36', faceL: '#33222a', faceR: '#291a21', mortar: '#1c1116' },
-  { name: 'Бездна', sub: 'пустотата гледа',
+  { name: 'Abyss', sub: 'the void stares',
     base: '#3a3150', dark: '#2e2740', light: '#4a3f66', crack: '#231d33', edge: '#2b2440', accent: '#6a4f9e',
     top: '#4a3f63', topLight: '#5c4e7c', topDark: '#3d3453', faceL: '#2c2542', faceR: '#231d35', mortar: '#161126' },
-  { name: 'Сърцето на мрака', sub: 'тук светлината умира',
+  { name: 'Heart of Darkness', sub: 'here the light dies',
     base: '#252c44', dark: '#1d2336', light: '#33405e', crack: '#141a2b', edge: '#1a2033', accent: '#5c78e8',
     top: '#313a58', topLight: '#41507a', topDark: '#28304a', faceL: '#1e2438', faceR: '#171c2c', mortar: '#0e1220' },
 ];
