@@ -855,6 +855,16 @@ function genItemIcon(kind, rarity) {
       px(g, 4, 6, '#c84fff'); px(g, 7, 6, '#c84fff');
       px(g, 5, 8, '#c84fff'); px(g, 6, 8, '#c84fff');
       break;
+    case 'soulstone':
+      // Камък на душата: тъмночервен кристал с бледа душа, светеща вътре
+      rc(g, 4, 2, 4, 2, '#8a1c2a');
+      rc(g, 3, 4, 6, 4, '#c22836');
+      rc(g, 4, 8, 4, 2, '#8a1c2a');
+      rc(g, 5, 5, 2, 2, '#ffd0e0'); // ядрото — душата
+      px(g, 5, 4, '#ff8aa0'); px(g, 6, 6, '#ff8aa0');
+      px(g, 5, 2, '#ffb0c0'); px(g, 4, 3, '#e0556a');
+      px(g, 7, 7, '#5a0f18'); px(g, 3, 6, '#e0556a'); px(g, 8, 5, '#5a0f18');
+      break;
   }
   outlineSprite(g, '#0a0c12');
   return g.canvas;
@@ -1061,7 +1071,7 @@ function initSprites(themeIdx) {
     };
 
     Spr.icons = {};
-    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome'])
+    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome', 'soulstone'])
       Spr.icons[k] = genItemIcon(k, 0);
 
     Spr.slash = genSlash();

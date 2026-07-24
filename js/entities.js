@@ -310,6 +310,17 @@ function damagePlayer(amount, sx, sy) {
       Sfx.play('level');
       return;
     }
+    // Камък на душата: платеното съживяване се харчи СЛЕД безплатното умение
+    const si = p.inv.findIndex(it => it && it.soulstone);
+    if (si !== -1) {
+      p.inv.splice(si, 1);
+      p.hp = Math.round(p.st.maxhp * 0.5);
+      p.iframes = 1.5;
+      toast('The Soul Stone shatters — pulled back from death!', '#ff6b7a');
+      burst(p.x, p.y, ['#c22836', '#ff8aa0', '#ffd0e0'], 28, 4.5, 0.9);
+      Sfx.play('level'); Sfx.play('potion');
+      return;
+    }
     p.hp = 0;
     playerDie();
   }
@@ -1046,6 +1057,15 @@ function shopBuy(entry) {
     p.potionsOwned = p.potionsOwned || {};
     p.potionsOwned[entry.potion] = true;
     toast(POTIONS[entry.potion].n + ' — unlocked! Choose it from camp.', '#7fd0a0');
+  } else if (entry.soulstone) {
+    // Камък на душата: МАКСИМУМ ЕДИН — иначе напрежението изчезва
+    if (p.inv.some(it => it && it.soulstone)) { toast('You already carry a Soul Stone.', '#7d8899'); Sfx.play('deny'); return; }
+    if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
+    p.gold -= entry.price;
+    p.inv.push(entry.item);
+    const stock = G.shops[G.shopVendor];
+    stock.splice(stock.indexOf(entry), 1);
+    toast('Soul Stone — it will pull you back once.', '#ff8aa0');
   } else {
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;

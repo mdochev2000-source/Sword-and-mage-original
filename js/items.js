@@ -191,6 +191,11 @@ const SPELL_UP = {
 };
 const SPELL_UP_COST = [300, 700]; // цена в осколки за ниво 2 и ниво 3
 
+// Камък на душата: еднократно съживяване; заема слот в инвентара, не се екипира
+function makeSoulStone() {
+  return { id: Items._id++, slot: 'soulstone', name: 'Soul Stone', icon: 'soulstone', rarity: 4, soulstone: true, affixes: [], power: 'On a lethal hit, revives you once at 50% life, then shatters. Spent after Second Chance.' };
+}
+
 // ---------- ОТВАРИ: постоянни флакони с презареждане (не се трупат, не свършват) ----------
 // restore = моментално възстановяване; buff = ефект с траене. unlock = ниво на сергията на Яна.
 // price = еднократна цена в злато за отключване. cd = презареждане (сек), dur = траене на бъфа (сек).
@@ -268,6 +273,12 @@ const Items = {
 
   statLines(it) {
     const L = [];
+    if (it.soulstone) {
+      L.push({ s: 'Revives you once at 50% life', c: '#ff8aa0' });
+      L.push({ s: 'on a lethal hit, then shatters.', c: '#ff8aa0' });
+      L.push({ s: 'Spent after Second Chance (free).', c: '#7d8899' });
+      return L;
+    }
     if (it.slot === 'spell') {
       const sp = SPELLS[it.spell];
       L.push({ s: sp.d, c: '#a8b2c4' });

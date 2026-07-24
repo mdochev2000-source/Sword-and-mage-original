@@ -278,7 +278,14 @@ function drawHUD() {
     }
   }
   ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('Hero level: ' + p.lvl, 10 * S, (hasSeal || hasShard) ? 54 * S : 43 * S);
+  const hlY = (hasSeal || hasShard) ? 54 * S : 43 * S;
+  ctx.fillText('Hero level: ' + p.lvl, 10 * S, hlY);
+  if (p.inv && p.inv.some(it => it && it.soulstone)) { // носиш Камък на душата — защитен си (видимо в HUD)
+    blit(ctx, Spr.icons.soulstone, 66 * S, hlY - 9 * S);
+    ctx.fillStyle = '#ff8aa0';
+    ctx.font = fontPx(5.5);
+    ctx.fillText('SOUL STONE', 79 * S, hlY - 1.5 * S);
+  }
 
   // активни бъфове от отвари: флаконче + лента с оставащото време
   if (p.buffs) {
@@ -732,6 +739,11 @@ function equipItem(idx) {
   // томовете се разчитат само при Майстора
   if (it.slot === 'spell') {
     toast('Take the tome to Master Zahari to decipher it.', '#c84fff');
+    Sfx.play('deny');
+    return;
+  }
+  if (it.slot === 'soulstone') { // работи от чантата — не се екипира
+    toast('The Soul Stone works from your bag — no need to equip.', '#ff8aa0');
     Sfx.play('deny');
     return;
   }

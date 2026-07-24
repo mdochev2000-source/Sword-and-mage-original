@@ -160,6 +160,8 @@ function genShopStock(vtype) {
     }
     // + пръстени и амулети (те се и вдигат на ниво тук)
     if (lvl >= 2) genSlots(['ring', 'amulet'], lvl - 1);
+    // Камък на душата: само на макс ниво (5) на сергията на Яна — еднократно съживяване
+    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 3000, soulstone: true });
   } else {
     genSlots(def.slots, 2 + lvl);
   }
