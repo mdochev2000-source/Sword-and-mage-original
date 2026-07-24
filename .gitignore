@@ -11,6 +11,8 @@ shot.jpg
 
 # билд артефакти на телефона (не са нужни в repo, големи са)
 *.apk
+# ...НО този се сервира от GitHub Pages за директно теглене на телефона
+!docs/sword-and-MAGE.apk
 
 # стар ръчно сглобен файл (сега build.py прави bezdna-online.html + docs/)
 dist/
