@@ -1,6 +1,27 @@
 'use strict';
 // ================= ПОДЗЕМИЯ: процедурна генерация на етажи =================
 
+// вярно ли е, че ако запечатаме стаята, ВСИЧКИ други стаи остават достижими от старта?
+// (пази специалните стаи да не блокират единствен коридор -> да не заключват играча)
+function sealKeepsConnected(room, rooms, cells, w, h, sx, sy) {
+  const gates = roomGates(room, cells, w, h);
+  const saved = gates.map(([i, j]) => cells[j * w + i]);
+  for (const [i, j] of gates) cells[j * w + i] = WALL; // временно зазиждаме входовете
+  const seen = new Uint8Array(w * h);
+  const q = [sy * w + sx]; seen[sy * w + sx] = 1;
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi], cx = c % w, cy = (c / w) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const ni = ny * w + nx;
+      if (cells[ni] === FLOOR && !seen[ni]) { seen[ni] = 1; q.push(ni); }
+    }
+  }
+  gates.forEach(([i, j], k) => cells[j * w + i] = saved[k]); // връщаме
+  for (const rr of rooms) { if (rr !== room && !seen[rr.cy * w + rr.cx]) return false; }
+  return true;
+}
 // подовите плочки по ръба на стаята, чийто външен съсед е под (=входовете-проходи)
 function roomGates(room, cells, w, h) {
   const g = [];
@@ -152,7 +173,8 @@ const Dungeon = {
     // --- специални стаи: Съкровищница (%5===3) и Арена (четни етажи) ---
     const usedRooms = new Set([startRoom, farRoom]);
     const pickSpecialRoom = () => {
-      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4);
+      // само стаи, чието запечатване НЕ отрязва достъпа до останалите (иначе играчът засяда)
+      const avail = rooms.filter(r => !usedRooms.has(r) && r.w >= 4 && r.h >= 4 && sealKeepsConnected(r, rooms, cells, w, h, sx, sy));
       if (!avail.length) return null;
       const r = avail[ri(0, avail.length - 1)];
       usedRooms.add(r);
