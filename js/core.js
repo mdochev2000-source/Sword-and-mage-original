@@ -6,9 +6,9 @@ const FOV_R = 8;
 
 // SCALE = цели device-пиксели за 1 арт-пиксел -> винаги остра картина (без дробно мащабиране)
 let SCALE = 2, TW = 64, TH = 32;
-function computeScale() {
+function computeScale(cssW, cssH) {
   const dpr = window.devicePixelRatio || 1;
-  const dw = window.innerWidth * dpr, dh = window.innerHeight * dpr;
+  const dw = (cssW || window.innerWidth) * dpr, dh = (cssH || window.innerHeight) * dpr;
   // мащабът следва реалната резолюция (не dpr), за да се вижда достатъчно от света;
   // на тъч екрани е по-едър (пръсти + малък физически екран); винаги цяло число => остри пиксели
   const touch = (typeof G !== 'undefined') && G.isTouch;
