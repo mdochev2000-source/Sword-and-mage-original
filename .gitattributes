@@ -1,0 +1,7 @@
+# Еднакви окончания на редовете навсякъде (Windows локално + Linux GitHub Action).
+# Пази чисти diff-ове на сглобката bezdna-online.html / docs/index.html.
+* text=auto eol=lf
+
+# Бинарни — да не се пипат.
+*.png binary
+*.apk binary
