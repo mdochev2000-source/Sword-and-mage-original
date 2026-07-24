@@ -477,9 +477,9 @@ function drawMinimap() {
 const SLOT_NAMES = { weapon: 'Оръжие', armor: 'Броня', ring: 'Пръстен', ring2: 'Пръстен 2', amulet: 'Амулет', spell: 'Том с магия', spell1: 'Магия', spell2: 'Магия', spell3: 'Магия' };
 function drawInventory() {
   const p = G.player, S = SCALE;
-  UI.invRects = []; UI.equipRects = [];
+  UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null;
   const invRows = Math.ceil(G.meta.invSlots / 4);
-  const pw = 252 * S, ph = Math.max(196, 34 + invRows * 28) * S;
+  const pw = 252 * S, ph = Math.max(196, 34 + invRows * 28) * S + (G.isTouch ? 20 * S : 0);
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -488,7 +488,7 @@ function drawInventory() {
   ctx.fillText('ГЕРОЙ', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText(G.isTouch ? 'пипни — сравни | пипни пак — екипирай' : 'I / ESC — затвори | клик — екипирай | десен клик — изхвърли', x0 + 60 * S, y0 + 14 * S);
+  ctx.fillText(G.isTouch ? 'пипни предмет, после бутоните долу' : 'I / ESC — затвори | клик — екипирай | десен клик — изхвърли', x0 + 60 * S, y0 + 14 * S);
   // ✕ за затваряне
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -626,6 +626,27 @@ function drawInventory() {
     }
     if (UI.hoverItem) drawTooltip(UI.hoverItem.item, mx, my, UI.hoverItem.equip);
   }
+
+  // тъч: явни бутони „екипирай / изхвърли" за избрания предмет (долу под мрежата)
+  if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
+    const selIt = p.inv[G.invSel];
+    const bw = 53 * S, bh = 14 * S, by = y0 + ph - bh - 4 * S;
+    const canEq = selIt.slot !== 'spell';
+    const eqR = { x: gx0, y: by, w: bw, h: bh };
+    panel(eqR.x, eqR.y, eqR.w, eqR.h);
+    strokeRect(eqR.x, eqR.y, eqR.w, eqR.h, canEq ? '#7fd0a0' : '#454e63', S);
+    ctx.font = fontBold(6.5); ctx.textAlign = 'center';
+    ctx.fillStyle = canEq ? '#7fd0a0' : '#5a6478';
+    ctx.fillText('ЕКИПИРАЙ', eqR.x + bw / 2, by + 9.5 * S);
+    UI.invEquipRect = canEq ? eqR : null;
+    const drR = { x: gx0 + bw + 4 * S, y: by, w: bw, h: bh };
+    panel(drR.x, drR.y, drR.w, drR.h);
+    strokeRect(drR.x, drR.y, drR.w, drR.h, '#ff6b7a', S);
+    ctx.fillStyle = '#ff6b7a';
+    ctx.fillText('ИЗХВЪРЛИ', drR.x + bw / 2, by + 9.5 * S);
+    UI.invDropRect = drR;
+    ctx.textAlign = 'left';
+  }
 }
 
 function wrapText(str, x, y, maxW, lineH) {
@@ -728,6 +749,23 @@ function inventoryClick(mx, my) {
     G.state = 'play';
     document.body.classList.remove('menu');
     return;
+  }
+  // тъч бутони: изхвърли / екипирай избрания предмет
+  if (G.invSel != null && p.inv[G.invSel]) {
+    const dr = UI.invDropRect, er = UI.invEquipRect;
+    if (dr && mx >= dr.x && mx < dr.x + dr.w && my >= dr.y && my < dr.y + dr.h) {
+      const it = p.inv[G.invSel];
+      p.inv.splice(G.invSel, 1);
+      spawnDrop(p.x, p.y, { item: it, t: -2 }); // гратис, да не се вдигне веднага
+      Sfx.play('open');
+      G.invSel = null;
+      return;
+    }
+    if (er && mx >= er.x && mx < er.x + er.w && my >= er.y && my < er.y + er.h) {
+      equipItem(G.invSel);
+      G.invSel = null;
+      return;
+    }
   }
   for (const r of UI.invRects) {
     if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {

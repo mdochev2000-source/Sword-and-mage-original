@@ -12,6 +12,11 @@
 """
 import re, os, sys, shutil, datetime
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # кирилица в конзолата на Windows (cp1252) иначе гърми
+except Exception:
+    pass
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 INDEX = os.path.join(ROOT, "index.html")
 DOCS = os.path.join(ROOT, "docs")
