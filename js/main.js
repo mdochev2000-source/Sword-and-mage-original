@@ -3,31 +3,15 @@
 
 var cv, ctx, CW, CH;
 
-let _insetProbe = null;
-function readInsets() {
-  if (!_insetProbe) {
-    _insetProbe = document.createElement('div');
-    _insetProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
-    document.body.appendChild(_insetProbe);
-  }
-  const cs = getComputedStyle(_insetProbe);
-  return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
-}
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  // отстъп за notch / лентата за състояние: играта да не се реже в ъглите и лентата да не я застъпва
-  const ins = G.isTouch ? readInsets() : { t: 0, r: 0, b: 0, l: 0 };
-  const iw = Math.max(1, window.innerWidth - ins.l - ins.r);
-  const ih = Math.max(1, window.innerHeight - ins.t - ins.b);
-  computeScale(iw, ih);
-  CW = Math.floor(iw * dpr);
-  CH = Math.floor(ih * dpr);
+  computeScale();
+  CW = Math.floor(window.innerWidth * dpr);
+  CH = Math.floor(window.innerHeight * dpr);
   cv.width = CW;
   cv.height = CH;
-  cv.style.width = iw + 'px';
-  cv.style.height = ih + 'px';
-  cv.style.left = ins.l + 'px';
-  cv.style.top = ins.t + 'px';
+  cv.style.width = window.innerWidth + 'px';
+  cv.style.height = window.innerHeight + 'px';
   ctx.imageSmoothingEnabled = false;
   vignetteCv = null;
   // телефон в портрет -> подкана за завъртане (играта е правена за пейзаж)
@@ -219,16 +203,15 @@ function handlePress(mx, my, button) {
 }
 
 // ---------- тъч управление: джойстик вляво, атака вдясно, бутоните от хотбара ----------
+let _lockTried = false;
 function tryLockLandscape() {
-  if (!G.isTouch) return;
+  if (_lockTried || !G.isTouch) return;
+  _lockTried = true;
   try {
     const el = document.documentElement;
-    // при всяко докосване, ако НЕ сме на цял екран -> пробвай пак (скрива лентата за състояние сама)
-    if (!document.fullscreenElement && el.requestFullscreen) {
-      Promise.resolve(el.requestFullscreen())
-        .then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'))
-        .catch(() => {});
-    }
+    Promise.resolve(el.requestFullscreen && el.requestFullscreen())
+      .then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'))
+      .catch(() => {});
   } catch (e) {}
 }
 function touchPos(t) {
