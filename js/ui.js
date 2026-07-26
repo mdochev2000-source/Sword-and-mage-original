@@ -280,12 +280,7 @@ function drawHUD() {
   ctx.fillStyle = '#7fd0a0';
   const hlY = (hasSeal || hasShard) ? 54 * S : 43 * S;
   ctx.fillText('Hero level: ' + p.lvl, 10 * S, hlY);
-  if (p.inv && p.inv.some(it => it && it.soulstone)) { // носиш Камък на душата — защитен си (видимо в HUD)
-    blit(ctx, Spr.icons.soulstone, 66 * S, hlY - 9 * S);
-    ctx.fillStyle = '#ff8aa0';
-    ctx.font = fontPx(5.5);
-    ctx.fillText('SOUL STONE', 79 * S, hlY - 1.5 * S);
-  }
+  // (индикаторът „SOUL STONE" тук е премахнат — Камъкът на живота вече се вижда в екип-слота под амулета)
 
   // активни бъфове от отвари: флаконче + лента с оставащото време
   if (p.buffs) {
@@ -481,7 +476,7 @@ function drawMinimap() {
 }
 
 // ---------- инвентар ----------
-const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
+const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', soulstone: 'Soul Stone', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
 function drawInventory() {
   const p = G.player;
   UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
@@ -490,13 +485,15 @@ function drawInventory() {
   const invRows = Math.ceil(G.meta.invSlots / cols);
   const gridW = cols * 26 + (cols - 1) * 2; // реалната ширина на мрежата (art px)
   const pwA = MID + 12 + gridW + BORDER;                                 // ширина в art-единици
-  const phA = Math.max(196, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
+  const equipColA = 24 + 6 * 32 + 4;                                     // 6 екип-слота (вкл. Камъка на живота) + етикети
+  const phA = Math.max(equipColA, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
   // ПРОЗОРЕЦЪТ остава голям (до 1.5x), но СЪДЪРЖАНИЕТО е с нормален размер -> между статистиките (вляво)
   // и мрежата с предмети (вдясно, долепена) остава празно място. Долният HUD (~42*SCALE) не се застъпва.
   const reserve = 50 * SCALE;
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA)); // мащаб само на РАЗМЕРА на прозореца
   const pw = pwA * PS;
-  const ph = phA * PS - 16 * SCALE; // по-нисък с една височина на ✕ бутона (16*SCALE ~ 48px на мобилно)
+  // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
+  const ph = Math.min(CH - 47 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
   // сваляме прозореца надолу: долният му ръб е съвсем малко над жълтата XP лента (тя е на CH - 42*SCALE)
   const y0 = Math.max(8, CH - 42 * SCALE - 5 * SCALE - ph);
@@ -519,10 +516,10 @@ function drawInventory() {
   ctx.textAlign = 'left';
   UI.invCloseRect = cxr;
 
-  // екипировка (5 слота: оръжие, броня, 2 пръстена, амулет)
+  // екипировка (6 слота: оръжие, броня, 2 пръстена, амулет, Камък на живота)
   let ey = y0 + 24 * S;
   const slotW = 24 * S;
-  for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) {
+  for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet', 'soulstone']) {
     panel(x0 + 10 * S, ey, slotW, slotW);
     const it = p.equip[slot];
     if (it) {
@@ -537,31 +534,10 @@ function drawInventory() {
     ey += 32 * S;
   }
 
-  // статистики
-  const st = p.st;
-  const lines = [
-    ['Damage', Math.round(st.dmg)],
-    ['Attacks/sec', (1 / st.atkCd).toFixed(2)],
-    ['Armor', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
-    ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
-    ['Life Steal', st.vamp + '%'],
-    ['Speed', Math.round(st.spd * 10) / 10],
-    ['Gold Bonus', Math.round(st.gold) + '%'],
-    ['Experience', p.xp + ' / ' + p.xpNext],
-  ];
-  let ly = y0 + 30 * S;
-  ctx.font = fontPx(6.5);
-  for (const [k, v] of lines) {
-    ctx.fillStyle = '#7d8899';
-    ctx.fillText(k, x0 + 52 * S, ly);
-    ctx.fillStyle = '#e8e4d0';
-    ctx.textAlign = 'right';
-    ctx.fillText(String(v), x0 + 128 * S, ly);
-    ctx.textAlign = 'left';
-    ly += 11 * S;
-  }
+  // (статистиките вече са в отделния панел „Statistics" — бутон долу — за да не заемат място тук)
   // активни магии (от Книгата) — клик отваря Книгата
-  ly += 4 * S;
+  let ly = y0 + 44 * S;
+  ctx.font = fontPx(6.5);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('Spells:', x0 + 52 * S, ly);
   const spw = 16 * S;
@@ -583,12 +559,17 @@ function drawInventory() {
     }
     UI.invRects.push({ x: rx, y: ry2, w: spw, h: spw, openBook: true });
   }
-  ly += 16 * S; // отстояние, за да не се застъпват гнездата с бутона
-  // бутони: Книга с магии и Дърво с умения
+  ly += 18 * S; // отстояние, за да не се застъпват гнездата с бутоните
+  // бутони: Статистики, Книга с магии, Дърво с умения
   const bkw = 76 * S, bkh = 13 * S;
   panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
   ctx.fillStyle = '#8ab0ff';
   ctx.font = fontBold(6.5);
+  ctx.fillText('STATISTICS', x0 + 56 * S, ly + 1 * S);
+  UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openStats: true });
+  ly += 15 * S;
+  panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
+  ctx.fillStyle = '#8ab0ff';
   ctx.fillText('SPELLBOOK (B)', x0 + 56 * S, ly + 1 * S);
   UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openBook: true });
   ly += 15 * S;
@@ -772,11 +753,6 @@ function equipItem(idx) {
     Sfx.play('deny');
     return;
   }
-  if (it.slot === 'soulstone') { // работи от чантата — не се екипира
-    toast('The Soul Stone works from your bag — no need to equip.', '#ff8aa0');
-    Sfx.play('deny');
-    return;
-  }
   const old = p.equip[slot];
   p.equip[slot] = it;
   p.inv.splice(idx, 1);
@@ -825,6 +801,7 @@ function inventoryClick(mx, my) {
   for (const r of UI.invRects) {
     if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
       G.equipSel = null;
+      if (r.openStats) { openStats(); return; }
       if (r.openBook) { openSpellbook(); return; }
       if (r.openTree) { openSkillTree(); return; }
       if (G.isTouch && !padRecent()) {
@@ -1378,6 +1355,59 @@ function assignSpell(id) {
   p.activeSpells[i] = id;
   Sfx.play('pickup');
   saveProfile();
+}
+// ---------- ПАНЕЛ СЪС СТАТИСТИКИ (отделно от инвентара, за да не заема място там) ----------
+function openStats() {
+  G.state = 'stats';
+  document.body.classList.add('menu');
+}
+function closeStats() {
+  G.state = 'inventory'; // връщаме се в инвентара, откъдето е отворен
+}
+function drawStats() {
+  const S = SCALE, p = G.player, st = p.st;
+  UI.btnRects = [];
+  rcx(0, 0, CW, CH, 'rgba(4,6,11,0.78)'); // затъмнение отзад
+  const lines = [
+    ['Damage', Math.round(st.dmg)],
+    ['Attacks / sec', (1 / st.atkCd).toFixed(2)],
+    ['Armor', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
+    ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
+    ['Life Steal', st.vamp + '%'],
+    ['Move Speed', Math.round(st.spd * 10) / 10],
+    ['Gold Bonus', Math.round(st.gold) + '%'],
+    ['Max Life', st.maxhp],
+    ['Max Mana', st.maxmp],
+    ['Experience', p.xp + ' / ' + p.xpNext],
+  ];
+  const pw = 200 * S, ph = (30 + lines.length * 13 + 16) * S;
+  const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
+  panel(x0, y0, pw, ph);
+  ctx.textAlign = 'left';
+  ctx.font = fontBold(9);
+  ctx.fillStyle = '#e8e4d0';
+  ctx.fillText('STATISTICS', x0 + 12 * S, y0 + 16 * S);
+  // ✕ за затваряне (връща в инвентара)
+  const cb = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S, act: closeStats };
+  panel(cb.x, cb.y, cb.w, cb.h);
+  ctx.font = fontBold(9); ctx.textAlign = 'center'; ctx.fillStyle = '#ff6b7a';
+  ctx.fillText('✕', cb.x + cb.w / 2, cb.y + 11.5 * S);
+  UI.btnRects.push(cb);
+  ctx.textAlign = 'left';
+  let ly = y0 + 32 * S;
+  ctx.font = fontPx(7);
+  for (const [k, v] of lines) {
+    ctx.fillStyle = '#7d8899';
+    ctx.fillText(k, x0 + 12 * S, ly);
+    ctx.fillStyle = '#e8e4d0';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(v), x0 + pw - 12 * S, ly);
+    ctx.textAlign = 'left';
+    ly += 13 * S;
+  }
+  ctx.font = fontPx(6); ctx.fillStyle = '#7d8899'; ctx.textAlign = 'center';
+  ctx.fillText('ESC / tap ✕ — back to inventory', x0 + pw / 2, y0 + ph - 7 * S);
+  ctx.textAlign = 'left';
 }
 function openSpellbook() {
   G.sbSel = 0;

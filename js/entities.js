@@ -62,7 +62,7 @@ function newPlayer() {
     potionCd: [0, 0],                           // презареждане на двата слота
     buffs: {},                                  // активни бъфове -> { t: оставащо, pow: сила }
     gold: 0,
-    equip: { weapon: startWeapon, armor: null, ring: null, ring2: null, amulet: null },
+    equip: { weapon: startWeapon, armor: null, ring: null, ring2: null, amulet: null, soulstone: null },
     spellsKnown: { fireball: true },            // колекцията е завинаги
     activeSpells: ['fireball', null, null],     // трите активни магии
     spellLvl: { fireball: 1 },                  // ниво на всяка известна магия (1..3) — постоянно, като дървото
@@ -325,9 +325,10 @@ function damagePlayer(amount, sx, sy) {
       return;
     }
     // Камък на душата: платеното съживяване се харчи СЛЕД безплатното умение
-    const si = p.inv.findIndex(it => it && it.soulstone);
+    // първо от екип-слота (под амулета), после от чантата (стари записи)
+    const si = (p.equip && p.equip.soulstone) ? -2 : p.inv.findIndex(it => it && it.soulstone);
     if (si !== -1) {
-      p.inv.splice(si, 1);
+      if (si === -2) { p.equip.soulstone = null; calcStats(p); } else p.inv.splice(si, 1);
       p.hp = Math.round(p.st.maxhp * 0.5);
       p.iframes = 1.5;
       toast('The Soul Stone shatters — pulled back from death!', '#ff6b7a');
@@ -976,6 +977,10 @@ function updatePickups(dt) {
         saveProfile();
       }
       else if (g.item) {
+        // Камък на живота: МАКСИМУМ ЕДИН — не вдигай втори (екипиран ИЛИ в чантата), за да не се заобикаля с пусни/купи
+        if (g.item.soulstone && ((p.equip && p.equip.soulstone) || p.inv.some(it => it && it.soulstone))) {
+          if (!g.warned) { toast('You already carry a Soul Stone.', '#7d8899'); g.warned = true; } continue;
+        }
         if (p.inv.length >= G.meta.invSlots) { if (!g.warned) { toast('Inventory is full!', '#ff6b7a'); g.warned = true; } continue; }
         p.inv.push(g.item);
         toast(g.item.name, Items.rarityCol(g.item));
@@ -1087,8 +1092,8 @@ function shopBuy(entry) {
     p.potionsOwned[entry.potion] = true;
     toast(POTIONS[entry.potion].n + ' — unlocked! Choose it from camp.', '#7fd0a0');
   } else if (entry.soulstone) {
-    // Камък на душата: МАКСИМУМ ЕДИН — иначе напрежението изчезва
-    if (p.inv.some(it => it && it.soulstone)) { toast('You already carry a Soul Stone.', '#7d8899'); Sfx.play('deny'); return; }
+    // Камък на душата: МАКСИМУМ ЕДИН (екипиран ИЛИ в чантата) — иначе напрежението изчезва
+    if ((p.equip && p.equip.soulstone) || p.inv.some(it => it && it.soulstone)) { toast('You already carry a Soul Stone.', '#7d8899'); Sfx.play('deny'); return; }
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);

@@ -78,6 +78,9 @@ function setupInput() {
       case 'skilltree':
         if (e.code === 'Escape' || e.code === kbBind('skilltree')) closeSkillTree();
         break;
+      case 'stats':
+        if (e.code === 'Escape' || e.code === kbBind('inventory') || e.code === 'Tab') closeStats();
+        break;
       case 'descend':
       case 'charselect':
         if (e.code === 'Escape') { G.delArm = null; G.state = G.state === 'descend' ? 'play' : 'title'; if (G.state === 'play') document.body.classList.remove('menu'); }
@@ -172,6 +175,7 @@ function handlePress(mx, my, button) {
       case 'charselect':
       case 'spellbook':
       case 'skilltree':
+      case 'stats':
       case 'descend':
       case 'inputmode':
       case 'binds':
@@ -292,6 +296,7 @@ let padMenuV = false, padMenuH = false; // латчове за стъпка на
 let padCentered = [], padRestId = -1;   // кои оси са били в покой (истински стик) — маха самоходенето
 function closeTopMenu() {
   switch (G.state) {
+    case 'stats': closeStats(); break; // връща в инвентара
     case 'inventory': case 'spellbook': case 'skilltree':
       if (G.state === 'spellbook' && G.sbConfirm) { G.sbConfirm = null; break; } // първо затвори потвърждението
       G.invSel = null; G.sbConfirm = null; G.state = 'play'; document.body.classList.remove('menu'); break;
@@ -1052,6 +1057,7 @@ function render() {
   drawHUD();
 
   if (G.state === 'inventory') drawInventory();
+  else if (G.state === 'stats') drawStats();
   else if (G.state === 'shop') drawShop();
   else if (G.state === 'levelup') drawLevelup();
   else if (G.state === 'pause') drawPause();
