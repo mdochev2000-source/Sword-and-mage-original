@@ -491,14 +491,15 @@ function drawInventory() {
   const gridW = cols * 26 + (cols - 1) * 2; // реалната ширина на мрежата (art px)
   const pwA = MID + 12 + gridW + BORDER;                                 // ширина в art-единици
   const phA = Math.max(196, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
-  // инвентарът се рисува 1.5x по-едро (изглеждаше дребен), но винаги се побира и НЕ застъпва долния HUD
-  // долният HUD (XP лента + орбове + хотбар) е ~42*SCALE висок -> резервираме 50*SCALE за сигурност
+  // ПРОЗОРЕЦЪТ остава голям (до 1.5x), но СЪДЪРЖАНИЕТО е с нормален размер -> между статистиките (вляво)
+  // и мрежата с предмети (вдясно, долепена) остава празно място. Долният HUD (~42*SCALE) не се застъпва.
   const reserve = 50 * SCALE;
-  const S = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA));
-  const pw = pwA * S, ph = phA * S;
+  const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA)); // мащаб само на РАЗМЕРА на прозореца
+  const pw = pwA * PS, ph = phA * PS;
   const x0 = (CW - pw) / 2;
   const y0 = Math.max(8, (CH - reserve - ph) / 2);
   panel(x0, y0, pw, ph);
+  const S = SCALE; // цялото съдържание (бутони, полета, статистики, клетки) е с нормален размер
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#e8e4d0';
