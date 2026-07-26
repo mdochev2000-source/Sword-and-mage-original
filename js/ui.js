@@ -483,19 +483,21 @@ function drawMinimap() {
 // ---------- инвентар ----------
 const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
 function drawInventory() {
-  const p = G.player, S = SCALE;
+  const p = G.player;
   UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
-  // мрежа: 5 слота на ред (макс 4 реда x 5 = 20), долепена ВДЯСНО с тънка рамка; на мобилно качена нагоре
-  const MID = 135, CELL = 28, BORDER = 6; // art px: лявата/средна част, клетка 26+2, тънка дясна рамка
-  const maxCols = Math.max(3, Math.floor((CW / S - MID - BORDER - 8) / CELL)); // да се побере на тесен екран
-  const cols = Math.min(5, maxCols);
+  // мрежа: 5 слота на ред (макс 4 реда x 5 = 20), долепена ВДЯСНО с тънка рамка
+  const MID = 135, CELL = 28, BORDER = 6, cols = 5; // art px: лявата/средна част, клетка 26+2, тънка дясна рамка
   const invRows = Math.ceil(G.meta.invSlots / cols);
   const gridW = cols * 26 + (cols - 1) * 2; // реалната ширина на мрежата (art px)
-  const pw = (MID + 12 + gridW + BORDER) * S;
-  const ph = Math.max(196, 34 + invRows * CELL) * S + (G.isTouch ? 20 * S : 0);
+  const pwA = MID + 12 + gridW + BORDER;                                 // ширина в art-единици
+  const phA = Math.max(196, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
+  // инвентарът се рисува 1.5x по-едро (изглеждаше дребен), но винаги се побира и НЕ застъпва долния HUD
+  // долният HUD (XP лента + орбове + хотбар) е ~42*SCALE висок -> резервираме 50*SCALE за сигурност
+  const reserve = 50 * SCALE;
+  const S = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA));
+  const pw = pwA * S, ph = phA * S;
   const x0 = (CW - pw) / 2;
-  const hudReserve = G.isTouch ? 104 * S : 0; // място долу за хотбара/лентите (само мобилно)
-  const y0 = Math.max(6 * S, (CH - hudReserve - ph) / 2);
+  const y0 = Math.max(8, (CH - reserve - ph) / 2);
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
