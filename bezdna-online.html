@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-25 09:30 UTC";
+window.__BUILD__ = "2026-07-26 16:09 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5474,7 +5474,7 @@ function drawMinimap() {
 const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
 function drawInventory() {
   const p = G.player, S = SCALE;
-  UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null;
+  UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
   const invRows = Math.ceil(G.meta.invSlots / 4);
   const pw = 252 * S, ph = Math.max(196, 34 + invRows * 28) * S + (G.isTouch ? 20 * S : 0);
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
@@ -5485,7 +5485,7 @@ function drawInventory() {
   ctx.fillText('HERO', x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText(G.isTouch ? 'tap an item, then the buttons below' : 'I / ESC — close | click — equip | right-click — drop', x0 + 60 * S, y0 + 14 * S);
+  ctx.fillText(G.isTouch ? 'tap an item or gear, then the button below' : 'click item — equip · click gear — unequip · right-click — drop', x0 + 60 * S, y0 + 14 * S);
   // ✕ за затваряне
   const cxr = { x: x0 + pw - 20 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -5505,6 +5505,7 @@ function drawInventory() {
     if (it) {
       blit(ctx, Spr.icons[it.icon], x0 + 10 * S + slotW / 2 - 6 * S, ey + slotW / 2 - 6 * S);
       strokeRect(x0 + 10 * S, ey, slotW, slotW, Items.rarityCol(it), S);
+      if (G.equipSel === slot) strokeRect(x0 + 10 * S - S, ey - S, slotW + 2 * S, slotW + 2 * S, '#ffd23b', S); // избран за сваляне
       UI.equipRects.push({ x: x0 + 10 * S, y: ey, w: slotW, h: slotW, item: it, slot, equip: true });
     }
     ctx.font = fontPx(5.5);
@@ -5612,7 +5613,11 @@ function drawInventory() {
   // тултип и сравнение
   UI.hoverItem = null;
   const mx = G.mouse.x, my = G.mouse.y;
-  if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
+  if (G.equipSel && p.equip[G.equipSel]) {
+    // избран ЕКИПИРАН предмет: инфо стои на екрана до второ докосване / бутона „свали"
+    const r = UI.equipRects.find(rr => rr.slot === G.equipSel);
+    if (r) drawTooltip(p.equip[G.equipSel], r.x + r.w + 4 * S, r.y + r.h / 2, true);
+  } else if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
     // избран с докосване: сравнението стои на екрана до второ докосване
     const r = UI.invRects.find(rr => rr.idx === G.invSel);
     if (r) drawTooltip(p.inv[G.invSel], r.x - 4 * S, r.y + r.h / 2, false);
@@ -5643,6 +5648,18 @@ function drawInventory() {
     ctx.fillText('DROP', drR.x + bw / 2, by + 9.5 * S);
     UI.invDropRect = drR;
     ctx.textAlign = 'left';
+  }
+
+  // бутон „свали" за избрания ЕКИПИРАН предмет (долу вляво, под екипировката)
+  if (G.equipSel && p.equip[G.equipSel]) {
+    const bw = 62 * S, bh = 14 * S, by = y0 + ph - bh - 4 * S, bx = x0 + 10 * S;
+    panel(bx, by, bw, bh);
+    strokeRect(bx, by, bw, bh, '#ffb454', S);
+    ctx.font = fontBold(6.5); ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffb454';
+    ctx.fillText('UNEQUIP', bx + bw / 2, by + 9.5 * S);
+    ctx.textAlign = 'left';
+    UI.invUnequipRect = { x: bx, y: by, w: bw, h: bh };
   }
 }
 
@@ -5747,7 +5764,7 @@ function equipItem(idx) {
 function inventoryClick(mx, my) {
   const p = G.player;
   if (UI.invCloseRect && mx >= UI.invCloseRect.x && mx < UI.invCloseRect.x + UI.invCloseRect.w && my >= UI.invCloseRect.y && my < UI.invCloseRect.y + UI.invCloseRect.h) {
-    G.invSel = null;
+    G.invSel = null; G.equipSel = null;
     G.state = 'play';
     document.body.classList.remove('menu');
     return;
@@ -5769,8 +5786,22 @@ function inventoryClick(mx, my) {
       return;
     }
   }
+  // бутон „свали" за избрания екипиран предмет
+  if (UI.invUnequipRect && G.equipSel && p.equip[G.equipSel]) {
+    const u = UI.invUnequipRect;
+    if (mx >= u.x && mx < u.x + u.w && my >= u.y && my < u.y + u.h) { unequipItem(G.equipSel); return; }
+  }
+  // клик върху ЕКИПИРАН предмет: 1-во натискане -> инфо + бутон; 2-ро върху същия -> сваля
+  for (const r of UI.equipRects) {
+    if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
+      if (G.equipSel === r.slot) unequipItem(r.slot);
+      else { G.equipSel = r.slot; G.invSel = null; }
+      return;
+    }
+  }
   for (const r of UI.invRects) {
     if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
+      G.equipSel = null;
       if (r.openBook) { openSpellbook(); return; }
       if (r.openTree) { openSkillTree(); return; }
       if (G.isTouch && !padRecent()) {
@@ -5784,9 +5815,25 @@ function inventoryClick(mx, my) {
     }
   }
   G.invSel = null;
+  G.equipSel = null;
+}
+function unequipItem(slot) {
+  const p = G.player;
+  const it = p.equip[slot];
+  if (!it) { G.equipSel = null; return; }
+  if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
+  p.inv.push(it);
+  p.equip[slot] = null;
+  calcStats(p);
+  Sfx.play('pickup');
+  G.equipSel = null;
 }
 function inventoryDrop(mx, my) {
   const p = G.player;
+  // десен клик върху екипиран предмет -> сваля го в инвентара
+  for (const r of UI.equipRects) {
+    if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) { unequipItem(r.slot); return; }
+  }
   for (const r of UI.invRects) {
     if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
       p.inv.splice(r.idx, 1);
