@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-26 16:41 UTC";
+window.__BUILD__ = "2026-07-26 17:13 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5475,12 +5475,13 @@ const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Rin
 function drawInventory() {
   const p = G.player, S = SCALE;
   UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
-  // по-широка мрежа (повече колони) -> по-широк и по-нисък прозорец; на мобилно го качваме нагоре
-  const GX = 138, CELL = 28; // мрежата почва на GX art px от x0; клетка 26 + 2 разстояние
-  const maxCols = Math.max(4, Math.floor((CW / S - GX - 22) / CELL)); // да се побере на екрана
-  const cols = Math.min(8, maxCols);
+  // мрежа: 5 слота на ред (макс 4 реда x 5 = 20), долепена ВДЯСНО с тънка рамка; на мобилно качена нагоре
+  const MID = 135, CELL = 28, BORDER = 6; // art px: лявата/средна част, клетка 26+2, тънка дясна рамка
+  const maxCols = Math.max(3, Math.floor((CW / S - MID - BORDER - 8) / CELL)); // да се побере на тесен екран
+  const cols = Math.min(5, maxCols);
   const invRows = Math.ceil(G.meta.invSlots / cols);
-  const pw = (GX + cols * CELL + 12) * S;
+  const gridW = cols * 26 + (cols - 1) * 2; // реалната ширина на мрежата (art px)
+  const pw = (MID + 12 + gridW + BORDER) * S;
   const ph = Math.max(196, 34 + invRows * CELL) * S + (G.isTouch ? 20 * S : 0);
   const x0 = (CW - pw) / 2;
   const hudReserve = G.isTouch ? 104 * S : 0; // място долу за хотбара/лентите (само мобилно)
@@ -5594,7 +5595,7 @@ function drawInventory() {
   wrapText(perkStr, x0 + 52 * S, ly, 80 * S, 8 * S);
 
   // мрежа с предмети (капацитетът расте при Мистика)
-  const gx0 = x0 + GX * S, gy0 = y0 + 24 * S;
+  const gx0 = x0 + pw - (gridW + BORDER) * S, gy0 = y0 + 24 * S; // мрежата долепена ВДЯСНО + тънка рамка
   const rows2 = invRows, cw2 = 26 * S, gp = 2 * S;
   for (let r = 0; r < rows2; r++) for (let c = 0; c < cols; c++) {
     if (r * cols + c >= G.meta.invSlots) break;
