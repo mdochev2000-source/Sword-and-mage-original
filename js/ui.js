@@ -495,7 +495,8 @@ function drawInventory() {
   // и мрежата с предмети (вдясно, долепена) остава празно място. Долният HUD (~42*SCALE) не се застъпва.
   const reserve = 50 * SCALE;
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA)); // мащаб само на РАЗМЕРА на прозореца
-  const pw = pwA * PS, ph = phA * PS;
+  const pw = pwA * PS;
+  const ph = phA * PS - 16 * SCALE; // по-нисък с една височина на ✕ бутона (16*SCALE ~ 48px на мобилно); центрирането се пази
   const x0 = (CW - pw) / 2;
   const y0 = Math.max(8, (CH - reserve - ph) / 2);
   panel(x0, y0, pw, ph);
