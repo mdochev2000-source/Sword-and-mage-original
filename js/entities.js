@@ -1226,7 +1226,7 @@ function mysticOffers() {
   const m = G.meta;
   const out = [];
   if (m.invSlots < 20) out.push({
-    t: '+2 inventory slots (' + m.invSlots + ' → ' + (m.invSlots + 2) + ')',
+    t: '+2 inventory slots (' + m.invSlots + ' → ' + Math.min(20, m.invSlots + 2) + ')',
     d: 'room for more loot', cost: 1,
     apply: () => { m.invSlots = Math.min(20, m.invSlots + 2); toast('Inventory grew: ' + m.invSlots + ' slots.', '#7fd0a0'); },
   });

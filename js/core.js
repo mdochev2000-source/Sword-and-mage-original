@@ -95,7 +95,7 @@ function defaultMeta() {
     worldSeed: 0, bestDepth: 1, deaths: 0, totalKills: 0,
     seals: 0,                                   // Печати на Бездната (от архибоса) — само за структурни отключвания
     shards: 0,                                  // Осколки на пазителя (от пазители/елити) — за омагьосване на афикси
-    invSlots: 4,                                // започваме с 4, купуват се до 20 при Мистика
+    invSlots: 5,                                // започваме с 5 (един ред), купуват се до 20 при Мистика
     magic3: false, magic4: false,               // отключени слотове за магии в хотбара
     vendorLvl: { weapon: 1, armor: 1, potion: 1 }, // нива на развитие на сергиите
     volume: 0.8,                                // сила на звука 0..1
@@ -182,7 +182,7 @@ function mergeMeta(loaded) {
     for (const k in loaded) if (k !== 'vendorLvl') m[k] = loaded[k];
     if (loaded.vendorLvl) Object.assign(m.vendorLvl, loaded.vendorLvl);
   }
-  m.invSlots = clamp(m.invSlots || 4, 4, 20); // стари записи с повече слотове се смъкват до тавана
+  m.invSlots = clamp(m.invSlots || 5, 5, 20); // мин 5 (стари записи с 4 стават 5), таван 20
   return m;
 }
 G.meta = defaultMeta();
