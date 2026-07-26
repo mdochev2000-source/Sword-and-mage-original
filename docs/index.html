@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-26 19:12 UTC";
+window.__BUILD__ = "2026-07-26 19:23 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5485,8 +5485,8 @@ function drawInventory() {
   // ПРОЗОРЕЦЪТ остава голям (до 1.5x), но СЪДЪРЖАНИЕТО е с нормален размер -> между статистиките (вляво)
   // и мрежата с предмети (вдясно, долепена) остава празно място. Долният HUD (~42*SCALE) не се застъпва.
   const reserve = 50 * SCALE;
-  const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CW - 16) / pwA, (CH - reserve - 12) / phA)); // мащаб само на РАЗМЕРА на прозореца
-  const pw = pwA * PS;
+  const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
+  const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
   const ph = Math.min(CH - 47 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
