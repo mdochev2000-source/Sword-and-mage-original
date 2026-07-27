@@ -150,19 +150,32 @@ function drawHUD() {
   // орбове + хотбар долу в средата
   const barW = 200 * S, barH = 34 * S;
   const bx = (CW - barW) / 2, by = CH - barH - 6 * S;
-  drawOrb(bx - 8 * S, by + barH - 18 * S, 16, p.hp / p.st.maxhp, 'hp');
-  drawOrb(bx + barW + 8 * S, by + barH - 18 * S, 16, p.mp / p.st.maxmp, 'mp');
+  // орбовете за кръв/мана — 2x по-големи (радиус 16 -> 32), изнесени встрани от хотбара
+  const orbR = 32, orbCy = CH - 38 * S;
+  const hpCx = bx - 36 * S, mpCx = bx + barW + 36 * S;
+  drawOrb(hpCx, orbCy, orbR, p.hp / p.st.maxhp, 'hp');
+  drawOrb(mpCx, orbCy, orbR, p.mp / p.st.maxmp, 'mp');
   ctx.textAlign = 'center';
-  ctx.font = fontBold(6);
-  ctx.fillStyle = '#e8e4d0';
-  ctx.fillText(Math.ceil(p.hp) + '/' + p.st.maxhp, bx - 8 * S, by + barH + 2 * S);
-  ctx.fillText(Math.ceil(p.mp) + '/' + p.st.maxmp, bx + barW + 8 * S, by + barH + 2 * S);
+  ctx.font = fontBold(7);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(Math.ceil(p.hp) + '/' + p.st.maxhp, hpCx, orbCy + 2 * S);
+  ctx.fillText(Math.ceil(p.mp) + '/' + p.st.maxmp, mpCx, orbCy + 2 * S);
 
   // XP лента
   const xw = barW, xh = 3 * S;
   rcx(bx, by - 2 * S, xw, xh, '#171c28');
   rcx(bx, by - 2 * S, xw * clamp(p.xp / p.xpNext, 0, 1), xh, '#c8a832');
   strokeRect(bx, by - 2 * S, xw, xh, '#3a4456', 1);
+  // ниво на героя — центрирано НАД XP лентата, в зелено (преместено от горе вляво)
+  {
+    const lvlTxt = 'Hero level: ' + p.lvl;
+    ctx.font = fontBold(6);
+    const ltw = ctx.measureText(lvlTxt).width;
+    rcx(CW / 2 - ltw / 2 - 4 * S, by - 14 * S, ltw + 8 * S, 11 * S, 'rgba(10,13,20,0.72)');
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7fd0a0';
+    ctx.fillText(lvlTxt, CW / 2, by - 6 * S);
+  }
 
   // слотове: оръжие, 3 магии, отскок, отвари
   p.spellCd = p.spellCd || [0, 0, 0];
@@ -250,16 +263,11 @@ function drawHUD() {
     sx += sw + gap;
   }
 
-  // горе вляво: етаж/лагер, злато, ниво — слиза НАДОЛУ под двата бутона (настройки+чанта), които са най-горе
+  // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
+  // (Надписът за локацията е под миникартата; нивото на героя е над XP лентата.)
   ctx.save();
-  ctx.translate(0, 30 * S);
+  ctx.translate(0, 15 * S);
   ctx.textAlign = 'left';
-  ctx.font = fontBold(8);
-  ctx.fillStyle = '#e8e4d0';
-  ctx.fillText(G.onSurface ? 'THE CAMP' : 'FLOOR ' + G.depth, 10 * S, 12 * S);
-  ctx.font = fontPx(7);
-  ctx.fillStyle = '#7d8899';
-  ctx.fillText(G.onSurface ? 'of the Exiles' : THEMES[Spr.themeIdx].name, 10 * S, 21 * S);
   blit(ctx, Spr.icons.gold, 10 * S, 25 * S);
   ctx.fillStyle = '#ffd23b';
   ctx.font = fontBold(7);
@@ -279,15 +287,12 @@ function drawHUD() {
       ctx.fillText(String(G.meta.shards), cx + 14 * S, 44 * S);
     }
   }
-  ctx.fillStyle = '#7fd0a0';
-  const hlY = (hasSeal || hasShard) ? 54 * S : 43 * S;
-  ctx.fillText('Hero level: ' + p.lvl, 10 * S, hlY);
-  // (индикаторът „SOUL STONE" тук е премахнат — Камъкът на живота вече се вижда в екип-слота под амулета)
+  // (нивото на героя е преместено над XP лентата; индикаторът „SOUL STONE" е премахнат)
 
   // активни бъфове от отвари: флаконче + лента с оставащото време
   if (p.buffs) {
     const keys = Object.keys(p.buffs);
-    let bx0 = 10 * S, byy = ((hasSeal || hasShard) ? 60 : 49) * S;
+    let bx0 = 10 * S, byy = ((hasSeal || hasShard) ? 46 : 35) * S;
     for (const bk of keys) {
       const bd = Object.values(POTIONS).find(pp => pp.buff === bk);
       if (!bd) continue;
@@ -303,6 +308,18 @@ function drawHUD() {
   ctx.restore(); // край на изместения надолу текстов блок
 
   drawMinimap();
+  // надпис за локацията ПОД миникартата: „THE CAMP / of the Exiles" (лагер) или „FLOOR N / тема" (бездна)
+  if (UI.miniRect) {
+    const mr = UI.miniRect, cxm = mr.x + mr.w / 2;
+    ctx.textAlign = 'center';
+    ctx.font = fontBold(8);
+    ctx.fillStyle = '#e8e4d0';
+    ctx.fillText(G.onSurface ? 'THE CAMP' : 'FLOOR ' + G.depth, cxm, mr.y + mr.h + 13 * S);
+    ctx.font = fontPx(7);
+    ctx.fillStyle = '#7d8899';
+    ctx.fillText(G.onSurface ? 'of the Exiles' : THEMES[Spr.themeIdx].name, cxm, mr.y + mr.h + 23 * S);
+    ctx.textAlign = 'left';
+  }
 
   // босбар
   if (G.bossName) {
@@ -436,6 +453,7 @@ function drawMinimap() {
   const mx = Math.max(8 * S, CW - mw - 8 * S);
   let my = invWindowGeom().y0;
   if (my + mh > CH - 8 * S) my = Math.max(8 * S, CH - mh - 8 * S);
+  UI.miniRect = { x: mx, y: my, w: mw, h: mh }; // за надписа на локацията под картата
   if (!UI.miniCv || UI.miniCv.width !== m.w) {
     UI.miniCv = document.createElement('canvas');
     UI.miniCv.width = m.w; UI.miniCv.height = m.h;
