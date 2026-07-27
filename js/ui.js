@@ -427,7 +427,7 @@ function drawGroundLabels() {
 function drawMinimap() {
   const m = G.map, S = SCALE;
   const baseCell = Math.max(2, Math.round(S * 1.25));
-  const cell = Math.round(baseCell * 1.7); // уголемена 1.7x спрямо предишната миникарта
+  const cell = Math.round(baseCell * 1.4); // уголемена 1.4x спрямо предишната миникарта (1.7 - 0.3)
   const mw = m.w * cell, mh = m.h * cell;
   // свалена надолу на нивото на прозореца за инвентара (горния му ръб), но да се побира на екрана
   const mx = Math.max(8 * S, CW - mw - 8 * S);
