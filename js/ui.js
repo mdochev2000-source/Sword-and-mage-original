@@ -151,8 +151,8 @@ function drawHUD() {
   const barW = 200 * S, barH = 34 * S;
   const bx = (CW - barW) / 2, by = CH - barH - 6 * S;
   // орбовете за кръв/мана — 2x по-големи (радиус 16 -> 32), изнесени встрани от хотбара
-  const orbR = 32, orbCy = CH - 38 * S;
-  const hpCx = bx - 36 * S, mpCx = bx + barW + 36 * S;
+  const orbR = 24, orbCy = CH - 38 * S; // 1.5x от оригинала (беше 2x=32); намалени със 0.5
+  const hpCx = bx - 28 * S, mpCx = bx + barW + 28 * S;
   drawOrb(hpCx, orbCy, orbR, p.hp / p.st.maxhp, 'hp');
   drawOrb(mpCx, orbCy, orbR, p.mp / p.st.maxmp, 'mp');
   ctx.textAlign = 'center';
