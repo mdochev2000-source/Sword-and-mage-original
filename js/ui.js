@@ -250,7 +250,9 @@ function drawHUD() {
     sx += sw + gap;
   }
 
-  // горе вляво: етаж/лагер, злато, ниво
+  // горе вляво: етаж/лагер, злато, ниво — слиза НАДОЛУ под двата бутона (настройки+чанта), които са най-горе
+  ctx.save();
+  ctx.translate(0, 30 * S);
   ctx.textAlign = 'left';
   ctx.font = fontBold(8);
   ctx.fillStyle = '#e8e4d0';
@@ -298,6 +300,7 @@ function drawHUD() {
       bx0 += 17 * S;
     }
   }
+  ctx.restore(); // край на изместения надолу текстов блок
 
   drawMinimap();
 
@@ -353,7 +356,7 @@ function drawHUD() {
 
   // зъбчато колело за настройки (едро) + чанта за инвентара
   {
-    const gy = (G.meta.seals > 0 || (G.meta.shards || 0) > 0) ? 58 * S : 47 * S;
+    const gy = 6 * S; // двата бутона (настройки + чанта) са НАЙ-ГОРЕ, над „THE CAMP" и останалите индикатори
     const gw = 28 * S;
     panel(10 * S, gy, gw, gw);
     const cx0 = 10 * S + gw / 2, cy0 = gy + gw / 2;
