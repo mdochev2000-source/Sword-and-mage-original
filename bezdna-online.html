@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-26 19:25 UTC";
+window.__BUILD__ = "2026-07-27 07:34 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5421,9 +5421,13 @@ function drawGroundLabels() {
 // ---------- минимапа ----------
 function drawMinimap() {
   const m = G.map, S = SCALE;
-  const cell = Math.max(2, Math.round(S * 1.25));
+  const baseCell = Math.max(2, Math.round(S * 1.25));
+  const cell = Math.round(baseCell * 1.7); // уголемена 1.7x спрямо предишната миникарта
   const mw = m.w * cell, mh = m.h * cell;
-  const mx = CW - mw - 8 * S, my = 8 * S;
+  // свалена надолу на нивото на прозореца за инвентара (горния му ръб), но да се побира на екрана
+  const mx = Math.max(8 * S, CW - mw - 8 * S);
+  let my = invWindowGeom().y0;
+  if (my + mh > CH - 8 * S) my = Math.max(8 * S, CH - mh - 8 * S);
   if (!UI.miniCv || UI.miniCv.width !== m.w) {
     UI.miniCv = document.createElement('canvas');
     UI.miniCv.width = m.w; UI.miniCv.height = m.h;
@@ -5472,26 +5476,29 @@ function drawMinimap() {
 
 // ---------- инвентар ----------
 const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', soulstone: 'Soul Stone', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
-function drawInventory() {
-  const p = G.player;
-  UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
-  // мрежа: 5 слота на ред (макс 4 реда x 5 = 20), долепена ВДЯСНО с тънка рамка
+// геометрия на прозореца за инвентара — споделена, за да подравняваме миникартата към нея
+function invWindowGeom() {
   const MID = 135, CELL = 28, BORDER = 6, cols = 5; // art px: лявата/средна част, клетка 26+2, тънка дясна рамка
   const invRows = Math.ceil(G.meta.invSlots / cols);
-  const gridW = cols * 26 + (cols - 1) * 2; // реалната ширина на мрежата (art px)
-  const pwA = MID + 12 + gridW + BORDER;                                 // ширина в art-единици
+  const gridW = cols * 26 + (cols - 1) * 2;                              // реалната ширина на мрежата (art px)
   const equipColA = 24 + 6 * 32 + 4;                                     // 6 екип-слота (вкл. Камъка на живота) + етикети
   const phA = Math.max(equipColA, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
-  // ПРОЗОРЕЦЪТ остава голям (до 1.5x), но СЪДЪРЖАНИЕТО е с нормален размер -> между статистиките (вляво)
-  // и мрежата с предмети (вдясно, долепена) остава празно място. Долният HUD (~42*SCALE) не се застъпва.
+  // ПРОЗОРЕЦЪТ остава голям, но СЪДЪРЖАНИЕТО е с нормален размер; долният HUD (~42*SCALE) не се застъпва
   const reserve = 50 * SCALE;
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
   const ph = Math.min(CH - 47 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
-  // сваляме прозореца надолу: долният му ръб е съвсем малко над жълтата XP лента (тя е на CH - 42*SCALE)
+  // долният ръб е съвсем малко над жълтата XP лента (тя е на CH - 42*SCALE)
   const y0 = Math.max(8, CH - 42 * SCALE - 5 * SCALE - ph);
+  return { x0, y0, pw, ph, cols, invRows, gridW, BORDER };
+}
+function drawInventory() {
+  const p = G.player;
+  UI.invRects = []; UI.equipRects = []; UI.invDropRect = null; UI.invEquipRect = null; UI.invUnequipRect = null;
+  const gm = invWindowGeom();
+  const x0 = gm.x0, y0 = gm.y0, pw = gm.pw, ph = gm.ph, cols = gm.cols, invRows = gm.invRows, gridW = gm.gridW, BORDER = gm.BORDER;
   panel(x0, y0, pw, ph);
   const S = SCALE; // цялото съдържание (бутони, полета, статистики, клетки) е с нормален размер
   ctx.textAlign = 'left';
