@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 12:51 UTC";
+window.__BUILD__ = "2026-07-28 13:10 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5717,17 +5717,36 @@ function drawInventory() {
     ctx.textAlign = 'left';
   }
 
-  // тултип и сравнение
+  // тултип и сравнение — в празното пространство по средата (по-добра видимост)
   UI.hoverItem = null;
   const mx = G.mouse.x, my = G.mouse.y;
+  const midX = ((x0 + 135 * S) + gx0) / 2;  // център на празната зона между статистиките и мрежата
+  const midY = y0 + ph / 2;
   if (G.equipSel && p.equip[G.equipSel]) {
-    // избран ЕКИПИРАН предмет: инфо стои на екрана до второ докосване / бутона „свали"
-    const r = UI.equipRects.find(rr => rr.slot === G.equipSel);
-    if (r) drawTooltip(p.equip[G.equipSel], r.x + r.w + 4 * S, r.y + r.h / 2, true);
+    // избран ЕКИПИРАН предмет: статистиките му от СРЕДАТА НАГОРЕ
+    const it = p.equip[G.equipSel];
+    const h = (26 + Items.statLines(it).length * 9) * S;
+    tooltipPanel(it, midX - 48 * S, Math.max(y0 + 20 * S, midY - h));
   } else if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
-    // избран с докосване: сравнението стои на екрана до второ докосване
-    const r = UI.invRects.find(rr => rr.idx === G.invSel);
-    if (r) drawTooltip(p.inv[G.invSel], r.x - 4 * S, r.y + r.h / 2, false);
+    // сравнение: носеният от СРЕДАТА НАГОРЕ, НОВИЯТ от СРЕДАТА НАДОЛУ
+    const it = p.inv[G.invSel];
+    let cur = null; // срещу какво сравняваме (за пръстен — слотът, който би бил сменен)
+    if (it.slot === 'ring') cur = (p.equip.ring && p.equip.ring2) ? p.equip.ring : (p.equip.ring || p.equip.ring2);
+    else cur = p.equip[it.slot];
+    const cmp = [];
+    if (cur && it.slot === 'weapon') {
+      const d = Math.round(it.dmg / it.cd - cur.dmg / cur.cd);
+      if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' damage/sec vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
+    }
+    if (cur && it.slot === 'armor') {
+      const d = it.armor - cur.armor;
+      if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' armor vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
+    }
+    if (cur) {
+      const hC = (26 + 9 + Items.statLines(cur).length * 9) * S;
+      tooltipPanel(cur, midX - 48 * S, Math.max(y0 + 20 * S, midY - 2 * S - hC), 'EQUIPPED');
+    }
+    tooltipPanel(it, midX - 48 * S, midY + 2 * S, cur ? 'NEW' : null, cmp);
   } else {
     for (const r of [...UI.invRects, ...UI.equipRects]) {
       if (!r.item) continue;
@@ -5739,16 +5758,16 @@ function drawInventory() {
   // тъч: явни бутони „екипирай / изхвърли" за избрания предмет (долу под мрежата)
   if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
     const selIt = p.inv[G.invSel];
-    const bw = 53 * S, bh = 14 * S, by = y0 + ph - bh - 22 * S; // над реда с бутоните най-долу
+    const bw = 53 * S, bh = 14 * S, by = y0 + ph - bh - 5 * S; // НАЙ-ДОЛУ, под сравнението по средата
     const canEq = selIt.slot !== 'spell';
-    const eqR = { x: gx0, y: by, w: bw, h: bh };
+    const eqR = { x: midX - bw - 2 * S, y: by, w: bw, h: bh };
     panel(eqR.x, eqR.y, eqR.w, eqR.h);
     strokeRect(eqR.x, eqR.y, eqR.w, eqR.h, canEq ? '#7fd0a0' : '#454e63', S);
     ctx.font = fontBold(6.5); ctx.textAlign = 'center';
     ctx.fillStyle = canEq ? '#7fd0a0' : '#5a6478';
     ctx.fillText('EQUIP', eqR.x + bw / 2, by + 9.5 * S);
     UI.invEquipRect = canEq ? eqR : null;
-    const drR = { x: gx0 + bw + 4 * S, y: by, w: bw, h: bh };
+    const drR = { x: midX + 2 * S, y: by, w: bw, h: bh };
     panel(drR.x, drR.y, drR.w, drR.h);
     strokeRect(drR.x, drR.y, drR.w, drR.h, '#ff6b7a', S);
     ctx.fillStyle = '#ff6b7a';
