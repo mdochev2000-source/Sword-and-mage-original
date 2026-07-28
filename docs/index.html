@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 11:14 UTC";
+window.__BUILD__ = "2026-07-28 11:42 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5666,17 +5666,16 @@ function drawInventory() {
   }).join(', ') || 'none yet — level up';
   wrapText(perkStr, gx0, py, gridW * S, 8 * S);
 
-  // бутони НАЙ-ДОЛУ, един до друг: Статистики · Книга с магии · Умения
+  // бутони НАЙ-ДОЛУ, един до друг, точно под колоната с предмети (къси думи, без символи/точки)
   {
-    const bw3 = 62 * S, bh3 = 13 * S, gap3 = 4 * S;
-    const totW = bw3 * 3 + gap3 * 2;
-    const bx3 = x0 + pw - BORDER * S - totW, by3 = y0 + ph - bh3 - 5 * S;
+    const bw3 = 44 * S, bh3 = 13 * S, gap3 = 3 * S; // 3x44 + 2x3 = 138 art = ширината на мрежата
+    const bx3 = gx0, by3 = y0 + ph - bh3 - 5 * S;
     ctx.font = fontBold(6);
     ctx.textAlign = 'center';
     const btnDefs = [
-      { t: 'STATISTICS', col: '#8ab0ff', key: 'openStats' },
-      { t: 'SPELLBOOK (B)', col: '#8ab0ff', key: 'openBook' },
-      { t: 'SKILLS (' + (p.skillPoints || 0) + ') (T)', col: (p.skillPoints || 0) > 0 ? '#ffd23b' : '#7fd0a0', key: 'openTree' },
+      { t: 'STATS', col: '#8ab0ff', key: 'openStats' },
+      { t: 'SPELLS', col: '#8ab0ff', key: 'openBook' },
+      { t: 'SKILLS', col: (p.skillPoints || 0) > 0 ? '#ffd23b' : '#7fd0a0', key: 'openTree' }, // жълто = има точки
     ];
     btnDefs.forEach((d, di) => {
       const bx = bx3 + di * (bw3 + gap3);
@@ -5951,20 +5950,26 @@ function drawShop() {
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
-  // злато и печати
-  blit(ctx, Spr.icons.gold, x0 + pw - 58 * S, y0 + 6 * S);
-  ctx.font = fontBold(8);
-  ctx.fillStyle = '#ffd23b';
-  ctx.fillText(String(p.gold), x0 + pw - 44 * S, y0 + 15 * S);
-  if (isMystic || G.meta.seals > 0) {
-    blit(ctx, Spr.icons.seal, x0 + pw - 58 * S, y0 + 18 * S);
-    ctx.fillStyle = '#c84fff';
-    ctx.fillText(String(G.meta.seals), x0 + pw - 44 * S, y0 + 27 * S);
-  }
-  if (isMystic || (G.meta.shards || 0) > 0) {
-    blit(ctx, Spr.icons.shard, x0 + pw - 58 * S, y0 + 30 * S);
-    ctx.fillStyle = '#57e6c8';
-    ctx.fillText(String(G.meta.shards || 0), x0 + pw - 44 * S, y0 + 39 * S);
+  // злато / печати / осколки — компактно едно под друго (без дупки), отместено вляво от ✕
+  {
+    const ixi = x0 + pw - 84 * S, ixt = x0 + pw - 70 * S;
+    let iyy = y0 + 5 * S;
+    ctx.font = fontBold(8);
+    blit(ctx, Spr.icons.gold, ixi, iyy);
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillText(String(p.gold), ixt, iyy + 9 * S);
+    iyy += 12 * S;
+    if (isMystic || G.meta.seals > 0) {
+      blit(ctx, Spr.icons.seal, ixi, iyy);
+      ctx.fillStyle = '#c84fff';
+      ctx.fillText(String(G.meta.seals), ixt, iyy + 9 * S);
+      iyy += 12 * S;
+    }
+    if (isMystic || (G.meta.shards || 0) > 0) {
+      blit(ctx, Spr.icons.shard, ixi, iyy);
+      ctx.fillStyle = '#57e6c8';
+      ctx.fillText(String(G.meta.shards || 0), ixt, iyy + 9 * S);
+    }
   }
   // ✕ за затваряне (важно за тъч — там няма E/ESC)
   const cxr = { x: x0 + pw - 22 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
