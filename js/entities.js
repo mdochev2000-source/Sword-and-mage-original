@@ -65,6 +65,7 @@ function newPlayer() {
     equip: { weapon: startWeapon, armor: null, ring: null, ring2: null, amulet: null, soulstone: null },
     spellsKnown: { fireball: true },            // колекцията е завинаги
     activeSpells: ['fireball', null, null],     // трите активни магии
+    activePassives: [null, null],               // двата ПАСИВНИ слота (аури — работят постоянно, резервират мана)
     spellLvl: { fireball: 1 },                  // ниво на всяка известна магия (1..3) — постоянно, като дървото
     spellCd: [0, 0, 0], dashCharges: 1,
     skills: {}, skillPoints: 0,                 // дървото с умения (губи се при смърт)
@@ -119,9 +120,41 @@ function calcStats(p) {
   st.potionPow = sum('potionPow'); // % сила на отварите
   st.doubleStrike = 0.2 * sk('sw5');
   st.freeCast = 0.15 * sk('mg5');
+  // ---- ПАСИВНИ магии (аури): резервират мана (50/100/150 по ниво) и дават постоянни ефекти ----
+  const pasLv = id => {
+    if (!p.activePassives || p.activePassives.indexOf(id) === -1) return 0;
+    if (!p.spellsKnown || !p.spellsKnown[id]) return 0;
+    return (p.spellLvl && p.spellLvl[id]) || 1;
+  };
+  st.reservedMp = 0;
+  if (p.activePassives) for (const id of p.activePassives) if (id && p.spellsKnown && p.spellsKnown[id]) st.reservedMp += 50 * ((p.spellLvl && p.spellLvl[id]) || 1);
+  st.maxmp = Math.max(10, st.maxmp - st.reservedMp);
+  const hLv = pasLv('haste');
+  if (hLv) {
+    const hb = [0, 0.10, 0.15, 0.20][hLv];
+    st.spd *= 1 + hb;
+    st.atkCd /= 1 + hb;
+    if (hLv >= 3) st.dashCd *= 0.85; // Tempest
+  }
+  const wLv = pasLv('wrath');
+  if (wLv) {
+    const wb = [0, 0.12, 0.18, 0.25][wLv];
+    st.dmg *= 1 + wb;
+    st.spellMult *= 1 + wb;
+    if (wLv >= 3) st.crit = Math.min(60, st.crit + 8); // Cataclysm
+  }
   p.st = st;
   p.hp = Math.min(p.hp, st.maxhp);
   p.mp = Math.min(p.mp, st.maxmp);
+}
+// пасивна магия в слот (и научена)?
+function hasPassive(id) {
+  const p = G.player;
+  return !!(p && p.activePassives && p.activePassives.indexOf(id) !== -1 && p.spellsKnown && p.spellsKnown[id]);
+}
+function passiveLv(id) {
+  const p = G.player;
+  return hasPassive(id) ? ((p.spellLvl && p.spellLvl[id]) || 1) : 0;
 }
 
 function giveXp(amount) {
@@ -491,6 +524,35 @@ function updatePlayer(dt) {
   }
   p.frenzyT = Math.max(0, (p.frenzyT || 0) - dt);
   if (p.wardT > 0) { p.wardT -= dt; if (p.wardT <= 0) p.ward = 0; }
+  // ---- ПАСИВЕН Arcane Shield: постоянен щит, който се презарежда 8с след счупване ----
+  if (hasPassive('ward')) {
+    p.wardLv = passiveLv('ward');
+    if (p.ward > 0) {
+      p.wardT = 2;            // не изтича от време, докато аурата е сложена
+      p.wardRecharge = 8;
+    } else {
+      p.wardRecharge = (p.wardRecharge === undefined ? 0 : p.wardRecharge) - dt;
+      if (p.wardRecharge <= 0) {
+        p.ward = Math.round(30 + p.lvl * 4 + p.st.maxmp * 0.4);
+        p.wardT = 2;
+        burst(p.x, p.y, ['#c9d1d9', '#8ab0ff'], 10, 2.5, 0.5);
+      }
+    }
+  }
+  // ---- ПАСИВЕН Hungry Skull: постоянни орбитални черепи (1, а с „Pack" — 2) ----
+  {
+    G.orbitals = G.orbitals || [];
+    if (hasPassive('skull')) {
+      const slv = passiveLv('skull');
+      const want = slv >= 2 ? 2 : 1;
+      const mine = G.orbitals.filter(o => o.passive);
+      for (const o of mine) { o.life = 9e9; o.dmg = spellDmg(0.7); o.leech = slv >= 3; } // поддържаме ги актуални
+      for (let k = mine.length; k < want; k++) G.orbitals.push({ t: 0, life: 9e9, a: rnd(Math.PI * 2) + k * Math.PI, dmg: spellDmg(0.7), leech: slv >= 3, passive: true });
+      if (mine.length > want) { let extra = mine.length - want; for (let i = G.orbitals.length - 1; i >= 0 && extra > 0; i--) if (G.orbitals[i].passive) { G.orbitals.splice(i, 1); extra--; } }
+    } else if (G.orbitals.some(o => o.passive)) {
+      G.orbitals = G.orbitals.filter(o => !o.passive); // аурата е свалена
+    }
+  }
   if ((p.dashCharges || 0) < p.st.dashMax) {
     p.dashRegen = (p.dashRegen === undefined ? p.st.dashCd : p.dashRegen) - dt;
     if (p.dashRegen <= 0) {
@@ -844,6 +906,7 @@ function castSpell(i) {
   if (i === 2 && !G.meta.magic4) { toast('This slot is locked — the Master opens it for a Seal.', '#c84fff'); Sfx.play('deny'); return; }
   const spellId = p.activeSpells && p.activeSpells[i];
   if (!spellId) { toast('Empty slot — choose a spell from the Spellbook.', '#7d8899'); Sfx.play('deny'); return; }
+  if (SPELLS[spellId] && SPELLS[spellId].passive) { toast('This is a passive aura — it works on its own.', '#7d8899'); Sfx.play('deny'); return; }
   p.spellCd = p.spellCd || [0, 0, 0];
   if (p.spellCd[i] > 0) return;
   const sp = SPELLS[spellId];
@@ -873,10 +936,16 @@ function learnSpell(spellId) {
   p.spellsKnown[spellId] = true;
   p.spellLvl = p.spellLvl || {};
   if (!p.spellLvl[spellId]) p.spellLvl[spellId] = 1; // нова магия започва на ниво 1
-  // ако има свободен отключен слот — слагаме я веднага
-  const unlockedSlots = [true, G.meta.magic3, G.meta.magic4];
-  for (let i = 0; i < 3; i++) {
-    if (unlockedSlots[i] && !p.activeSpells[i]) { p.activeSpells[i] = spellId; break; }
+  // ако има свободен отключен слот — слагаме я веднага (пасивните -> в пасивен слот)
+  if (SPELLS[spellId].passive) {
+    p.activePassives = p.activePassives || [null, null];
+    for (let i = 0; i < 2; i++) if (!p.activePassives[i]) { p.activePassives[i] = spellId; break; }
+    calcStats(p); // резервацията на мана влиза веднага
+  } else {
+    const unlockedSlots = [true, G.meta.magic3, G.meta.magic4];
+    for (let i = 0; i < 3; i++) {
+      if (unlockedSlots[i] && !p.activeSpells[i]) { p.activeSpells[i] = spellId; break; }
+    }
   }
   toast('New spell: ' + SPELLS[spellId].n + '! Check the Spellbook.', '#8ab0ff');
   Sfx.play('level');
@@ -2094,6 +2163,16 @@ function startGame(slot, freshName) {
     G.checkpoint = prof.checkpoint || 1;
     p.spellsKnown = prof.spellsKnown || { fireball: true };
     p.activeSpells = prof.activeSpells || ['fireball', null, null];
+    p.activePassives = Array.isArray(prof.activePassives) ? prof.activePassives.slice(0, 2) : [null, null];
+    while (p.activePassives.length < 2) p.activePassives.push(null);
+    // МИГРАЦИЯ: щитът/черепът вече са пасивни — ако са в активен слот, местим ги в пасивен
+    for (let i = 0; i < 3; i++) {
+      const sid = p.activeSpells[i];
+      if (sid && SPELLS[sid] && SPELLS[sid].passive) {
+        p.activeSpells[i] = null;
+        for (let j = 0; j < 2; j++) if (!p.activePassives[j]) { p.activePassives[j] = sid; break; }
+      }
+    }
     // нива на магиите: стар запис без spellLvl -> всички известни магии на ниво 1
     p.spellLvl = (prof.spellLvl && typeof prof.spellLvl === 'object' && !Array.isArray(prof.spellLvl)) ? prof.spellLvl : {};
     for (const _sid in p.spellsKnown) if (p.spellsKnown[_sid]) p.spellLvl[_sid] = p.spellLvl[_sid] || 1;
@@ -2152,7 +2231,7 @@ function saveProfile() {
       name: G.charName || 'Exile',
       gold: p.gold, equip: p.equip, inv: p.inv, meta: G.meta,
       potionsOwned: p.potionsOwned, potionSlots: p.potionSlots, potionUp: p.potionUp, // постоянни отвари
-      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
+      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, activePassives: p.activePassives || [null, null], spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
@@ -2187,6 +2266,7 @@ function migrateChar(c) {
         // spellsKnown е ОБЕКТ, activeSpells е МАСИВ
         if (c.spellsKnown == null || typeof c.spellsKnown !== 'object' || Array.isArray(c.spellsKnown)) c.spellsKnown = { fireball: true };
         if (!Array.isArray(c.activeSpells)) c.activeSpells = ['fireball', null, null];
+        if (!Array.isArray(c.activePassives)) c.activePassives = [null, null];
         if (typeof c.checkpoint !== 'number') c.checkpoint = Number(c.checkpoint) || 1;
         // skills/skillPoints/hero/meta имат собствена fallback логика при зареждане — не ги пипаме
         c.v = 1;

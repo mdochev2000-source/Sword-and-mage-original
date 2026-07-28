@@ -152,10 +152,10 @@ function drawHUD() {
   const S = SCALE;
   UI.hotRects = [];
 
-  // орбове + хотбар долу в средата — свалени с 40px надолу (клампнато да не излизат от екрана)
+  // орбове + хотбар (ДВА РЕДА) долу в средата — свалени с 40px надолу (клампнато)
   const shift = hudBottomShift();
   const barW = 200 * S, barH = 34 * S;
-  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift;
+  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift - 27 * S; // ред 1 по-нагоре, ред 2 отдолу
   // орбовете за кръв/мана — 1.5x от оригинала (радиус 24), изнесени встрани от хотбара
   const orbR = 24, orbCy = CH - 38 * S + shift;
   const hpCx = bx - 28 * S, mpCx = bx + barW + 28 * S;
@@ -267,6 +267,40 @@ function drawHUD() {
     }
     if (s.act) UI.hotRects.push({ x: sx, y: by, w: sw, h: sw, act: s.act });
     sx += sw + gap;
+  }
+
+  // ВТОРИ РЕД на хотбара: двата ПАСИВНИ слота (аури — работят постоянно, резервират мана)
+  {
+    const sw2 = 24 * S, gap2 = 3 * S, row2y = by + 27 * S;
+    let sx2 = bx + (barW - (2 * sw2 + gap2)) / 2;
+    const pas = p.activePassives || [null, null];
+    for (let pi = 0; pi < 2; pi++) {
+      panel(sx2, row2y, sw2, sw2);
+      const pid = pas[pi];
+      if (pid && SPELLS[pid]) {
+        const sp2 = SPELLS[pid];
+        const cx0 = sx2 + sw2 / 2, cy0 = row2y + sw2 / 2;
+        ctx.fillStyle = sp2.col;
+        ctx.beginPath();
+        ctx.moveTo(cx0, cy0 - 6 * S); ctx.lineTo(cx0 + 5 * S, cy0); ctx.lineTo(cx0, cy0 + 6 * S); ctx.lineTo(cx0 - 5 * S, cy0);
+        ctx.closePath(); ctx.fill();
+        // лека пулсираща рамка — аурата е активна
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(G.time * 3 + pi);
+        strokeRect(sx2 + S, row2y + S, sw2 - 2 * S, sw2 - 2 * S, sp2.col, S);
+        ctx.globalAlpha = 1;
+        // резервираната мана — долу вдясно
+        ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
+        ctx.fillText(String(50 * ((p.spellLvl && p.spellLvl[pid]) || 1)), sx2 + sw2 - 2 * S, row2y + sw2 - 2 * S);
+      } else {
+        rcx(sx2 + 2 * S, row2y + 2 * S, sw2 - 4 * S, sw2 - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(sx2 + sw2 / 2 - S, row2y + sw2 / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(5); ctx.textAlign = 'center'; ctx.fillStyle = '#7d8899';
+      ctx.fillText('P' + (pi + 1), sx2 + sw2 / 2, row2y + 6 * S);
+      UI.hotRects.push({ x: sx2, y: row2y, w: sw2, h: sw2, act: ((idx) => () => { openSpellbook(); G.sbSel = 3 + idx; })(pi) });
+      sx2 += sw2 + gap2;
+    }
   }
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
@@ -530,7 +564,7 @@ function invWindowGeom() {
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
-  const xpY = CH - 42 * SCALE + hudBottomShift(); // XP лентата (следва сваления надолу HUD)
+  const xpY = CH - 69 * SCALE + hudBottomShift(); // XP лентата (следва двуредовия хотбар)
   const ph = Math.min(xpY - 5 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
   // долният ръб е съвсем малко над жълтата XP лента
@@ -676,10 +710,24 @@ function drawInventory() {
       }
       UI.invRects.push({ x: rx, y: spellY, w: cw2, h: cw2, openBook: true });
     } else {
-      // празни гнезда за бъдещи магии (без функция за сега)
-      rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(12,15,24,0.6)');
-      ctx.fillStyle = '#2c3444';
-      ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - S, 2 * S, 2 * S);
+      // ПАСИВНИТЕ слотове (аури) — клик отваря Книгата
+      const pid = (p.activePassives || [])[si - 3];
+      if (pid && SPELLS[pid]) {
+        const sp2 = SPELLS[pid];
+        ctx.fillStyle = sp2.col;
+        ctx.beginPath();
+        ctx.moveTo(rx + cw2 / 2, spellY + 5 * S); ctx.lineTo(rx + cw2 - 5 * S, spellY + cw2 / 2);
+        ctx.lineTo(rx + cw2 / 2, spellY + cw2 - 5 * S); ctx.lineTo(rx + 5 * S, spellY + cw2 / 2);
+        ctx.closePath(); ctx.fill();
+      } else {
+        rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
+      ctx.fillText('P' + (si - 2), rx + cw2 - 2 * S, spellY + 7 * S);
+      ctx.textAlign = 'left';
+      UI.invRects.push({ x: rx, y: spellY, w: cw2, h: cw2, openBook: true });
     }
   }
 
@@ -1424,7 +1472,7 @@ function drawSpellbook() {
   const S = SCALE, p = G.player;
   UI.btnRects = [];
   rcx(0, 0, CW, CH, 'rgba(4,6,11,0.75)');
-  const pw = 262 * S, ph = 230 * S;
+  const pw = 262 * S, ph = Math.min(CH - 16, 292 * S); // по-висока: 10 магии (вкл. пасивните аури)
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -1471,6 +1519,28 @@ function drawSpellbook() {
     ctx.fillText(['RMB', '3', '4'][i], ax + asw / 2, ay + asw + 6 * S);
     ctx.textAlign = 'left';
   }
+  // двата ПАСИВНИ слота (аури) — вдясно от активните
+  for (let j = 0; j < 2; j++) {
+    const ax = x0 + 10 * S + 3 * (24 * S + 6 * S) + 10 * S + j * (24 * S + 6 * S), ay = y0 + 22 * S;
+    const asw2 = 24 * S;
+    panel(ax, ay, asw2, asw2);
+    if (G.sbSel === 3 + j) strokeRect(ax - S, ay - S, asw2 + 2 * S, asw2 + 2 * S, '#ffd23b', S);
+    const pid = (p.activePassives || [])[j];
+    if (pid && SPELLS[pid]) {
+      const sp2 = SPELLS[pid];
+      ctx.fillStyle = sp2.col;
+      ctx.beginPath();
+      ctx.moveTo(ax + asw2 / 2, ay + 5 * S); ctx.lineTo(ax + asw2 - 5 * S, ay + asw2 / 2);
+      ctx.lineTo(ax + asw2 / 2, ay + asw2 - 5 * S); ctx.lineTo(ax + 5 * S, ay + asw2 / 2);
+      ctx.closePath(); ctx.fill();
+    }
+    UI.btnRects.push({ x: ax, y: ay, w: asw2, h: asw2, act: ((idx) => () => { G.sbSel = 3 + idx; })(j) });
+    ctx.font = fontPx(5.5);
+    ctx.fillStyle = '#7fb0ff';
+    ctx.textAlign = 'center';
+    ctx.fillText('P' + (j + 1), ax + asw2 / 2, ay + asw2 + 6 * S);
+    ctx.textAlign = 'left';
+  }
 
   // всички магии: 4 колони х 2 реда, с описание
   const ids = Object.keys(SPELLS);
@@ -1484,8 +1554,8 @@ function drawSpellbook() {
     panel(rx, ry, cw2, chh);
     const hov = G.mouse.x >= rx && G.mouse.x < rx + cw2 && G.mouse.y >= ry && G.mouse.y < ry + chh;
     if (hov && known) strokeRect(rx, ry, cw2, chh, '#ffd23b', S);
-    const active = p.activeSpells.indexOf(id);
-    if (active !== -1) strokeRect(rx, ry, cw2, chh, SPELLS[id].col, S);
+    const active = p.activeSpells.indexOf(id) !== -1 || (p.activePassives || []).indexOf(id) !== -1;
+    if (active) strokeRect(rx, ry, cw2, chh, SPELLS[id].col, S);
     // руна
     ctx.globalAlpha = known ? 1 : 0.3;
     ctx.fillStyle = known ? sp.col : '#454e63';
@@ -1502,7 +1572,10 @@ function drawSpellbook() {
     ctx.fillStyle = known ? '#a8b2c4' : '#454e63';
     wrapTextCentered(sp.d, rcx0, ry + 33 * S, cw2 - 8 * S, 6.5 * S);
     ctx.fillStyle = known ? '#7fb0ff' : '#454e63';
-    ctx.fillText(known ? (sp.cost + ' mana · ' + sp.cd + 's') : 'give a tome to Zahari', rcx0, ry + chh - 5 * S);
+    const infoTxt = !known ? 'give a tome to Zahari'
+      : sp.passive ? ('aura · reserves ' + (50 * spellLv(p, id)) + ' mana')
+      : (sp.cost + ' mana · ' + sp.cd + 's');
+    ctx.fillText(infoTxt, rcx0, ry + chh - 5 * S);
     if (known) { // ниво на магията горе-вдясно (2=зелено, 3=лилаво)
       const lv = spellLv(p, id);
       ctx.textAlign = 'right';
@@ -1518,7 +1591,7 @@ function drawSpellbook() {
   let sel = G.sbSpell;
   if (!sel || !p.spellsKnown[sel]) sel = p.activeSpells.find(s => s && p.spellsKnown[s]) || Object.keys(p.spellsKnown)[0];
   G.sbSpell = sel;
-  const dy = y0 + 178 * S, dh = 46 * S;
+  const dy = y0 + 238 * S, dh = 46 * S; // под 3-те реда карти
   panel(x0 + 8 * S, dy, pw - 16 * S, dh);
   if (sel) {
     const lv = spellLv(p, sel), sp = SPELLS[sel];
@@ -1606,7 +1679,28 @@ function wrapTextCentered(str, cx0, y, maxW, lineH) {
 }
 function assignSpell(id) {
   const p = G.player;
-  const i = G.sbSel || 0;
+  const sp = SPELLS[id];
+  if (sp.passive) {
+    // ПАСИВНА аура -> пасивен слот (избрания; иначе първия свободен / първия)
+    p.activePassives = p.activePassives || [null, null];
+    let i = (G.sbSel === 3 || G.sbSel === 4) ? G.sbSel - 3 : -1;
+    if (i === -1) { i = p.activePassives.indexOf(null); if (i === -1) i = 0; }
+    if (p.activePassives[i] === id) {
+      p.activePassives[i] = null; // повторно върху същата -> сваля аурата (освобождава маната)
+      toast(sp.n + ' — aura removed.', '#7d8899');
+    } else {
+      const other = p.activePassives.indexOf(id);
+      if (other !== -1) p.activePassives[other] = p.activePassives[i]; // размяна между двата слота
+      p.activePassives[i] = id;
+      toast(sp.n + ' — aura active (reserves ' + (50 * spellLv(p, id)) + ' mana).', '#7fb0ff');
+    }
+    calcStats(p);
+    Sfx.play('pickup');
+    saveProfile();
+    return;
+  }
+  let i = G.sbSel || 0;
+  if (i > 2) i = 0; // активна магия при избран пасивен слот -> слот RMB
   const unlocked = i === 0 || (i === 1 ? G.meta.magic3 : G.meta.magic4);
   if (!unlocked) { toast('This slot is locked — see the Master.', '#c84fff'); return; }
   // ако магията вече е в друг слот — разменяме

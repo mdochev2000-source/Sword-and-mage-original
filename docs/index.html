@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 17:56 UTC";
+window.__BUILD__ = "2026-07-28 18:14 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1997,9 +1997,12 @@ const SPELLS = {
   nova:     { n: 'Frost Nova', cost: 22, cd: 4,   col: '#a8d8ff', d: 'A blast around you — damage and slow.' },
   chain:    { n: 'Chain Lightning', cost: 18, cd: 2.2, col: '#ffd23b', d: 'Lightning that arcs to up to 4 enemies.' },
   poison:   { n: 'Poison Cloud', cost: 20, cd: 5,    col: '#5fd97a', d: 'A cloud that eats away at enemies.' },
-  ward:     { n: 'Arcane Shield', cost: 25, cd: 8,      col: '#c9d1d9', d: 'Absorbs the next damage you take.' },
-  skull:    { n: 'Hungry Skull', cost: 24, cd: 9,     col: '#d8d3c0', d: 'A skull circles you and bites.' },
   quake:    { n: 'Earthquake', cost: 26, cd: 6,         col: '#a08050', d: 'Shakes and knocks back everything around you.' },
+  // ---- ПАСИВНИ магии (аури): сложи в пасивен слот -> работят постоянно; резервират мана (50/100/150 по ниво) ----
+  ward:     { n: 'Arcane Shield', passive: true, cost: 0, cd: 0, col: '#c9d1d9', d: 'Passive: a shield that absorbs damage and recharges.' },
+  skull:    { n: 'Hungry Skull', passive: true, cost: 0, cd: 0, col: '#d8d3c0', d: 'Passive: a skull circles you and bites.' },
+  haste:    { n: 'Wind Aura', passive: true, cost: 0, cd: 0, col: '#7fd0a0', d: 'Passive: +10% movement and attack speed.' },
+  wrath:    { n: 'Wrath Aura', passive: true, cost: 0, cd: 0, col: '#ff6b5a', d: 'Passive: +12% weapon and spell damage.' },
 };
 function genTome(spellId, depth) {
   const id = spellId || pick(Object.keys(SPELLS));
@@ -2038,6 +2041,14 @@ const SPELL_UP = {
   quake: [
     { n: 'Fissures', d: 'leaves rifts in the ground that slow' },
     { n: 'Devastation', d: 'knocked-down enemies are stunned on the ground for 1.5s' },
+  ],
+  haste: [
+    { n: 'Gale', d: 'the aura grows: +15% movement and attack speed' },
+    { n: 'Tempest', d: '+20% movement and attack speed, and your dash recharges 15% faster' },
+  ],
+  wrath: [
+    { n: 'Fury', d: 'the aura grows: +18% weapon and spell damage' },
+    { n: 'Cataclysm', d: '+25% weapon and spell damage, and +8% crit chance' },
   ],
 };
 const SPELL_UP_COST = [300, 700]; // цена в осколки за ниво 2 и ниво 3
@@ -2772,6 +2783,7 @@ function newPlayer() {
     equip: { weapon: startWeapon, armor: null, ring: null, ring2: null, amulet: null, soulstone: null },
     spellsKnown: { fireball: true },            // колекцията е завинаги
     activeSpells: ['fireball', null, null],     // трите активни магии
+    activePassives: [null, null],               // двата ПАСИВНИ слота (аури — работят постоянно, резервират мана)
     spellLvl: { fireball: 1 },                  // ниво на всяка известна магия (1..3) — постоянно, като дървото
     spellCd: [0, 0, 0], dashCharges: 1,
     skills: {}, skillPoints: 0,                 // дървото с умения (губи се при смърт)
@@ -2826,9 +2838,41 @@ function calcStats(p) {
   st.potionPow = sum('potionPow'); // % сила на отварите
   st.doubleStrike = 0.2 * sk('sw5');
   st.freeCast = 0.15 * sk('mg5');
+  // ---- ПАСИВНИ магии (аури): резервират мана (50/100/150 по ниво) и дават постоянни ефекти ----
+  const pasLv = id => {
+    if (!p.activePassives || p.activePassives.indexOf(id) === -1) return 0;
+    if (!p.spellsKnown || !p.spellsKnown[id]) return 0;
+    return (p.spellLvl && p.spellLvl[id]) || 1;
+  };
+  st.reservedMp = 0;
+  if (p.activePassives) for (const id of p.activePassives) if (id && p.spellsKnown && p.spellsKnown[id]) st.reservedMp += 50 * ((p.spellLvl && p.spellLvl[id]) || 1);
+  st.maxmp = Math.max(10, st.maxmp - st.reservedMp);
+  const hLv = pasLv('haste');
+  if (hLv) {
+    const hb = [0, 0.10, 0.15, 0.20][hLv];
+    st.spd *= 1 + hb;
+    st.atkCd /= 1 + hb;
+    if (hLv >= 3) st.dashCd *= 0.85; // Tempest
+  }
+  const wLv = pasLv('wrath');
+  if (wLv) {
+    const wb = [0, 0.12, 0.18, 0.25][wLv];
+    st.dmg *= 1 + wb;
+    st.spellMult *= 1 + wb;
+    if (wLv >= 3) st.crit = Math.min(60, st.crit + 8); // Cataclysm
+  }
   p.st = st;
   p.hp = Math.min(p.hp, st.maxhp);
   p.mp = Math.min(p.mp, st.maxmp);
+}
+// пасивна магия в слот (и научена)?
+function hasPassive(id) {
+  const p = G.player;
+  return !!(p && p.activePassives && p.activePassives.indexOf(id) !== -1 && p.spellsKnown && p.spellsKnown[id]);
+}
+function passiveLv(id) {
+  const p = G.player;
+  return hasPassive(id) ? ((p.spellLvl && p.spellLvl[id]) || 1) : 0;
 }
 
 function giveXp(amount) {
@@ -3198,6 +3242,35 @@ function updatePlayer(dt) {
   }
   p.frenzyT = Math.max(0, (p.frenzyT || 0) - dt);
   if (p.wardT > 0) { p.wardT -= dt; if (p.wardT <= 0) p.ward = 0; }
+  // ---- ПАСИВЕН Arcane Shield: постоянен щит, който се презарежда 8с след счупване ----
+  if (hasPassive('ward')) {
+    p.wardLv = passiveLv('ward');
+    if (p.ward > 0) {
+      p.wardT = 2;            // не изтича от време, докато аурата е сложена
+      p.wardRecharge = 8;
+    } else {
+      p.wardRecharge = (p.wardRecharge === undefined ? 0 : p.wardRecharge) - dt;
+      if (p.wardRecharge <= 0) {
+        p.ward = Math.round(30 + p.lvl * 4 + p.st.maxmp * 0.4);
+        p.wardT = 2;
+        burst(p.x, p.y, ['#c9d1d9', '#8ab0ff'], 10, 2.5, 0.5);
+      }
+    }
+  }
+  // ---- ПАСИВЕН Hungry Skull: постоянни орбитални черепи (1, а с „Pack" — 2) ----
+  {
+    G.orbitals = G.orbitals || [];
+    if (hasPassive('skull')) {
+      const slv = passiveLv('skull');
+      const want = slv >= 2 ? 2 : 1;
+      const mine = G.orbitals.filter(o => o.passive);
+      for (const o of mine) { o.life = 9e9; o.dmg = spellDmg(0.7); o.leech = slv >= 3; } // поддържаме ги актуални
+      for (let k = mine.length; k < want; k++) G.orbitals.push({ t: 0, life: 9e9, a: rnd(Math.PI * 2) + k * Math.PI, dmg: spellDmg(0.7), leech: slv >= 3, passive: true });
+      if (mine.length > want) { let extra = mine.length - want; for (let i = G.orbitals.length - 1; i >= 0 && extra > 0; i--) if (G.orbitals[i].passive) { G.orbitals.splice(i, 1); extra--; } }
+    } else if (G.orbitals.some(o => o.passive)) {
+      G.orbitals = G.orbitals.filter(o => !o.passive); // аурата е свалена
+    }
+  }
   if ((p.dashCharges || 0) < p.st.dashMax) {
     p.dashRegen = (p.dashRegen === undefined ? p.st.dashCd : p.dashRegen) - dt;
     if (p.dashRegen <= 0) {
@@ -3551,6 +3624,7 @@ function castSpell(i) {
   if (i === 2 && !G.meta.magic4) { toast('This slot is locked — the Master opens it for a Seal.', '#c84fff'); Sfx.play('deny'); return; }
   const spellId = p.activeSpells && p.activeSpells[i];
   if (!spellId) { toast('Empty slot — choose a spell from the Spellbook.', '#7d8899'); Sfx.play('deny'); return; }
+  if (SPELLS[spellId] && SPELLS[spellId].passive) { toast('This is a passive aura — it works on its own.', '#7d8899'); Sfx.play('deny'); return; }
   p.spellCd = p.spellCd || [0, 0, 0];
   if (p.spellCd[i] > 0) return;
   const sp = SPELLS[spellId];
@@ -3580,10 +3654,16 @@ function learnSpell(spellId) {
   p.spellsKnown[spellId] = true;
   p.spellLvl = p.spellLvl || {};
   if (!p.spellLvl[spellId]) p.spellLvl[spellId] = 1; // нова магия започва на ниво 1
-  // ако има свободен отключен слот — слагаме я веднага
-  const unlockedSlots = [true, G.meta.magic3, G.meta.magic4];
-  for (let i = 0; i < 3; i++) {
-    if (unlockedSlots[i] && !p.activeSpells[i]) { p.activeSpells[i] = spellId; break; }
+  // ако има свободен отключен слот — слагаме я веднага (пасивните -> в пасивен слот)
+  if (SPELLS[spellId].passive) {
+    p.activePassives = p.activePassives || [null, null];
+    for (let i = 0; i < 2; i++) if (!p.activePassives[i]) { p.activePassives[i] = spellId; break; }
+    calcStats(p); // резервацията на мана влиза веднага
+  } else {
+    const unlockedSlots = [true, G.meta.magic3, G.meta.magic4];
+    for (let i = 0; i < 3; i++) {
+      if (unlockedSlots[i] && !p.activeSpells[i]) { p.activeSpells[i] = spellId; break; }
+    }
   }
   toast('New spell: ' + SPELLS[spellId].n + '! Check the Spellbook.', '#8ab0ff');
   Sfx.play('level');
@@ -4801,6 +4881,16 @@ function startGame(slot, freshName) {
     G.checkpoint = prof.checkpoint || 1;
     p.spellsKnown = prof.spellsKnown || { fireball: true };
     p.activeSpells = prof.activeSpells || ['fireball', null, null];
+    p.activePassives = Array.isArray(prof.activePassives) ? prof.activePassives.slice(0, 2) : [null, null];
+    while (p.activePassives.length < 2) p.activePassives.push(null);
+    // МИГРАЦИЯ: щитът/черепът вече са пасивни — ако са в активен слот, местим ги в пасивен
+    for (let i = 0; i < 3; i++) {
+      const sid = p.activeSpells[i];
+      if (sid && SPELLS[sid] && SPELLS[sid].passive) {
+        p.activeSpells[i] = null;
+        for (let j = 0; j < 2; j++) if (!p.activePassives[j]) { p.activePassives[j] = sid; break; }
+      }
+    }
     // нива на магиите: стар запис без spellLvl -> всички известни магии на ниво 1
     p.spellLvl = (prof.spellLvl && typeof prof.spellLvl === 'object' && !Array.isArray(prof.spellLvl)) ? prof.spellLvl : {};
     for (const _sid in p.spellsKnown) if (p.spellsKnown[_sid]) p.spellLvl[_sid] = p.spellLvl[_sid] || 1;
@@ -4859,7 +4949,7 @@ function saveProfile() {
       name: G.charName || 'Exile',
       gold: p.gold, equip: p.equip, inv: p.inv, meta: G.meta,
       potionsOwned: p.potionsOwned, potionSlots: p.potionSlots, potionUp: p.potionUp, // постоянни отвари
-      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
+      spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, activePassives: p.activePassives || [null, null], spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
@@ -4894,6 +4984,7 @@ function migrateChar(c) {
         // spellsKnown е ОБЕКТ, activeSpells е МАСИВ
         if (c.spellsKnown == null || typeof c.spellsKnown !== 'object' || Array.isArray(c.spellsKnown)) c.spellsKnown = { fireball: true };
         if (!Array.isArray(c.activeSpells)) c.activeSpells = ['fireball', null, null];
+        if (!Array.isArray(c.activePassives)) c.activePassives = [null, null];
         if (typeof c.checkpoint !== 'number') c.checkpoint = Number(c.checkpoint) || 1;
         // skills/skillPoints/hero/meta имат собствена fallback логика при зареждане — не ги пипаме
         c.v = 1;
@@ -5171,10 +5262,10 @@ function drawHUD() {
   const S = SCALE;
   UI.hotRects = [];
 
-  // орбове + хотбар долу в средата — свалени с 40px надолу (клампнато да не излизат от екрана)
+  // орбове + хотбар (ДВА РЕДА) долу в средата — свалени с 40px надолу (клампнато)
   const shift = hudBottomShift();
   const barW = 200 * S, barH = 34 * S;
-  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift;
+  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift - 27 * S; // ред 1 по-нагоре, ред 2 отдолу
   // орбовете за кръв/мана — 1.5x от оригинала (радиус 24), изнесени встрани от хотбара
   const orbR = 24, orbCy = CH - 38 * S + shift;
   const hpCx = bx - 28 * S, mpCx = bx + barW + 28 * S;
@@ -5286,6 +5377,40 @@ function drawHUD() {
     }
     if (s.act) UI.hotRects.push({ x: sx, y: by, w: sw, h: sw, act: s.act });
     sx += sw + gap;
+  }
+
+  // ВТОРИ РЕД на хотбара: двата ПАСИВНИ слота (аури — работят постоянно, резервират мана)
+  {
+    const sw2 = 24 * S, gap2 = 3 * S, row2y = by + 27 * S;
+    let sx2 = bx + (barW - (2 * sw2 + gap2)) / 2;
+    const pas = p.activePassives || [null, null];
+    for (let pi = 0; pi < 2; pi++) {
+      panel(sx2, row2y, sw2, sw2);
+      const pid = pas[pi];
+      if (pid && SPELLS[pid]) {
+        const sp2 = SPELLS[pid];
+        const cx0 = sx2 + sw2 / 2, cy0 = row2y + sw2 / 2;
+        ctx.fillStyle = sp2.col;
+        ctx.beginPath();
+        ctx.moveTo(cx0, cy0 - 6 * S); ctx.lineTo(cx0 + 5 * S, cy0); ctx.lineTo(cx0, cy0 + 6 * S); ctx.lineTo(cx0 - 5 * S, cy0);
+        ctx.closePath(); ctx.fill();
+        // лека пулсираща рамка — аурата е активна
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(G.time * 3 + pi);
+        strokeRect(sx2 + S, row2y + S, sw2 - 2 * S, sw2 - 2 * S, sp2.col, S);
+        ctx.globalAlpha = 1;
+        // резервираната мана — долу вдясно
+        ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
+        ctx.fillText(String(50 * ((p.spellLvl && p.spellLvl[pid]) || 1)), sx2 + sw2 - 2 * S, row2y + sw2 - 2 * S);
+      } else {
+        rcx(sx2 + 2 * S, row2y + 2 * S, sw2 - 4 * S, sw2 - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(sx2 + sw2 / 2 - S, row2y + sw2 / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(5); ctx.textAlign = 'center'; ctx.fillStyle = '#7d8899';
+      ctx.fillText('P' + (pi + 1), sx2 + sw2 / 2, row2y + 6 * S);
+      UI.hotRects.push({ x: sx2, y: row2y, w: sw2, h: sw2, act: ((idx) => () => { openSpellbook(); G.sbSel = 3 + idx; })(pi) });
+      sx2 += sw2 + gap2;
+    }
   }
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
@@ -5549,7 +5674,7 @@ function invWindowGeom() {
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
-  const xpY = CH - 42 * SCALE + hudBottomShift(); // XP лентата (следва сваления надолу HUD)
+  const xpY = CH - 69 * SCALE + hudBottomShift(); // XP лентата (следва двуредовия хотбар)
   const ph = Math.min(xpY - 5 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
   // долният ръб е съвсем малко над жълтата XP лента
@@ -5695,10 +5820,24 @@ function drawInventory() {
       }
       UI.invRects.push({ x: rx, y: spellY, w: cw2, h: cw2, openBook: true });
     } else {
-      // празни гнезда за бъдещи магии (без функция за сега)
-      rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(12,15,24,0.6)');
-      ctx.fillStyle = '#2c3444';
-      ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - S, 2 * S, 2 * S);
+      // ПАСИВНИТЕ слотове (аури) — клик отваря Книгата
+      const pid = (p.activePassives || [])[si - 3];
+      if (pid && SPELLS[pid]) {
+        const sp2 = SPELLS[pid];
+        ctx.fillStyle = sp2.col;
+        ctx.beginPath();
+        ctx.moveTo(rx + cw2 / 2, spellY + 5 * S); ctx.lineTo(rx + cw2 - 5 * S, spellY + cw2 / 2);
+        ctx.lineTo(rx + cw2 / 2, spellY + cw2 - 5 * S); ctx.lineTo(rx + 5 * S, spellY + cw2 / 2);
+        ctx.closePath(); ctx.fill();
+      } else {
+        rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
+      ctx.fillText('P' + (si - 2), rx + cw2 - 2 * S, spellY + 7 * S);
+      ctx.textAlign = 'left';
+      UI.invRects.push({ x: rx, y: spellY, w: cw2, h: cw2, openBook: true });
     }
   }
 
@@ -6443,7 +6582,7 @@ function drawSpellbook() {
   const S = SCALE, p = G.player;
   UI.btnRects = [];
   rcx(0, 0, CW, CH, 'rgba(4,6,11,0.75)');
-  const pw = 262 * S, ph = 230 * S;
+  const pw = 262 * S, ph = Math.min(CH - 16, 292 * S); // по-висока: 10 магии (вкл. пасивните аури)
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -6490,6 +6629,28 @@ function drawSpellbook() {
     ctx.fillText(['RMB', '3', '4'][i], ax + asw / 2, ay + asw + 6 * S);
     ctx.textAlign = 'left';
   }
+  // двата ПАСИВНИ слота (аури) — вдясно от активните
+  for (let j = 0; j < 2; j++) {
+    const ax = x0 + 10 * S + 3 * (24 * S + 6 * S) + 10 * S + j * (24 * S + 6 * S), ay = y0 + 22 * S;
+    const asw2 = 24 * S;
+    panel(ax, ay, asw2, asw2);
+    if (G.sbSel === 3 + j) strokeRect(ax - S, ay - S, asw2 + 2 * S, asw2 + 2 * S, '#ffd23b', S);
+    const pid = (p.activePassives || [])[j];
+    if (pid && SPELLS[pid]) {
+      const sp2 = SPELLS[pid];
+      ctx.fillStyle = sp2.col;
+      ctx.beginPath();
+      ctx.moveTo(ax + asw2 / 2, ay + 5 * S); ctx.lineTo(ax + asw2 - 5 * S, ay + asw2 / 2);
+      ctx.lineTo(ax + asw2 / 2, ay + asw2 - 5 * S); ctx.lineTo(ax + 5 * S, ay + asw2 / 2);
+      ctx.closePath(); ctx.fill();
+    }
+    UI.btnRects.push({ x: ax, y: ay, w: asw2, h: asw2, act: ((idx) => () => { G.sbSel = 3 + idx; })(j) });
+    ctx.font = fontPx(5.5);
+    ctx.fillStyle = '#7fb0ff';
+    ctx.textAlign = 'center';
+    ctx.fillText('P' + (j + 1), ax + asw2 / 2, ay + asw2 + 6 * S);
+    ctx.textAlign = 'left';
+  }
 
   // всички магии: 4 колони х 2 реда, с описание
   const ids = Object.keys(SPELLS);
@@ -6503,8 +6664,8 @@ function drawSpellbook() {
     panel(rx, ry, cw2, chh);
     const hov = G.mouse.x >= rx && G.mouse.x < rx + cw2 && G.mouse.y >= ry && G.mouse.y < ry + chh;
     if (hov && known) strokeRect(rx, ry, cw2, chh, '#ffd23b', S);
-    const active = p.activeSpells.indexOf(id);
-    if (active !== -1) strokeRect(rx, ry, cw2, chh, SPELLS[id].col, S);
+    const active = p.activeSpells.indexOf(id) !== -1 || (p.activePassives || []).indexOf(id) !== -1;
+    if (active) strokeRect(rx, ry, cw2, chh, SPELLS[id].col, S);
     // руна
     ctx.globalAlpha = known ? 1 : 0.3;
     ctx.fillStyle = known ? sp.col : '#454e63';
@@ -6521,7 +6682,10 @@ function drawSpellbook() {
     ctx.fillStyle = known ? '#a8b2c4' : '#454e63';
     wrapTextCentered(sp.d, rcx0, ry + 33 * S, cw2 - 8 * S, 6.5 * S);
     ctx.fillStyle = known ? '#7fb0ff' : '#454e63';
-    ctx.fillText(known ? (sp.cost + ' mana · ' + sp.cd + 's') : 'give a tome to Zahari', rcx0, ry + chh - 5 * S);
+    const infoTxt = !known ? 'give a tome to Zahari'
+      : sp.passive ? ('aura · reserves ' + (50 * spellLv(p, id)) + ' mana')
+      : (sp.cost + ' mana · ' + sp.cd + 's');
+    ctx.fillText(infoTxt, rcx0, ry + chh - 5 * S);
     if (known) { // ниво на магията горе-вдясно (2=зелено, 3=лилаво)
       const lv = spellLv(p, id);
       ctx.textAlign = 'right';
@@ -6537,7 +6701,7 @@ function drawSpellbook() {
   let sel = G.sbSpell;
   if (!sel || !p.spellsKnown[sel]) sel = p.activeSpells.find(s => s && p.spellsKnown[s]) || Object.keys(p.spellsKnown)[0];
   G.sbSpell = sel;
-  const dy = y0 + 178 * S, dh = 46 * S;
+  const dy = y0 + 238 * S, dh = 46 * S; // под 3-те реда карти
   panel(x0 + 8 * S, dy, pw - 16 * S, dh);
   if (sel) {
     const lv = spellLv(p, sel), sp = SPELLS[sel];
@@ -6625,7 +6789,28 @@ function wrapTextCentered(str, cx0, y, maxW, lineH) {
 }
 function assignSpell(id) {
   const p = G.player;
-  const i = G.sbSel || 0;
+  const sp = SPELLS[id];
+  if (sp.passive) {
+    // ПАСИВНА аура -> пасивен слот (избрания; иначе първия свободен / първия)
+    p.activePassives = p.activePassives || [null, null];
+    let i = (G.sbSel === 3 || G.sbSel === 4) ? G.sbSel - 3 : -1;
+    if (i === -1) { i = p.activePassives.indexOf(null); if (i === -1) i = 0; }
+    if (p.activePassives[i] === id) {
+      p.activePassives[i] = null; // повторно върху същата -> сваля аурата (освобождава маната)
+      toast(sp.n + ' — aura removed.', '#7d8899');
+    } else {
+      const other = p.activePassives.indexOf(id);
+      if (other !== -1) p.activePassives[other] = p.activePassives[i]; // размяна между двата слота
+      p.activePassives[i] = id;
+      toast(sp.n + ' — aura active (reserves ' + (50 * spellLv(p, id)) + ' mana).', '#7fb0ff');
+    }
+    calcStats(p);
+    Sfx.play('pickup');
+    saveProfile();
+    return;
+  }
+  let i = G.sbSel || 0;
+  if (i > 2) i = 0; // активна магия при избран пасивен слот -> слот RMB
   const unlocked = i === 0 || (i === 1 ? G.meta.magic3 : G.meta.magic4);
   if (!unlocked) { toast('This slot is locked — see the Master.', '#c84fff'); return; }
   // ако магията вече е в друг слот — разменяме

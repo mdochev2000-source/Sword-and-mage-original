@@ -146,9 +146,12 @@ const SPELLS = {
   nova:     { n: 'Frost Nova', cost: 22, cd: 4,   col: '#a8d8ff', d: 'A blast around you — damage and slow.' },
   chain:    { n: 'Chain Lightning', cost: 18, cd: 2.2, col: '#ffd23b', d: 'Lightning that arcs to up to 4 enemies.' },
   poison:   { n: 'Poison Cloud', cost: 20, cd: 5,    col: '#5fd97a', d: 'A cloud that eats away at enemies.' },
-  ward:     { n: 'Arcane Shield', cost: 25, cd: 8,      col: '#c9d1d9', d: 'Absorbs the next damage you take.' },
-  skull:    { n: 'Hungry Skull', cost: 24, cd: 9,     col: '#d8d3c0', d: 'A skull circles you and bites.' },
   quake:    { n: 'Earthquake', cost: 26, cd: 6,         col: '#a08050', d: 'Shakes and knocks back everything around you.' },
+  // ---- ПАСИВНИ магии (аури): сложи в пасивен слот -> работят постоянно; резервират мана (50/100/150 по ниво) ----
+  ward:     { n: 'Arcane Shield', passive: true, cost: 0, cd: 0, col: '#c9d1d9', d: 'Passive: a shield that absorbs damage and recharges.' },
+  skull:    { n: 'Hungry Skull', passive: true, cost: 0, cd: 0, col: '#d8d3c0', d: 'Passive: a skull circles you and bites.' },
+  haste:    { n: 'Wind Aura', passive: true, cost: 0, cd: 0, col: '#7fd0a0', d: 'Passive: +10% movement and attack speed.' },
+  wrath:    { n: 'Wrath Aura', passive: true, cost: 0, cd: 0, col: '#ff6b5a', d: 'Passive: +12% weapon and spell damage.' },
 };
 function genTome(spellId, depth) {
   const id = spellId || pick(Object.keys(SPELLS));
@@ -187,6 +190,14 @@ const SPELL_UP = {
   quake: [
     { n: 'Fissures', d: 'leaves rifts in the ground that slow' },
     { n: 'Devastation', d: 'knocked-down enemies are stunned on the ground for 1.5s' },
+  ],
+  haste: [
+    { n: 'Gale', d: 'the aura grows: +15% movement and attack speed' },
+    { n: 'Tempest', d: '+20% movement and attack speed, and your dash recharges 15% faster' },
+  ],
+  wrath: [
+    { n: 'Fury', d: 'the aura grows: +18% weapon and spell damage' },
+    { n: 'Cataclysm', d: '+25% weapon and spell damage, and +8% crit chance' },
   ],
 };
 const SPELL_UP_COST = [300, 700]; // цена в осколки за ниво 2 и ниво 3
