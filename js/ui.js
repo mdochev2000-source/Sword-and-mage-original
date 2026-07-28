@@ -579,6 +579,32 @@ function drawInventory() {
     ey += 32 * S;
   }
 
+  // основните статистики — колона ДО екипираните предмети (пълният списък е в STATS)
+  {
+    const st = p.st;
+    const lines = [
+      ['Damage', Math.round(st.dmg)],
+      ['Attacks/sec', (1 / st.atkCd).toFixed(2)],
+      ['Armor', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
+      ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
+      ['Life Steal', st.vamp + '%'],
+      ['Speed', Math.round(st.spd * 10) / 10],
+      ['Max Life', st.maxhp],
+      ['Max Mana', st.maxmp],
+    ];
+    let ly = y0 + 30 * S;
+    ctx.font = fontPx(6.5);
+    for (const [k, v] of lines) {
+      ctx.fillStyle = '#7d8899';
+      ctx.fillText(k, x0 + 52 * S, ly);
+      ctx.fillStyle = '#e8e4d0';
+      ctx.textAlign = 'right';
+      ctx.fillText(String(v), x0 + 128 * S, ly);
+      ctx.textAlign = 'left';
+      ly += 11 * S;
+    }
+  }
+
   // === ДЯСНА КОЛОНА: филтри -> мрежа с предмети -> магии -> перкове; бутоните са най-долу ===
   const gx0 = x0 + pw - (gridW + BORDER) * S; // долепена ВДЯСНО + тънка рамка
   const filt = G.invFilter || 'weapon';
