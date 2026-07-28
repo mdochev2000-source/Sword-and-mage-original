@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 13:52 UTC";
+window.__BUILD__ = "2026-07-28 14:10 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -6000,9 +6000,9 @@ function drawShop() {
   UI.enchPotRects = [];
   UI.shopListRect = null; // скрол-зоната на стоката (само при обикновените продавачи)
   const pw = 284 * S;
-  // височина: място за филтрите + мрежата (до 5 реда) + зоната за действие/Buy; Мистикът е с фиксирана
+  // ЕДНАКЪВ шаблон за всички продавачи: филтри + мрежа (до 5 реда) + фиксиран ред за действия
   const gridRowsEst = Math.ceil((G.meta.invSlots + 5) / 5);
-  const ph = isMystic ? Math.min(CH - 16, 228 * S) : Math.min(CH - 16, (118 + gridRowsEst * 26) * S);
+  const ph = Math.min(CH - 16, Math.max(248, 118 + gridRowsEst * 26) * S);
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
 
@@ -6056,6 +6056,7 @@ function drawShop() {
     ctx.fillText('THE POWER OF SEALS (click — take)', x0 + 10 * S, y0 + 35 * S);
     const offers = mysticOffers();
     for (const of2 of offers) {
+      if (ry + rowH > y0 + ph - 8 * S) break; // не излизаме извън рамката
       const hov = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
       rcx(x0 + 8 * S, ry, rowW, rowH, hov ? 'rgba(80,50,110,0.5)' : 'rgba(30,20,50,0.6)');
       if (hov) strokeRect(x0 + 8 * S, ry, rowW, rowH, '#6a4f9e', 1);
@@ -6187,21 +6188,21 @@ function drawShop() {
   UI.enchAffixRects = [];
   UI.shopActRects = [];
   let hoverSell = null;
-  const gx0 = x0 + 146 * S, gy0 = y0 + (isMystic ? 40 : 54) * S; // при продавачите мрежата слиза под филтрите
+  const gx0 = x0 + 146 * S, gy0 = y0 + 54 * S; // мрежата под филтрите — еднакво при ВСИЧКИ продавачи
   const cols = 5, cw2 = 24 * S, gp = 2 * S, rw = 130 * S; // мрежата с моите предмети: 5 колони (като инвентара)
   const invFilt = G.invFilter || 'weapon';
   const gridItems = [];
   if (isMystic) {
-    for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && it.affixes && it.affixes.length) gridItems.push(it); }
-    for (const it of p.inv) if (it.slot !== 'spell' && it.affixes && it.affixes.length) gridItems.push(it);
+    for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && it.affixes && it.affixes.length && itemFilterCat(it) === invFilt) gridItems.push(it); }
+    for (const it of p.inv) if (it.slot !== 'spell' && it.affixes && it.affixes.length && itemFilterCat(it) === invFilt) gridItems.push(it);
   } else {
     // само предметите от избрания раздел (същите филтри като в инвентара)
     for (const it of p.inv) if (itemFilterCat(it) === invFilt) gridItems.push(it);
     for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && vendorUpgradesSlot(G.shopVendor, it.slot) && itemFilterCat(it) === invFilt) gridItems.push(it); }
   }
-  // 3-те филтъра над мрежата (без Мистика — при него гридът е специфичен)
+  // 3-те филтъра над мрежата — при ВСИЧКИ продавачи (еднакъв шаблон)
   UI.shopFilterRects = [];
-  if (!isMystic) {
+  {
     const fw = 40 * S, fh = 11 * S, fy = y0 + 39 * S;
     ctx.textAlign = 'center'; ctx.font = fontBold(5);
     INV_FILTERS.forEach((f, fi) => {
@@ -6232,37 +6233,46 @@ function drawShop() {
     gi++;
   }
   let ay = gy0 + (Math.ceil(gridItems.length / cols) || 1) * (cw2 + gp) + 6 * S;
+  const btnY = y0 + ph - 26 * S, btnH = 20 * S; // ред за действия — ФИКСИРАН най-долу, вътре в рамката
+  const infoMax = btnY - 4 * S;                 // текстовете/редовете не слизат под това
   if (G.selStock) {
-    // МАРКИРАНА СТОКА: инфо + бутон „Buy" (за да няма случайна покупка)
+    // МАРКИРАНА СТОКА: инфо + бутон „Buy" (покупка само след потвърждение)
     const e = G.selStock;
     const nm = e.potion ? (POTIONS[e.potion].n + ' (unlock)') : (e.item ? e.item.name : 'item');
     const nmCol = e.potion ? POTIONS[e.potion].col : (e.item ? Items.rarityCol(e.item) : '#e8e4d0');
-    ctx.textAlign = 'left'; ctx.font = fontPx(6.5); ctx.fillStyle = nmCol;
-    ctx.fillText(String(nm).slice(0, 24), gx0, ay); ay += 9 * S;
-    ctx.font = fontPx(5.5); ctx.fillStyle = '#a8b2c4';
-    let sub = e.potion ? POTIONS[e.potion].d
-      : e.item ? (e.item.dmg ? e.item.dmg + ' damage' : e.item.armor ? e.item.armor + ' armor' : RARITY[e.item.rarity].n)
-        + (e.item.affixes && e.item.affixes.length ? ' · +' + e.item.affixes.length + ' properties' : '') : '';
-    wrapText(sub, gx0, ay, rw, 7 * S); ay += (sub.length > 26 ? 16 : 8) * S;
-    const can = p.gold >= e.price, bh = 17 * S;
-    rcx(gx0, ay, rw, bh, can ? 'rgba(40,72,46,0.75)' : 'rgba(52,26,30,0.65)');
-    strokeRect(gx0, ay, rw, bh, can ? '#7fd0a0' : '#ff6b7a', 1);
+    if (ay + 8 * S < infoMax) {
+      ctx.textAlign = 'left'; ctx.font = fontPx(6.5); ctx.fillStyle = nmCol;
+      ctx.fillText(String(nm).slice(0, 24), gx0, ay); ay += 9 * S;
+      const sub = e.potion ? POTIONS[e.potion].d
+        : e.item ? (e.item.dmg ? e.item.dmg + ' damage' : e.item.armor ? e.item.armor + ' armor' : RARITY[e.item.rarity].n)
+          + (e.item.affixes && e.item.affixes.length ? ' · +' + e.item.affixes.length + ' properties' : '') : '';
+      if (ay + 7 * S < infoMax) { ctx.font = fontPx(5.5); ctx.fillStyle = '#a8b2c4'; wrapText(sub, gx0, ay, rw, 7 * S); }
+    }
+    const can = p.gold >= e.price;
+    rcx(gx0, btnY, rw, btnH, can ? 'rgba(40,72,46,0.75)' : 'rgba(52,26,30,0.65)');
+    strokeRect(gx0, btnY, rw, btnH, can ? '#7fd0a0' : '#ff6b7a', 1);
     ctx.font = fontBold(7.5); ctx.textAlign = 'center'; ctx.fillStyle = can ? '#7fd0a0' : '#ff6b7a';
-    ctx.fillText('Buy  —  ' + e.price + ' g', gx0 + rw / 2, ay + 11.5 * S);
+    ctx.fillText('Buy  —  ' + e.price + ' g', gx0 + rw / 2, btnY + 13 * S);
     ctx.textAlign = 'left';
-    UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'buy' });
+    UI.shopActRects.push({ x: gx0, y: btnY, w: rw, h: btnH, act: 'buy' });
     if (e.item) hoverStockItem = hoverStockItem || e.item; // тултип с пълните данни (desktop hover)
   }
-  else if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'No items with affixes.' : 'Inventory is empty.', gx0, gy0 + 8 * S, rw, 8 * S); }
-  else if (!G.selItem) { ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899'; wrapText(isMystic ? 'Choose an item to upgrade an affix or enchant it.' : 'Choose an item to sell or level up.', gx0, ay + 4 * S, rw, 8 * S); }
+  else if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'No items with affixes in this tab.' : 'No items in this tab.', gx0, gy0 + 8 * S, rw, 8 * S); }
+  else if (!G.selItem) { if (ay + 8 * S < infoMax) { ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899'; wrapText(isMystic ? 'Choose an item to upgrade an affix or enchant it.' : 'Choose an item to sell or level up.', gx0, ay + 4 * S, rw, 8 * S); } }
   else {
     const sit = G.selItem;
-    ctx.textAlign = 'left'; ctx.font = fontPx(6); ctx.fillStyle = Items.rarityCol(sit);
-    ctx.fillText((sit.name || '').slice(0, 24), gx0, ay); ay += 10 * S;
+    if (ay + 8 * S < infoMax) {
+      ctx.textAlign = 'left'; ctx.font = fontPx(6); ctx.fillStyle = Items.rarityCol(sit);
+      ctx.fillText((sit.name || '').slice(0, 24), gx0, ay);
+    }
+    ay += 10 * S;
     if (isMystic) {
+      // афикс редовете — само докато се побират НАД реда с бутона (в рамката)
       sit.affixes.forEach((a, ai) => {
         const d = AFFIXES[a.k]; if (!d) return;
-        const maxed = (a.up || 0) >= 3, cost = enchantCost(a), rh = 14 * S;
+        const rh = 14 * S;
+        if (ay + rh > infoMax) return; // не излизаме от рамката
+        const maxed = (a.up || 0) >= 3, cost = enchantCost(a);
         const hov = G.mouse.x >= gx0 && G.mouse.x < gx0 + rw && G.mouse.y >= ay && G.mouse.y < ay + rh;
         rcx(gx0, ay, rw, rh, (hov && !maxed) ? 'rgba(40,90,80,0.5)' : 'rgba(20,35,32,0.6)');
         if (hov && !maxed) strokeRect(gx0, ay, rw, rh, '#57e6c8', 1);
@@ -6274,41 +6284,42 @@ function drawShop() {
         if (!maxed) UI.enchAffixRects.push({ x: gx0, y: ay, w: rw, h: rh, ai });
         ay += rh + 2 * S;
       });
-      // бутон „Омагьосай" (преправяне на всички афикси)
-      ay += 2 * S;
-      const canScr = (G.meta.shards || 0) >= 10, bh = 17 * S;
-      rcx(gx0, ay, rw, bh, 'rgba(50,30,70,0.6)');
-      strokeRect(gx0, ay, rw, bh, canScr ? '#b34fff' : '#5a677f', 1);
+      // бутон „Омагьосай" — ФИКСИРАН най-долу
+      const canScr = (G.meta.shards || 0) >= 10;
+      rcx(gx0, btnY, rw, btnH, 'rgba(50,30,70,0.6)');
+      strokeRect(gx0, btnY, rw, btnH, canScr ? '#b34fff' : '#5a677f', 1);
       ctx.font = fontBold(6); ctx.fillStyle = canScr ? '#c084ff' : '#7d8899';
-      ctx.fillText('Enchant — reroll the affixes', gx0 + 3 * S, ay + 7 * S);
+      ctx.fillText('Enchant — reroll the affixes', gx0 + 3 * S, btnY + 8 * S);
       ctx.font = fontPx(5); ctx.fillStyle = '#a8b2c4';
-      ctx.fillText('10 shards · resets upgrades', gx0 + 3 * S, ay + 14 * S);
-      UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'scramble' });
+      ctx.fillText('10 shards · resets upgrades', gx0 + 3 * S, btnY + 16 * S);
+      UI.shopActRects.push({ x: gx0, y: btnY, w: rw, h: btnH, act: 'scramble' });
     } else {
+      // Продай + Вдигни ниво — един до друг, ФИКСИРАНИ най-долу
       const inInv = p.inv.indexOf(sit) !== -1;
+      const bw2 = 62 * S;
       if (inInv) {
-        const bh = 15 * S;
-        rcx(gx0, ay, rw, bh, 'rgba(60,40,20,0.6)'); strokeRect(gx0, ay, rw, bh, '#e8c04a', 1);
-        ctx.font = fontBold(6); ctx.fillStyle = '#ffd23b';
-        ctx.fillText('Sell for ' + shopSellPrice(sit) + ' g', gx0 + 3 * S, ay + 9 * S);
-        UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'sell' });
-        ay += bh + 3 * S;
+        rcx(gx0, btnY, bw2, btnH, 'rgba(60,40,20,0.6)'); strokeRect(gx0, btnY, bw2, btnH, '#e8c04a', 1);
+        ctx.font = fontBold(6); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
+        ctx.fillText('Sell ' + shopSellPrice(sit) + ' g', gx0 + bw2 / 2, btnY + 12.5 * S);
+        ctx.textAlign = 'left';
+        UI.shopActRects.push({ x: gx0, y: btnY, w: bw2, h: btnH, act: 'sell' });
       }
       if (vendorUpgradesSlot(G.shopVendor, sit.slot)) {
         const cap = itemLevelCap(G.shopVendor);
+        const lx = gx0 + bw2 + 6 * S;
         if ((sit.lvl || 1) < cap) {
-          const cost = itemUpgradeCost(sit), nv = itemUpgradePreview(sit), can = p.gold >= cost, bh2 = 20 * S;
-          rcx(gx0, ay, rw, bh2, 'rgba(30,50,60,0.6)'); strokeRect(gx0, ay, rw, bh2, can ? '#8ab0ff' : '#5a677f', 1);
+          const cost = itemUpgradeCost(sit), nv = itemUpgradePreview(sit), can = p.gold >= cost;
+          rcx(lx, btnY, bw2, btnH, 'rgba(30,50,60,0.6)'); strokeRect(lx, btnY, bw2, btnH, can ? '#8ab0ff' : '#5a677f', 1);
           ctx.font = fontBold(6); ctx.fillStyle = can ? '#8ab0ff' : '#7d8899';
-          ctx.fillText('Level up ' + (sit.lvl || 1) + ' → ' + ((sit.lvl || 1) + 1), gx0 + 3 * S, ay + 7 * S);
+          ctx.fillText('Level ' + (sit.lvl || 1) + ' → ' + ((sit.lvl || 1) + 1), lx + 3 * S, btnY + 8 * S);
           ctx.font = fontPx(5); ctx.fillStyle = '#a8b2c4';
-          const num = nv.dmg != null ? (sit.dmg + '→' + nv.dmg + ' damage')
-            : nv.armor != null ? (sit.armor + '→' + nv.armor + ' armor')
-            : nv.aff ? (nv.aff.from + '→' + nv.aff.to + ' ' + (AFFIXES[nv.aff.k] ? AFFIXES[nv.aff.k].n : ''))
+          const num = nv.dmg != null ? (sit.dmg + '→' + nv.dmg + ' dmg')
+            : nv.armor != null ? (sit.armor + '→' + nv.armor + ' arm')
+            : nv.aff ? ((nv.aff.from + '→' + nv.aff.to + ' ' + (AFFIXES[nv.aff.k] ? AFFIXES[nv.aff.k].n : '')).slice(0, 18))
             : 'stronger';
-          ctx.fillText(num + ' · ' + cost + ' g', gx0 + 3 * S, ay + 14 * S);
-          UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh2, act: 'levelup' });
-        } else { ctx.font = fontPx(5); ctx.fillStyle = '#5a677f'; ctx.fillText('Level ' + cap + ' — upgrade the stall.', gx0 + 3 * S, ay + 6 * S); }
+          ctx.fillText(num + ' · ' + cost + ' g', lx + 3 * S, btnY + 16 * S);
+          UI.shopActRects.push({ x: lx, y: btnY, w: bw2, h: btnH, act: 'levelup' });
+        } else if (ay + 8 * S < infoMax) { ctx.font = fontPx(5); ctx.fillStyle = '#5a677f'; ctx.fillText('Level ' + cap + ' — upgrade the stall.', gx0, ay + 6 * S); }
       }
     }
   }
@@ -6319,20 +6330,41 @@ function drawShop() {
     drawTooltip(hoverSell, G.mouse.x, G.mouse.y, false);
   }
 
-  // потвърждение за необратимо действие (омагьосване)
+  // ПОТВЪРЖДЕНИЕ за всяка покупка/ъпгрейд/отключване (и омагьосването)
   if (G.shopConfirm) {
     UI.shopConfirmRects = [];
     rcx(x0, y0, pw, ph, 'rgba(4,6,11,0.82)');
-    const mw = 180 * S, mh = 84 * S, mx0 = x0 + (pw - mw) / 2, my0 = y0 + (ph - mh) / 2;
+    const mw = 190 * S, mh = 88 * S, mx0 = x0 + (pw - mw) / 2, my0 = y0 + (ph - mh) / 2;
     panel(mx0, my0, mw, mh);
+    const c = G.shopConfirm;
+    let title = 'Confirm', body = 'Are you sure?', yesTxt = 'Yes', yesCol = '#7fd0a0';
+    if (c.kind === 'buy' && c.entry) {
+      const nm = c.entry.potion ? POTIONS[c.entry.potion].n : (c.entry.item ? c.entry.item.name : 'item');
+      title = 'Confirm purchase'; body = nm + ' — ' + c.entry.price + ' gold. Buy it?'; yesTxt = 'Buy';
+    } else if (c.kind === 'stall') {
+      const lv2 = (G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1;
+      title = 'Upgrade the stall'; body = STALL_NAMES[lv2 - 1] + ' → ' + STALL_NAMES[lv2] + ' for ' + VENDOR_UP_COST[lv2] + ' gold?'; yesTxt = 'Upgrade';
+    } else if (c.kind === 'levelup' && c.item) {
+      title = 'Level up item'; body = (c.item.name || 'Item') + ': level ' + (c.item.lvl || 1) + ' → ' + ((c.item.lvl || 1) + 1) + ' for ' + itemUpgradeCost(c.item) + ' gold?'; yesTxt = 'Level up'; yesCol = '#8ab0ff';
+    } else if (c.kind === 'affix' && G.selItem && G.selItem.affixes[c.ai]) {
+      const a = G.selItem.affixes[c.ai], d = AFFIXES[a.k];
+      title = 'Upgrade affix'; body = '+' + a.v + ' ' + (d ? d.n : '') + ' → +' + Math.max(a.v + 1, Math.round(a.v * 1.15)) + ' for ' + enchantCost(a) + ' shards?'; yesTxt = 'Upgrade'; yesCol = '#57e6c8';
+    } else if (c.kind === 'potion') {
+      const up = (p.potionUp && p.potionUp[c.key]) || 0;
+      title = 'Upgrade potion'; body = POTIONS[c.key].n + ': −12% cd · +12% power for ' + potionEnchantCost(up) + ' shards?'; yesTxt = 'Upgrade'; yesCol = '#57e6c8';
+    } else if (c.kind === 'unlock' && c.unlock) {
+      title = 'Unlock'; body = c.unlock.t + (c.unlock.cost > 0 ? ' — for ' + c.unlock.cost + ' Abyss Seal' + (c.unlock.cost > 1 ? 's' : '') + '?' : ' — free. Take it?'); yesTxt = 'Take'; yesCol = '#c84fff';
+    } else {
+      title = 'Enchanting (irreversible)'; body = 'All affixes will be rerolled and upgrades reset. Are you sure?'; yesTxt = 'Enchant'; yesCol = '#c084ff';
+    }
     ctx.textAlign = 'center'; ctx.font = fontBold(7.5); ctx.fillStyle = '#e8e4d0';
-    ctx.fillText('Enchanting (irreversible)', mx0 + mw / 2, my0 + 14 * S);
+    ctx.fillText(title, mx0 + mw / 2, my0 + 14 * S);
     ctx.font = fontPx(6); ctx.fillStyle = '#a8b2c4';
-    wrapTextCentered('All affixes will be rerolled and upgrades reset. Are you sure?', mx0 + mw / 2, my0 + 26 * S, mw - 16 * S, 9 * S);
+    wrapTextCentered(body, mx0 + mw / 2, my0 + 27 * S, mw - 16 * S, 9 * S);
     const bw = 66 * S, bh = 16 * S, by = my0 + mh - 22 * S;
     const yb = { x: mx0 + mw / 2 - bw - 5 * S, y: by, w: bw, h: bh };
     const nb = { x: mx0 + mw / 2 + 5 * S, y: by, w: bw, h: bh };
-    panel(yb.x, yb.y, yb.w, yb.h); ctx.font = fontBold(7); ctx.fillStyle = '#c084ff'; ctx.fillText('Enchant', yb.x + yb.w / 2, yb.y + 11 * S);
+    panel(yb.x, yb.y, yb.w, yb.h); ctx.font = fontBold(7); ctx.fillStyle = yesCol; ctx.fillText(yesTxt, yb.x + yb.w / 2, yb.y + 11 * S);
     panel(nb.x, nb.y, nb.w, nb.h); ctx.fillStyle = '#a8b2c4'; ctx.fillText('Cancel', nb.x + nb.w / 2, nb.y + 11 * S);
     ctx.textAlign = 'left';
     UI.shopConfirmRects = [{ x: yb.x, y: yb.y, w: yb.w, h: yb.h, act: 'yes' }, { x: nb.x, y: nb.y, w: nb.w, h: nb.h, act: 'no' }];
@@ -6343,7 +6375,16 @@ function shopClick(mx, my) {
   // модалът за потвърждение е с приоритет
   if (G.shopConfirm) {
     for (const r of UI.shopConfirmRects || []) if (hit(r)) {
-      if (r.act === 'yes') enchantScramble(G.shopConfirm.item);
+      if (r.act === 'yes') {
+        const c = G.shopConfirm;
+        if (c.kind === 'buy' && c.entry) shopBuy(c.entry);
+        else if (c.kind === 'stall') shopBuy({ upgrade: G.shopVendor });
+        else if (c.kind === 'levelup' && c.item) upgradeItemLevel(c.item, G.shopVendor);
+        else if (c.kind === 'affix' && G.selItem) enchantAffix(G.selItem, c.ai);
+        else if (c.kind === 'potion') enchantPotion(c.key);
+        else if (c.kind === 'unlock' && c.unlock) shopBuy({ unlock: c.unlock });
+        else if (c.item) enchantScramble(c.item); // омагьосване (reroll)
+      }
       G.shopConfirm = null; return;
     }
     return;
@@ -6351,27 +6392,28 @@ function shopClick(mx, my) {
   if (hit(UI.shopCloseRect)) { closeShop(); return; }
   // филтри (раздели) над мрежата с моите предмети
   for (const r of UI.shopFilterRects || []) if (hit(r)) { G.invFilter = r.k; G.selItem = null; Sfx.play('pickup'); return; }
-  // действия върху избрания предмет (вкл. бутона „Buy")
+  // действия върху избрания предмет — покупката и ъпгрейдите минават през ПОТВЪРЖДЕНИЕ
   for (const r of UI.shopActRects || []) if (hit(r)) {
-    if (r.act === 'buy') { if (G.selStock) shopBuy(G.selStock); return; }
     const sit = G.selItem;
+    if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
     if (r.act === 'sell') { const idx = G.player.inv.indexOf(sit); if (idx !== -1) { shopSell(idx); G.selItem = null; } }
-    else if (r.act === 'levelup') upgradeItemLevel(sit, G.shopVendor);
-    else if (r.act === 'scramble') { if (sit) G.shopConfirm = { item: sit }; }
+    else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }
+    else if (r.act === 'scramble') { if (sit) G.shopConfirm = { kind: 'scramble', item: sit }; }
     return;
   }
-  // стока (ляво): тап МАРКИРА (после Buy); само надграждането на сергията е директно
+  // стока (ляво): тап МАРКИРА; сергията и отключванията — с потвърждение
   const inList = UI.shopListRect && mx >= UI.shopListRect.x && mx < UI.shopListRect.x + UI.shopListRect.w && my >= UI.shopListRect.y && my < UI.shopListRect.y + UI.shopListRect.h;
   if (inList || !UI.shopListRect) {
     for (const r of UI.shopRects) if (hit(r)) {
-      if (r.entry.upgrade) { shopBuy(r.entry); }
+      if (r.entry.upgrade) G.shopConfirm = { kind: 'stall' };
+      else if (r.entry.unlock) G.shopConfirm = { kind: 'unlock', unlock: r.entry.unlock };
       else { G.selStock = r.entry; G.selItem = null; Sfx.play('pickup'); }
       return;
     }
   }
-  for (const r of UI.enchPotRects || []) if (hit(r)) { enchantPotion(r.key); return; } // вдигане на отвара (Захари)
-  // афикс редове (Захари)
-  for (const r of UI.enchAffixRects || []) if (hit(r)) { enchantAffix(G.selItem, r.ai); return; }
+  for (const r of UI.enchPotRects || []) if (hit(r)) { G.shopConfirm = { kind: 'potion', key: r.key }; return; } // ъпгрейд на отвара — с потвърждение
+  // афикс редове (Захари) — с потвърждение
+  for (const r of UI.enchAffixRects || []) if (hit(r)) { G.shopConfirm = { kind: 'affix', ai: r.ai }; return; }
   // избор на предмет от грида (моите предмети)
   for (const r of UI.shopInvRects) if (hit(r)) { G.selItem = r.item; G.selStock = null; Sfx.play('pickup'); return; }
 }
@@ -6801,6 +6843,7 @@ function menuFocusRects() {
   if (G.state === 'inventory') return [UI.invCloseRect, ...(UI.invFilterRects || []), ...(UI.equipRects || []), ...(UI.invRects || [])].filter(Boolean);
   if (G.state === 'shop') {
     if (G.shopConfirm) return (UI.shopConfirmRects || []).filter(Boolean); // модалът поглъща навигацията
+    if (G.shopConfirm) return [...(UI.shopConfirmRects || [])]; // модалът е с приоритет за контролера
     return [UI.shopCloseRect, ...(UI.shopFilterRects || []), ...(UI.shopRects || []), ...(UI.enchPotRects || []), ...(UI.shopInvRects || []), ...(UI.shopActRects || []), ...(UI.enchAffixRects || [])].filter(Boolean);
   }
   return UI.btnRects || [];
