@@ -724,11 +724,13 @@ function drawInventory() {
   const mx = G.mouse.x, my = G.mouse.y;
   const midX = ((x0 + 135 * S) + gx0) / 2;  // център на празната зона между статистиките и мрежата
   const midY = y0 + ph / 2;
+  const midSpaceW = gx0 - (x0 + 135 * S); // ширината на празната зона
   if (G.equipSel && p.equip[G.equipSel]) {
-    // избран ЕКИПИРАН предмет: статистиките му от СРЕДАТА НАГОРЕ
+    // избран ЕКИПИРАН предмет: статистиките му от СРЕДАТА НАГОРЕ, уголемени да запълнят мястото
     const it = p.equip[G.equipSel];
-    const h = (26 + Items.statLines(it).length * 9) * S;
-    tooltipPanel(it, midX - 48 * S, Math.max(y0 + 20 * S, midY - h));
+    const hArt = 26 + Items.statLines(it).length * 9;
+    const k = Math.max(S, Math.min((midSpaceW * 0.94) / 96, (ph / 2 - 8 * S) / hArt));
+    tooltipPanel(it, midX - 48 * k, Math.max(y0 + 16 * S, midY - hArt * k), null, null, k);
   } else if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
     // сравнение: носеният от СРЕДАТА НАГОРЕ, НОВИЯТ от СРЕДАТА НАДОЛУ
     const it = p.inv[G.invSel];
@@ -744,11 +746,12 @@ function drawInventory() {
       const d = it.armor - cur.armor;
       if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' armor vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
     }
-    if (cur) {
-      const hC = (26 + 9 + Items.statLines(cur).length * 9) * S;
-      tooltipPanel(cur, midX - 48 * S, Math.max(y0 + 20 * S, midY - 2 * S - hC), 'EQUIPPED');
-    }
-    tooltipPanel(it, midX - 48 * S, midY + 2 * S, cur ? 'NEW' : null, cmp);
+    // уголемени панели, запълващи празната зона (общ мащаб за двата, EQUIP реда долу остава чист)
+    const hCArt = cur ? 26 + 9 + Items.statLines(cur).length * 9 : 1;
+    const hNArt = 26 + (cur ? 9 : 0) + Items.statLines(it).length * 9 + cmp.length * 9;
+    const k = Math.max(S, Math.min((midSpaceW * 0.94) / 96, (ph / 2 - 6 * S) / hCArt, (ph / 2 - 26 * S) / hNArt));
+    if (cur) tooltipPanel(cur, midX - 48 * k, Math.max(y0 + 14 * S, midY - 2 * S - hCArt * k), 'EQUIPPED', null, k);
+    tooltipPanel(it, midX - 48 * k, midY + 2 * S, cur ? 'NEW' : null, cmp, k);
   } else {
     for (const r of [...UI.invRects, ...UI.equipRects]) {
       if (!r.item) continue;
@@ -805,8 +808,10 @@ function wrapText(str, x, y, maxW, lineH) {
 }
 
 // един панел с данни за предмет; връща размерите си
-function tooltipPanel(it, x, y, header, extraLines) {
-  const S = SCALE;
+function tooltipPanel(it, x, y, header, extraLines, S2) {
+  const S = S2 || SCALE; // S2: по-едър мащаб за панелите в празната зона на инвентара
+  const fB = n => 'bold ' + (n * S) + 'px "Segoe UI", Verdana, sans-serif';
+  const fN = n => (n * S) + 'px "Segoe UI", Verdana, sans-serif';
   const lines = Items.statLines(it);
   const extra = extraLines || [];
   const w = 96 * S;
@@ -815,20 +820,20 @@ function tooltipPanel(it, x, y, header, extraLines) {
   ctx.textAlign = 'left';
   let ly = y + 11 * S;
   if (header) {
-    ctx.font = fontBold(6);
+    ctx.font = fB(6);
     ctx.fillStyle = header === 'NEW' ? '#7fd0a0' : '#a8b2c4';
     ctx.fillText(header, x + 6 * S, ly);
     ly += 9 * S;
   }
-  ctx.font = fontBold(7);
+  ctx.font = fB(7);
   ctx.fillStyle = Items.rarityCol(it);
   ctx.fillText(it.name, x + 6 * S, ly);
   ly += 8 * S;
-  ctx.font = fontPx(5.5);
+  ctx.font = fN(5.5);
   ctx.fillStyle = it.uid ? '#ff7a1f' : '#7d8899';
   ctx.fillText((it.lvl ? 'Level ' + it.lvl + ' · ' : '') + (it.uid ? 'UNIQUE' : RARITY[it.rarity].n) + ' · ' + (SLOT_NAMES[it.slot] || ''), x + 6 * S, ly);
   ly += 10 * S;
-  ctx.font = fontPx(6);
+  ctx.font = fN(6);
   for (const L of lines) { ctx.fillStyle = L.c; ctx.fillText(L.s, x + 6 * S, ly); ly += 9 * S; }
   for (const L of extra) { ctx.fillStyle = L.c; ctx.fillText(L.s, x + 6 * S, ly); ly += 9 * S; }
   return { w, h };
