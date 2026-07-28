@@ -1066,6 +1066,9 @@ function doInteract() {
 
 // ---------- магазин ----------
 function openShop(vtype) {
+  // ДНЕВНА стока: при нов ден (на всеки 24 часа) всичко се сменя
+  const day = Math.floor(Date.now() / 86400000);
+  if (G.shopsDay !== day) { G.shops = {}; G.shopsDay = day; }
   if (!G.shops[vtype]) G.shops[vtype] = genShopStock(vtype);
   G.shopVendor = vtype;
   G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт

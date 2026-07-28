@@ -131,8 +131,25 @@ function shopItemPrice(it) {
 function shopSellPrice(it) { return Math.max(3, Math.round(shopItemPrice(it) * 0.35)); }
 function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } // еднократна цена за отключване
 
+// детерминистичен RNG за ДНЕВНАТА стока: същият ден + същото ниво на сергията -> същата стока;
+// на всеки 24 часа (нов ден) стоката е различна на случаен принцип
+function dailyShopRng(vtype) {
+  const day = Math.floor(Date.now() / 86400000);
+  const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
+  const str = vtype + ':' + day + ':' + lvl;
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return function () {
+    h += 0x6D2B79F5; let r = Math.imul(h ^ (h >>> 15), 1 | h);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
 // стоката зависи от нивото на сергията: повече, по-редки и по-дълбоки предмети
 function genShopStock(vtype) {
+  const _mr = Math.random;
+  Math.random = dailyShopRng(vtype); // дневна стока: rnd/chance/Items.gen стават детерминистични за деня
+  try {
   const def = VENDOR_DEFS[vtype];
   if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
@@ -167,4 +184,5 @@ function genShopStock(vtype) {
   }
   items.sort((a, b) => (a.potion ? -1 : b.potion ? 1 : a.price - b.price));
   return items;
+  } finally { Math.random = _mr; } // връщаме истинския RNG
 }
