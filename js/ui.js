@@ -561,7 +561,15 @@ function drawInventory() {
   ctx.textAlign = 'left';
   UI.invCloseRect = cxr;
 
-  // екипировка (6 слота: оръжие, броня, 2 пръстена, амулет, Камък на живота)
+  // екипировка (6 слота) + компактни статистики ДО съответния слот (етикет отгоре, число отдолу)
+  const st0 = p.st;
+  const statRows = {
+    weapon: [ ['DMG', Math.round(st0.dmg)], ['CRIT', Math.round(st0.crit) + '%'], ['ATK/S', (1 / st0.atkCd).toFixed(2)] ],
+    armor:  [ ['ARMOR', st0.armor], ['LIFE', st0.maxhp] ],
+    ring:   [ ['STEAL', st0.vamp + '%'] ],
+    ring2:  [ ['SPEED', Math.round(st0.spd * 10) / 10] ],
+    amulet: [ ['MANA', st0.maxmp] ],
+  };
   let ey = y0 + 24 * S;
   const slotW = 24 * S;
   for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet', 'soulstone']) {
@@ -576,33 +584,18 @@ function drawInventory() {
     ctx.font = fontPx(5.5);
     ctx.fillStyle = '#7d8899';
     ctx.fillText(SLOT_NAMES[slot], x0 + 10 * S, ey + slotW + 6 * S);
-    ey += 32 * S;
-  }
-
-  // основните статистики — колона ДО екипираните предмети (пълният списък е в STATS)
-  {
-    const st = p.st;
-    const lines = [
-      ['Damage', Math.round(st.dmg)],
-      ['Attacks/sec', (1 / st.atkCd).toFixed(2)],
-      ['Armor', st.armor + ' (' + Math.round(100 * st.armor / (st.armor + 50)) + '%)'],
-      ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
-      ['Life Steal', st.vamp + '%'],
-      ['Speed', Math.round(st.spd * 10) / 10],
-      ['Max Life', st.maxhp],
-      ['Max Mana', st.maxmp],
-    ];
-    let ly = y0 + 30 * S;
-    ctx.font = fontPx(6.5);
-    for (const [k, v] of lines) {
+    // мини-статистики до слота: 2 тесни колонки (x +42 и +82), етикет отгоре / число отдолу
+    const pairs = statRows[slot] || [];
+    pairs.forEach((pr, pi) => {
+      const lx = x0 + (42 + (pi % 2) * 40) * S, lyy = ey + ((pi / 2) | 0) * 16 * S;
+      ctx.font = fontPx(4.5);
       ctx.fillStyle = '#7d8899';
-      ctx.fillText(k, x0 + 52 * S, ly);
+      ctx.fillText(pr[0], lx, lyy + 5 * S);
+      ctx.font = fontBold(6.5);
       ctx.fillStyle = '#e8e4d0';
-      ctx.textAlign = 'right';
-      ctx.fillText(String(v), x0 + 128 * S, ly);
-      ctx.textAlign = 'left';
-      ly += 11 * S;
-    }
+      ctx.fillText(String(pr[1]), lx, lyy + 13 * S);
+    });
+    ey += 32 * S;
   }
 
   // === ДЯСНА КОЛОНА: филтри -> мрежа с предмети -> магии -> перкове; бутоните са най-долу ===
