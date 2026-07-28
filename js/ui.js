@@ -724,14 +724,22 @@ function drawInventory() {
   const mx = G.mouse.x, my = G.mouse.y;
   const midX = ((x0 + 135 * S) + gx0) / 2;  // център на празната зона между статистиките и мрежата
   const midY = y0 + ph / 2;
-  const zx = x0 + 139 * S;                 // ляв ръб на празната зона
-  const zw = gx0 - 4 * S - zx;             // пълната ѝ ширина (панелите се разпъват от ляво до дясно)
+  // ФИКСИРАНА геометрия: празната зона (между колоната със статистики и мрежата) се дели на
+  // ДВЕ РАВНИ ПОЛОВИНИ. ГОРНАТА е за екипирания предмет, ДОЛНАТА — за предмета от инвентара.
+  // И двата прозореца ВИНАГИ са с размера на половината си (цяла ширина + цяла височина).
+  const zx = x0 + 139 * S;                  // ляв ръб на зоната
+  const zw = gx0 - 4 * S - zx;              // пълна ширина
+  const zTop = y0 + 16 * S;                 // под заглавието
+  const zBot = y0 + ph - 24 * S;            // над реда с EQUIP/DROP
+  const zMid = (zTop + zBot) / 2;
+  const topH = zMid - 2 * S - zTop;         // височина на горната половина
+  const botH = zBot - (zMid + 2 * S);       // височина на долната половина
   if (G.equipSel && p.equip[G.equipSel]) {
-    // избран ЕКИПИРАН предмет: статистиките му от СРЕДАТА НАГОРЕ, разпънати на цялата зона
+    // избран ЕКИПИРАН предмет -> ГОРНАТА половина, изцяло запълнена
     const it = p.equip[G.equipSel];
     const hArt = 26 + Items.statLines(it).length * 9;
-    const k = Math.max(S, (ph / 2 - 8 * S) / hArt);
-    tooltipPanel(it, zx, Math.max(y0 + 16 * S, midY - hArt * k), null, null, k, zw);
+    const k = Math.min(zw / 96, topH / hArt);
+    tooltipPanel(it, zx, zTop, null, null, k, zw, topH);
   } else if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
     // сравнение: носеният от СРЕДАТА НАГОРЕ, НОВИЯТ от СРЕДАТА НАДОЛУ
     const it = p.inv[G.invSel];
@@ -747,12 +755,15 @@ function drawInventory() {
       const d = it.armor - cur.armor;
       if (d) cmp.push({ s: (d > 0 ? '+' : '') + d + ' armor vs equipped', c: d > 0 ? '#7fd0a0' : '#ff6b7a' });
     }
-    // уголемени панели на ЦЯЛАТА ширина на зоната (общ мащаб за двата, EQUIP реда долу остава чист)
-    const hCArt = cur ? 26 + 9 + Items.statLines(cur).length * 9 : 1;
+    // предмет от ИНВЕНТАРА -> ДОЛНАТА половина; носеният срещу него -> ГОРНАТА. И двете изцяло запълнени.
+    if (cur) {
+      const hCArt = 26 + 9 + Items.statLines(cur).length * 9;
+      const kC = Math.min(zw / 96, topH / hCArt);
+      tooltipPanel(cur, zx, zTop, 'EQUIPPED', null, kC, zw, topH);
+    }
     const hNArt = 26 + (cur ? 9 : 0) + Items.statLines(it).length * 9 + cmp.length * 9;
-    const k = Math.max(S, Math.min((ph / 2 - 6 * S) / hCArt, (ph / 2 - 26 * S) / hNArt));
-    if (cur) tooltipPanel(cur, zx, Math.max(y0 + 14 * S, midY - 2 * S - hCArt * k), 'EQUIPPED', null, k, zw);
-    tooltipPanel(it, zx, midY + 2 * S, cur ? 'NEW' : null, cmp, k, zw);
+    const kN = Math.min(zw / 96, botH / hNArt);
+    tooltipPanel(it, zx, zMid + 2 * S, cur ? 'NEW' : null, cmp, kN, zw, botH);
   } else {
     for (const r of [...UI.invRects, ...UI.equipRects]) {
       if (!r.item) continue;
@@ -809,14 +820,14 @@ function wrapText(str, x, y, maxW, lineH) {
 }
 
 // един панел с данни за предмет; връща размерите си
-function tooltipPanel(it, x, y, header, extraLines, S2, W2) {
+function tooltipPanel(it, x, y, header, extraLines, S2, W2, H2) {
   const S = S2 || SCALE; // S2: по-едър мащаб за панелите в празната зона на инвентара
   const fB = n => 'bold ' + (n * S) + 'px "Segoe UI", Verdana, sans-serif';
   const fN = n => (n * S) + 'px "Segoe UI", Verdana, sans-serif';
   const lines = Items.statLines(it);
   const extra = extraLines || [];
   const w = W2 || 96 * S; // W2: изрична ширина (панелът се разпъва от ляво до дясно)
-  const h = (26 + (header ? 9 : 0) + lines.length * 9 + extra.length * 9) * S;
+  const h = H2 || (26 + (header ? 9 : 0) + lines.length * 9 + extra.length * 9) * S; // H2: фиксирана височина (цялата половина)
   panel(x, y, w, h);
   ctx.textAlign = 'left';
   let ly = y + 11 * S;
