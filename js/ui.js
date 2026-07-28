@@ -1304,15 +1304,16 @@ function drawShop() {
       const cur = inInv ? counterpart(sit) : null;
       if (cur) half(cur, zTop, topH, 'EQUIPPED');
       half(sit, zMid + 2 * S, botH, cur ? 'NEW' : null, null);
-      const bw2 = 66 * S;
+      // по-малки бутони БЕЗ цени — цените се виждат в прозореца за потвърждение
+      const sw2 = 40 * S, lw2 = 56 * S;
       const canLvl = vendorUpgradesSlot(G.shopVendor, sit.slot);
-      let bx2 = midX - (inInv && canLvl ? bw2 + 3 * S : bw2 / 2);
-      if (inInv) { actBtn('Sell ' + shopSellPrice(sit) + ' g', bx2, bw2, 'sell', '#ffd23b'); bx2 += bw2 + 6 * S; }
+      let bx2 = midX - (inInv && canLvl ? (sw2 + lw2 + 6 * S) / 2 : (inInv ? sw2 / 2 : lw2 / 2));
+      if (inInv) { actBtn('Sell', bx2, sw2, 'sell', '#ffd23b'); bx2 += sw2 + 6 * S; }
       if (canLvl) {
         const cap = itemLevelCap(G.shopVendor);
         if ((sit.lvl || 1) < cap) {
-          const cost = itemUpgradeCost(sit), can = p.gold >= cost;
-          actBtn('Level ' + (sit.lvl || 1) + '→' + ((sit.lvl || 1) + 1) + ' · ' + cost + ' g', bx2, bw2 + 18 * S, 'levelup', can ? '#8ab0ff' : '#5a677f');
+          const can = p.gold >= itemUpgradeCost(sit);
+          actBtn('Level up', bx2, lw2, 'levelup', can ? '#8ab0ff' : '#5a677f');
         } else {
           ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
           ctx.fillText('Level ' + cap + ' — upgrade the stall', midX, btnY + 12 * S);
@@ -1341,6 +1342,8 @@ function drawShop() {
     } else if (c.kind === 'stall') {
       const lv2 = (G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1;
       title = 'Upgrade the stall'; body = STALL_NAMES[lv2 - 1] + ' → ' + STALL_NAMES[lv2] + ' for ' + VENDOR_UP_COST[lv2] + ' gold?'; yesTxt = 'Upgrade';
+    } else if (c.kind === 'sell' && c.item) {
+      title = 'Sell item'; body = (c.item.name || 'Item') + ' — sell for ' + shopSellPrice(c.item) + ' gold?'; yesTxt = 'Sell'; yesCol = '#ffd23b';
     } else if (c.kind === 'levelup' && c.item) {
       title = 'Level up item'; body = (c.item.name || 'Item') + ': level ' + (c.item.lvl || 1) + ' → ' + ((c.item.lvl || 1) + 1) + ' for ' + itemUpgradeCost(c.item) + ' gold?'; yesTxt = 'Level up'; yesCol = '#8ab0ff';
     } else if (c.kind === 'affix' && G.selItem && G.selItem.affixes[c.ai]) {
@@ -1376,6 +1379,7 @@ function shopClick(mx, my) {
         const c = G.shopConfirm;
         if (c.kind === 'buy' && c.entry) shopBuy(c.entry);
         else if (c.kind === 'stall') shopBuy({ upgrade: G.shopVendor });
+        else if (c.kind === 'sell' && c.item) { const idx = G.player.inv.indexOf(c.item); if (idx !== -1) { shopSell(idx); G.selItem = null; } }
         else if (c.kind === 'levelup' && c.item) upgradeItemLevel(c.item, G.shopVendor);
         else if (c.kind === 'affix' && G.selItem) enchantAffix(G.selItem, c.ai);
         else if (c.kind === 'potion') enchantPotion(c.key);
@@ -1393,7 +1397,7 @@ function shopClick(mx, my) {
   for (const r of UI.shopActRects || []) if (hit(r)) {
     const sit = G.selItem;
     if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
-    if (r.act === 'sell') { const idx = G.player.inv.indexOf(sit); if (idx !== -1) { shopSell(idx); G.selItem = null; } }
+    if (r.act === 'sell') { if (sit) G.shopConfirm = { kind: 'sell', item: sit }; } // цената се вижда в потвърждението
     else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }
     else if (r.act === 'scramble') { if (sit) G.shopConfirm = { kind: 'scramble', item: sit }; }
     return;
