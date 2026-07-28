@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 12:30 UTC";
+window.__BUILD__ = "2026-07-28 12:50 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5589,6 +5589,9 @@ function drawInventory() {
       ['STEAL', st.vamp + '%'],
       ['SPEED', Math.round(st.spd * 10) / 10],
       ['MANA', st.maxmp],
+      ['SPELL', '+' + Math.round(((st.spellMult || 1) - 1) * 100) + '%'], // общо вдигната магическа щета
+      ['HP/S', Math.round((st.hpRegen || 0) * 10) / 10],                  // регенерация живот
+      ['MP/S', Math.round((st.mpRegen || 0) * 10) / 10],                  // регенерация мана
     ];
     let ly = y0 + 26 * S;
     for (const [k, v] of statCol) {

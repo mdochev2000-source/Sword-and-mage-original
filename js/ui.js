@@ -591,6 +591,9 @@ function drawInventory() {
       ['STEAL', st.vamp + '%'],
       ['SPEED', Math.round(st.spd * 10) / 10],
       ['MANA', st.maxmp],
+      ['SPELL', '+' + Math.round(((st.spellMult || 1) - 1) * 100) + '%'], // общо вдигната магическа щета
+      ['HP/S', Math.round((st.hpRegen || 0) * 10) / 10],                  // регенерация живот
+      ['MP/S', Math.round((st.mpRegen || 0) * 10) / 10],                  // регенерация мана
     ];
     let ly = y0 + 26 * S;
     for (const [k, v] of statCol) {
