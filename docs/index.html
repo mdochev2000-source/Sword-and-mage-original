@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 10:12 UTC";
+window.__BUILD__ = "2026-07-28 10:44 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5056,6 +5056,11 @@ function drawPotionGlyph(cx, cy, col, sc) {
   ctx.fillStyle = col; ctx.fillRect(cx - 4 * S, cy - 4 * S, 8 * S, 8 * S);         // тяло
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(cx - 3 * S, cy - 3 * S, 2 * S, 5 * S);
 }
+// отместване на долния HUD (хотбар+орбове+XP) НАДОЛУ с 40px, клампнато да не излиза от екрана
+// (най-ниската точка са орбовете: дъно на CH - 13*S преди отместването -> пазим 2px ръб)
+function hudBottomShift() {
+  return Math.max(0, Math.min(40, 13 * SCALE - 2));
+}
 // дефиниция за слот в хотбара според носената отвара
 function potionSlot(slot) {
   const p = G.player;
@@ -5145,11 +5150,12 @@ function drawHUD() {
   const S = SCALE;
   UI.hotRects = [];
 
-  // орбове + хотбар долу в средата
+  // орбове + хотбар долу в средата — свалени с 40px надолу (клампнато да не излизат от екрана)
+  const shift = hudBottomShift();
   const barW = 200 * S, barH = 34 * S;
-  const bx = (CW - barW) / 2, by = CH - barH - 6 * S;
-  // орбовете за кръв/мана — 2x по-големи (радиус 16 -> 32), изнесени встрани от хотбара
-  const orbR = 24, orbCy = CH - 38 * S; // 1.5x от оригинала (беше 2x=32); намалени със 0.5
+  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift;
+  // орбовете за кръв/мана — 1.5x от оригинала (радиус 24), изнесени встрани от хотбара
+  const orbR = 24, orbCy = CH - 38 * S + shift;
   const hpCx = bx - 28 * S, mpCx = bx + barW + 28 * S;
   drawOrb(hpCx, orbCy, orbR, p.hp / p.st.maxhp, 'hp');
   drawOrb(mpCx, orbCy, orbR, p.mp / p.st.maxmp, 'mp');
@@ -5512,10 +5518,11 @@ function invWindowGeom() {
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
-  const ph = Math.min(CH - 47 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
+  const xpY = CH - 42 * SCALE + hudBottomShift(); // XP лентата (следва сваления надолу HUD)
+  const ph = Math.min(xpY - 5 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
-  // долният ръб е съвсем малко над жълтата XP лента (тя е на CH - 42*SCALE)
-  const y0 = Math.max(8, CH - 42 * SCALE - 5 * SCALE - ph);
+  // долният ръб е съвсем малко над жълтата XP лента
+  const y0 = Math.max(8, xpY - 5 * SCALE - ph);
   return { x0, y0, pw, ph, cols, invRows, gridW, BORDER };
 }
 function drawInventory() {
