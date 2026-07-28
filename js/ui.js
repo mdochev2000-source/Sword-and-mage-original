@@ -508,13 +508,23 @@ function drawMinimap() {
 
 // ---------- инвентар ----------
 const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', ring: 'Ring', ring2: 'Ring 2', amulet: 'Amulet', soulstone: 'Soul Stone', spell: 'Spell Tome', spell1: 'Spell', spell2: 'Spell', spell3: 'Spell' };
+// раздели (филтри) за предметите — в инвентара и в магазина
+const INV_FILTERS = [ { k: 'weapon', t: 'WEAPONS' }, { k: 'armor', t: 'ARMOR' }, { k: 'magic', t: 'MAGIC' } ];
+function itemFilterCat(it) {
+  if (!it) return 'magic';
+  if (it.slot === 'weapon') return 'weapon';
+  if (it.slot === 'armor') return 'armor';
+  return 'magic'; // пръстени, амулети, томове, Камък на живота и т.н.
+}
 // геометрия на прозореца за инвентара — споделена, за да подравняваме миникартата към нея
 function invWindowGeom() {
   const MID = 135, CELL = 28, BORDER = 6, cols = 5; // art px: лявата/средна част, клетка 26+2, тънка дясна рамка
   const invRows = Math.ceil(G.meta.invSlots / cols);
   const gridW = cols * 26 + (cols - 1) * 2;                              // реалната ширина на мрежата (art px)
   const equipColA = 24 + 6 * 32 + 4;                                     // 6 екип-слота (вкл. Камъка на живота) + етикети
-  const phA = Math.max(equipColA, 34 + invRows * CELL) + (G.isTouch ? 20 : 0); // височина в art-единици
+  // дясна колона: филтри(16) + мрежа + магии(30) + перкове(34) + ред бутони(24) под тях
+  const rightColA = 40 + invRows * CELL + 30 + 34 + 24;
+  const phA = Math.max(equipColA, rightColA) + (G.isTouch ? 4 : 0);      // височина в art-единици
   // ПРОЗОРЕЦЪТ остава голям, но СЪДЪРЖАНИЕТО е с нормален размер; долният HUD (~42*SCALE) не се застъпва
   const reserve = 50 * SCALE;
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
@@ -569,72 +579,38 @@ function drawInventory() {
     ey += 32 * S;
   }
 
-  // (статистиките вече са в отделния панел „Statistics" — бутон долу — за да не заемат място тук)
-  // активни магии (от Книгата) — клик отваря Книгата
-  let ly = y0 + 44 * S;
-  ctx.font = fontPx(6.5);
-  ctx.fillStyle = '#7d8899';
-  ctx.fillText('Spells:', x0 + 52 * S, ly);
-  const spw = 16 * S;
-  for (let si = 0; si < 3; si++) {
-    const rx = x0 + 76 * S + si * (spw + 3 * S), ry2 = ly - 11 * S;
-    const unlocked = si === 0 || (si === 1 ? G.meta.magic3 : G.meta.magic4);
-    panel(rx, ry2, spw, spw);
-    const id = p.activeSpells && p.activeSpells[si];
-    if (!unlocked) {
-      rcx(rx + 2 * S, ry2 + 2 * S, spw - 4 * S, spw - 4 * S, 'rgba(8,10,16,0.55)');
-      rcx(rx + spw / 2 - 2 * S, ry2 + spw / 2 - S, 4 * S, 3 * S, '#454e63');
-    } else if (id) {
-      const sp = SPELLS[id];
-      ctx.fillStyle = sp.col;
-      ctx.beginPath();
-      ctx.moveTo(rx + spw / 2, ry2 + 3 * S); ctx.lineTo(rx + spw - 3 * S, ry2 + spw / 2);
-      ctx.lineTo(rx + spw / 2, ry2 + spw - 3 * S); ctx.lineTo(rx + 3 * S, ry2 + spw / 2);
-      ctx.closePath(); ctx.fill();
-    }
-    UI.invRects.push({ x: rx, y: ry2, w: spw, h: spw, openBook: true });
+  // === ДЯСНА КОЛОНА: филтри -> мрежа с предмети -> магии -> перкове; бутоните са най-долу ===
+  const gx0 = x0 + pw - (gridW + BORDER) * S; // долепена ВДЯСНО + тънка рамка
+  const filt = G.invFilter || 'weapon';
+  // 3 филтъра (раздели) НАД полето с предмети
+  UI.invFilterRects = [];
+  {
+    const fw = 44 * S, fh = 12 * S, fy = y0 + 24 * S;
+    ctx.font = fontBold(5.5);
+    ctx.textAlign = 'center';
+    INV_FILTERS.forEach((f, fi) => {
+      const fx = gx0 + fi * (fw + 3 * S);
+      const on = filt === f.k;
+      rcx(fx, fy, fw, fh, on ? 'rgba(70,92,120,0.85)' : 'rgba(20,25,38,0.7)');
+      strokeRect(fx, fy, fw, fh, on ? '#ffd23b' : '#3a4456', 1);
+      ctx.fillStyle = on ? '#ffd23b' : '#7d8899';
+      ctx.fillText(f.t, fx + fw / 2, fy + 8.5 * S);
+      UI.invFilterRects.push({ x: fx, y: fy, w: fw, h: fh, k: f.k });
+    });
+    ctx.textAlign = 'left';
   }
-  ly += 18 * S; // отстояние, за да не се застъпват гнездата с бутоните
-  // бутони: Статистики, Книга с магии, Дърво с умения
-  const bkw = 76 * S, bkh = 13 * S;
-  panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
-  ctx.fillStyle = '#8ab0ff';
-  ctx.font = fontBold(6.5);
-  ctx.fillText('STATISTICS', x0 + 56 * S, ly + 1 * S);
-  UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openStats: true });
-  ly += 15 * S;
-  panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
-  ctx.fillStyle = '#8ab0ff';
-  ctx.fillText('SPELLBOOK (B)', x0 + 56 * S, ly + 1 * S);
-  UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openBook: true });
-  ly += 15 * S;
-  panel(x0 + 52 * S, ly - 8 * S, bkw, bkh);
-  ctx.fillStyle = (p.skillPoints || 0) > 0 ? '#ffd23b' : '#7fd0a0';
-  ctx.fillText('SKILLS (' + (p.skillPoints || 0) + ' pts) (T)', x0 + 56 * S, ly + 1 * S);
-  UI.invRects.push({ x: x0 + 52 * S, y: ly - 8 * S, w: bkw, h: bkh, openTree: true });
-  ly += 15 * S;
-  // дарбите от вдигане на ниво
-  ctx.font = fontPx(6.5);
-  ctx.fillStyle = '#7d8899';
-  ctx.fillText('Perks (from level-ups):', x0 + 52 * S, ly);
-  ly += 9 * S;
-  ctx.fillStyle = '#7fd0a0';
-  const perkStr = Object.keys(p.perks).map(id => {
-    const perk = PERKS.find(pp => pp.id === id);
-    return (perk ? perk.n : id) + (p.perks[id] > 1 ? ' x' + p.perks[id] : '');
-  }).join(', ') || 'none yet — level up';
-  wrapText(perkStr, x0 + 52 * S, ly, 80 * S, 8 * S);
-
-  // мрежа с предмети (капацитетът расте при Мистика)
-  const gx0 = x0 + pw - (gridW + BORDER) * S, gy0 = y0 + 24 * S; // мрежата долепена ВДЯСНО + тънка рамка
+  // мрежа с предмети — слязла малко надолу; показва само предметите от избрания раздел
+  const gy0 = y0 + 40 * S;
   const rows2 = invRows, cw2 = 26 * S, gp = 2 * S;
+  const shown = []; // реалните индекси в p.inv от този раздел
+  for (let i = 0; i < p.inv.length; i++) if (itemFilterCat(p.inv[i]) === filt) shown.push(i);
   for (let r = 0; r < rows2; r++) for (let c = 0; c < cols; c++) {
     if (r * cols + c >= G.meta.invSlots) break;
-    const i = r * cols + c;
+    const j = r * cols + c;
     const rx = gx0 + c * (cw2 + gp), ry = gy0 + r * (cw2 + gp);
     panel(rx, ry, cw2, cw2);
-    const it = p.inv[i];
-    if (it) {
+    if (j < shown.length) {
+      const i = shown[j], it = p.inv[i];
       blit(ctx, Spr.icons[it.icon], rx + cw2 / 2 - 6 * S, ry + cw2 / 2 - 6 * S);
       strokeRect(rx, ry, cw2, cw2, Items.rarityCol(it), S);
       if (G.invSel === i) strokeRect(rx - S, ry - S, cw2 + 2 * S, cw2 + 2 * S, '#ffd23b', S); // избран за сравнение
@@ -647,6 +623,73 @@ function drawInventory() {
       }
       UI.invRects.push({ x: rx, y: ry, w: cw2, h: cw2, item: it, idx: i });
     }
+  }
+
+  // магии ПОД полето с предмети: 5 слота с размера на предметните клетки (3 активни + 2 за в бъдеще)
+  const spellY = gy0 + rows2 * (cw2 + gp) + 4 * S;
+  for (let si = 0; si < 5; si++) {
+    const rx = gx0 + si * (cw2 + gp);
+    panel(rx, spellY, cw2, cw2);
+    if (si < 3) {
+      const unlocked = si === 0 || (si === 1 ? G.meta.magic3 : G.meta.magic4);
+      const id = p.activeSpells && p.activeSpells[si];
+      if (!unlocked) {
+        rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(8,10,16,0.55)');
+        rcx(rx + cw2 / 2 - 3 * S, spellY + cw2 / 2 - 2 * S, 6 * S, 4 * S, '#454e63'); // катинарче
+      } else if (id) {
+        const sp = SPELLS[id];
+        ctx.fillStyle = sp.col;
+        ctx.beginPath();
+        ctx.moveTo(rx + cw2 / 2, spellY + 5 * S); ctx.lineTo(rx + cw2 - 5 * S, spellY + cw2 / 2);
+        ctx.lineTo(rx + cw2 / 2, spellY + cw2 - 5 * S); ctx.lineTo(rx + 5 * S, spellY + cw2 / 2);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - 4 * S, S, 3 * S);
+      }
+      UI.invRects.push({ x: rx, y: spellY, w: cw2, h: cw2, openBook: true });
+    } else {
+      // празни гнезда за бъдещи магии (без функция за сега)
+      rcx(rx + 2 * S, spellY + 2 * S, cw2 - 4 * S, cw2 - 4 * S, 'rgba(12,15,24,0.6)');
+      ctx.fillStyle = '#2c3444';
+      ctx.fillRect(rx + cw2 / 2 - S, spellY + cw2 / 2 - S, 2 * S, 2 * S);
+    }
+  }
+
+  // перкове ПОД магиите
+  let py = spellY + cw2 + 10 * S;
+  ctx.font = fontPx(6);
+  ctx.fillStyle = '#7d8899';
+  ctx.fillText('Perks (from level-ups):', gx0, py);
+  py += 8 * S;
+  ctx.fillStyle = '#7fd0a0';
+  const perkStr = Object.keys(p.perks).map(id => {
+    const perk = PERKS.find(pp => pp.id === id);
+    return (perk ? perk.n : id) + (p.perks[id] > 1 ? ' x' + p.perks[id] : '');
+  }).join(', ') || 'none yet — level up';
+  wrapText(perkStr, gx0, py, gridW * S, 8 * S);
+
+  // бутони НАЙ-ДОЛУ, един до друг: Статистики · Книга с магии · Умения
+  {
+    const bw3 = 62 * S, bh3 = 13 * S, gap3 = 4 * S;
+    const totW = bw3 * 3 + gap3 * 2;
+    const bx3 = x0 + pw - BORDER * S - totW, by3 = y0 + ph - bh3 - 5 * S;
+    ctx.font = fontBold(6);
+    ctx.textAlign = 'center';
+    const btnDefs = [
+      { t: 'STATISTICS', col: '#8ab0ff', key: 'openStats' },
+      { t: 'SPELLBOOK (B)', col: '#8ab0ff', key: 'openBook' },
+      { t: 'SKILLS (' + (p.skillPoints || 0) + ') (T)', col: (p.skillPoints || 0) > 0 ? '#ffd23b' : '#7fd0a0', key: 'openTree' },
+    ];
+    btnDefs.forEach((d, di) => {
+      const bx = bx3 + di * (bw3 + gap3);
+      panel(bx, by3, bw3, bh3);
+      ctx.fillStyle = d.col;
+      ctx.fillText(d.t, bx + bw3 / 2, by3 + 9 * S);
+      const r = { x: bx, y: by3, w: bw3, h: bh3 };
+      r[d.key] = true;
+      UI.invRects.push(r);
+    });
+    ctx.textAlign = 'left';
   }
 
   // тултип и сравнение
@@ -671,7 +714,7 @@ function drawInventory() {
   // тъч: явни бутони „екипирай / изхвърли" за избрания предмет (долу под мрежата)
   if (G.isTouch && G.invSel !== null && G.invSel !== undefined && p.inv[G.invSel]) {
     const selIt = p.inv[G.invSel];
-    const bw = 53 * S, bh = 14 * S, by = y0 + ph - bh - 4 * S;
+    const bw = 53 * S, bh = 14 * S, by = y0 + ph - bh - 22 * S; // над реда с бутоните най-долу
     const canEq = selIt.slot !== 'spell';
     const eqR = { x: gx0, y: by, w: bw, h: bh };
     panel(eqR.x, eqR.y, eqR.w, eqR.h);
@@ -803,6 +846,12 @@ function inventoryClick(mx, my) {
     document.body.classList.remove('menu');
     return;
   }
+  // филтри (раздели) над полето с предмети
+  for (const r of UI.invFilterRects || []) {
+    if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
+      G.invFilter = r.k; G.invSel = null; Sfx.play('pickup'); return;
+    }
+  }
   // тъч бутони: изхвърли / екипирай избрания предмет
   if (G.invSel != null && p.inv[G.invSel]) {
     const dr = UI.invDropRect, er = UI.invEquipRect;
@@ -890,9 +939,9 @@ function drawShop() {
   UI.enchPotRects = [];
   UI.shopListRect = null; // скрол-зоната на стоката (само при обикновените продавачи)
   const pw = 284 * S;
-  // височина: място за мрежата (до 5 реда) + зоната за действие/Buy; Мистикът е с фиксирана
+  // височина: място за филтрите + мрежата (до 5 реда) + зоната за действие/Buy; Мистикът е с фиксирана
   const gridRowsEst = Math.ceil((G.meta.invSlots + 5) / 5);
-  const ph = isMystic ? Math.min(CH - 16, 228 * S) : Math.min(CH - 16, (104 + gridRowsEst * 26) * S);
+  const ph = isMystic ? Math.min(CH - 16, 228 * S) : Math.min(CH - 16, (118 + gridRowsEst * 26) * S);
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
 
@@ -1071,15 +1120,33 @@ function drawShop() {
   UI.enchAffixRects = [];
   UI.shopActRects = [];
   let hoverSell = null;
-  const gx0 = x0 + 146 * S, gy0 = y0 + 40 * S;
+  const gx0 = x0 + 146 * S, gy0 = y0 + (isMystic ? 40 : 54) * S; // при продавачите мрежата слиза под филтрите
   const cols = 5, cw2 = 24 * S, gp = 2 * S, rw = 130 * S; // мрежата с моите предмети: 5 колони (като инвентара)
+  const invFilt = G.invFilter || 'weapon';
   const gridItems = [];
   if (isMystic) {
     for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && it.affixes && it.affixes.length) gridItems.push(it); }
     for (const it of p.inv) if (it.slot !== 'spell' && it.affixes && it.affixes.length) gridItems.push(it);
   } else {
-    for (const it of p.inv) gridItems.push(it);
-    for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && vendorUpgradesSlot(G.shopVendor, it.slot)) gridItems.push(it); }
+    // само предметите от избрания раздел (същите филтри като в инвентара)
+    for (const it of p.inv) if (itemFilterCat(it) === invFilt) gridItems.push(it);
+    for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && vendorUpgradesSlot(G.shopVendor, it.slot) && itemFilterCat(it) === invFilt) gridItems.push(it); }
+  }
+  // 3-те филтъра над мрежата (без Мистика — при него гридът е специфичен)
+  UI.shopFilterRects = [];
+  if (!isMystic) {
+    const fw = 40 * S, fh = 11 * S, fy = y0 + 39 * S;
+    ctx.textAlign = 'center'; ctx.font = fontBold(5);
+    INV_FILTERS.forEach((f, fi) => {
+      const fx = gx0 + fi * (fw + 3 * S);
+      const on = invFilt === f.k;
+      rcx(fx, fy, fw, fh, on ? 'rgba(70,92,120,0.85)' : 'rgba(20,25,38,0.7)');
+      strokeRect(fx, fy, fw, fh, on ? '#ffd23b' : '#3a4456', 1);
+      ctx.fillStyle = on ? '#ffd23b' : '#7d8899';
+      ctx.fillText(f.t, fx + fw / 2, fy + 8 * S);
+      UI.shopFilterRects.push({ x: fx, y: fy, w: fw, h: fh, k: f.k });
+    });
+    ctx.textAlign = 'left';
   }
   if (G.selItem && gridItems.indexOf(G.selItem) === -1) G.selItem = null;
   if (G.selStock && stock.indexOf(G.selStock) === -1) G.selStock = null; // маркираната стока вече не е налична
@@ -1215,6 +1282,8 @@ function shopClick(mx, my) {
     return;
   }
   if (hit(UI.shopCloseRect)) { closeShop(); return; }
+  // филтри (раздели) над мрежата с моите предмети
+  for (const r of UI.shopFilterRects || []) if (hit(r)) { G.invFilter = r.k; G.selItem = null; Sfx.play('pickup'); return; }
   // действия върху избрания предмет (вкл. бутона „Buy")
   for (const r of UI.shopActRects || []) if (hit(r)) {
     if (r.act === 'buy') { if (G.selStock) shopBuy(G.selStock); return; }
@@ -1662,10 +1731,10 @@ function padGlyph(actionId, fallback) {
 // повечето менюта ги пазят в UI.btnRects (с act()); решетките (инвентар/магазин) ползват
 // собствените си масиви, а потвърждението вика съществуващата click-функция по центъра
 function menuFocusRects() {
-  if (G.state === 'inventory') return [UI.invCloseRect, ...(UI.equipRects || []), ...(UI.invRects || [])].filter(Boolean);
+  if (G.state === 'inventory') return [UI.invCloseRect, ...(UI.invFilterRects || []), ...(UI.equipRects || []), ...(UI.invRects || [])].filter(Boolean);
   if (G.state === 'shop') {
     if (G.shopConfirm) return (UI.shopConfirmRects || []).filter(Boolean); // модалът поглъща навигацията
-    return [UI.shopCloseRect, ...(UI.shopRects || []), ...(UI.enchPotRects || []), ...(UI.shopInvRects || []), ...(UI.shopActRects || []), ...(UI.enchAffixRects || [])].filter(Boolean);
+    return [UI.shopCloseRect, ...(UI.shopFilterRects || []), ...(UI.shopRects || []), ...(UI.enchPotRects || []), ...(UI.shopInvRects || []), ...(UI.shopActRects || []), ...(UI.enchAffixRects || [])].filter(Boolean);
   }
   return UI.btnRects || [];
 }
