@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 17:46 UTC";
+window.__BUILD__ = "2026-07-28 17:55 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -6034,25 +6034,25 @@ function drawShop() {
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
-  // злато / печати / осколки — компактно едно под друго (без дупки), отместено вляво от ✕
+  // валутите — на ЕДИН РЕД: златото си стои, вляво от него осколките, после печатите
   {
-    const ixi = x0 + pw - 84 * S, ixt = x0 + pw - 70 * S;
-    let iyy = y0 + 5 * S;
     ctx.font = fontBold(8);
-    blit(ctx, Spr.icons.gold, ixi, iyy);
+    const iy = y0 + 5 * S;
+    let ix = x0 + pw - 84 * S; // златото — на познатото място
+    blit(ctx, Spr.icons.gold, ix, iy);
     ctx.fillStyle = '#ffd23b';
-    ctx.fillText(String(p.gold), ixt, iyy + 9 * S);
-    iyy += 12 * S;
-    if (isMystic || G.meta.seals > 0) {
-      blit(ctx, Spr.icons.seal, ixi, iyy);
-      ctx.fillStyle = '#c84fff';
-      ctx.fillText(String(G.meta.seals), ixt, iyy + 9 * S);
-      iyy += 12 * S;
-    }
+    ctx.fillText(String(p.gold), ix + 14 * S, iy + 9 * S);
     if (isMystic || (G.meta.shards || 0) > 0) {
-      blit(ctx, Spr.icons.shard, ixi, iyy);
+      ix -= 42 * S;
+      blit(ctx, Spr.icons.shard, ix, iy);
       ctx.fillStyle = '#57e6c8';
-      ctx.fillText(String(G.meta.shards || 0), ixt, iyy + 9 * S);
+      ctx.fillText(String(G.meta.shards || 0), ix + 14 * S, iy + 9 * S);
+    }
+    if (isMystic || G.meta.seals > 0) {
+      ix -= 42 * S;
+      blit(ctx, Spr.icons.seal, ix, iy);
+      ctx.fillStyle = '#c84fff';
+      ctx.fillText(String(G.meta.seals), ix + 14 * S, iy + 9 * S);
     }
   }
   // ✕ за затваряне (важно за тъч — там няма E/ESC)
