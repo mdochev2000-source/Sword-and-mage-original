@@ -881,10 +881,11 @@ function drawShop() {
   UI.shopRects = [];
   UI.shopInvRects = [];
   UI.enchPotRects = [];
-  const invRows = Math.ceil(G.meta.invSlots / 4);
-  const pw = 268 * S;
-  // Мистикът има раздел за омагьосване -> малко по-висок панел
-  const ph = isMystic ? Math.min(CH - 16, 228 * S) : Math.max(182, 48 + invRows * 26) * S;
+  UI.shopListRect = null; // скрол-зоната на стоката (само при обикновените продавачи)
+  const pw = 284 * S;
+  // височина: място за мрежата (до 5 реда) + зоната за действие/Buy; Мистикът е с фиксирана
+  const gridRowsEst = Math.ceil((G.meta.invSlots + 5) / 5);
+  const ph = isMystic ? Math.min(CH - 16, 228 * S) : Math.min(CH - 16, (104 + gridRowsEst * 26) * S);
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
 
@@ -983,65 +984,79 @@ function drawShop() {
       ry += rowH + 2 * S;
     }
   } else {
-  // --- стока (ляво) ---
+  // --- стока (ляво): СКРОЛВАЩ СЕ списък; тап МАРКИРА (после Buy) -> без случайна покупка ---
   ctx.font = fontBold(6.5);
   ctx.fillStyle = '#a8b2c4';
-  ctx.fillText('WARES (click — buy)', x0 + 10 * S, y0 + 35 * S);
+  ctx.fillText('WARES (tap to pick)', x0 + 10 * S, y0 + 35 * S);
+  const listTop = y0 + 40 * S, listBottom = y0 + ph - 8 * S, rowStride = rowH + 2 * S;
+  const nRows = (stock.length || 1) + (lvl < 5 ? 1 : 0);
+  const maxScroll = Math.max(0, nRows * rowStride - (listBottom - listTop));
+  G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
+  UI.shopListRect = { x: x0 + 6 * S, y: listTop, w: rowW + 8 * S, h: listBottom - listTop, maxScroll };
+  ctx.save();
+  ctx.beginPath(); ctx.rect(UI.shopListRect.x, listTop, UI.shopListRect.w, listBottom - listTop); ctx.clip();
+  ry = listTop - G.shopScroll;
   for (const entry of stock) {
-    const hov = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
-    rcx(x0 + 8 * S, ry, rowW, rowH, hov ? 'rgba(60,70,95,0.5)' : 'rgba(20,25,38,0.7)');
-    if (hov) strokeRect(x0 + 8 * S, ry, rowW, rowH, '#5a677f', 1);
-    ctx.font = fontPx(6.5);
-    if (entry.potion) {
-      const pd = POTIONS[entry.potion];
-      drawPotionGlyph(x0 + 15 * S, ry + 9 * S, pd.col);
-      ctx.fillStyle = pd.col;
-      ctx.fillText(pd.n + ' (unlock)', x0 + 26 * S, ry + 8 * S);
-      ctx.fillStyle = '#7d8899';
-      ctx.font = fontPx(5.5);
-      ctx.fillText(pd.d, x0 + 26 * S, ry + 15 * S);
-    } else {
-      blit(ctx, Spr.icons[entry.item.icon], x0 + 11 * S, ry + 3 * S);
-      ctx.fillStyle = Items.rarityCol(entry.item);
-      ctx.fillText(entry.item.name, x0 + 26 * S, ry + 8 * S);
-      ctx.fillStyle = '#7d8899';
-      ctx.font = fontPx(5.5);
-      const st = entry.item.dmg ? entry.item.dmg + ' damage' : entry.item.armor ? entry.item.armor + ' armor' : RARITY[entry.item.rarity].n;
-      ctx.fillText(st + (entry.item.affixes.length ? ' · +' + entry.item.affixes.length + ' properties' : ''), x0 + 26 * S, ry + 15 * S);
+    if (ry + rowH > listTop && ry < listBottom) {
+      const sel = G.selStock === entry;
+      const hov = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
+      rcx(x0 + 8 * S, ry, rowW, rowH, sel ? 'rgba(70,92,120,0.8)' : (hov ? 'rgba(60,70,95,0.5)' : 'rgba(20,25,38,0.7)'));
+      if (sel || hov) strokeRect(x0 + 8 * S, ry, rowW, rowH, sel ? '#ffd23b' : '#5a677f', 1);
+      ctx.font = fontPx(6.5);
+      if (entry.potion) {
+        const pd = POTIONS[entry.potion];
+        drawPotionGlyph(x0 + 15 * S, ry + 9 * S, pd.col);
+        ctx.fillStyle = pd.col;
+        ctx.fillText(pd.n + ' (unlock)', x0 + 26 * S, ry + 8 * S);
+        ctx.fillStyle = '#7d8899'; ctx.font = fontPx(5.5);
+        ctx.fillText(pd.d, x0 + 26 * S, ry + 15 * S);
+      } else {
+        blit(ctx, Spr.icons[entry.item.icon], x0 + 11 * S, ry + 3 * S);
+        ctx.fillStyle = Items.rarityCol(entry.item);
+        ctx.fillText(entry.item.name, x0 + 26 * S, ry + 8 * S);
+        ctx.fillStyle = '#7d8899'; ctx.font = fontPx(5.5);
+        const st = entry.item.dmg ? entry.item.dmg + ' damage' : entry.item.armor ? entry.item.armor + ' armor' : RARITY[entry.item.rarity].n;
+        ctx.fillText(st + (entry.item.affixes.length ? ' · +' + entry.item.affixes.length + ' properties' : ''), x0 + 26 * S, ry + 15 * S);
+      }
+      ctx.textAlign = 'right'; ctx.font = fontBold(6.5);
+      ctx.fillStyle = p.gold >= entry.price ? '#ffd23b' : '#ff6b7a';
+      ctx.fillText(entry.price + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+      ctx.textAlign = 'left';
+      UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry });
+      if ((sel || hov) && entry.item) hoverStockItem = entry.item;
     }
-    ctx.textAlign = 'right';
-    ctx.font = fontBold(6.5);
-    ctx.fillStyle = p.gold >= entry.price ? '#ffd23b' : '#ff6b7a';
-    ctx.fillText(entry.price + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
-    ctx.textAlign = 'left';
-    UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry });
-    if (hov && entry.item) hoverStockItem = entry.item;
-    ry += rowH + 2 * S;
+    ry += rowStride;
   }
-  if (!stock.length) {
-    ctx.fillStyle = '#5a677f';
-    ctx.font = fontPx(6.5);
+  if (!stock.length && ry + rowH > listTop && ry < listBottom) {
+    ctx.fillStyle = '#5a677f'; ctx.font = fontPx(6.5);
     ctx.fillText('Sold out. Come back after your next death.', x0 + 10 * S, ry + 8 * S);
-    ry += 12 * S;
   }
-  // ред за надграждане на сергията
+  if (!stock.length) ry += rowStride;
+  // ред за надграждане на сергията (скролва заедно със списъка)
   if (lvl < 5) {
-    const cost = VENDOR_UP_COST[lvl];
-    const hovU = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
-    rcx(x0 + 8 * S, ry, rowW, rowH, hovU ? 'rgba(60,90,60,0.5)' : 'rgba(25,40,28,0.7)');
-    if (hovU) strokeRect(x0 + 8 * S, ry, rowW, rowH, '#7fd0a0', 1);
-    ctx.font = fontBold(6.5);
-    ctx.fillStyle = '#7fd0a0';
-    ctx.fillText('⌂ Upgrade: ' + STALL_NAMES[lvl - 1] + ' → ' + STALL_NAMES[lvl], x0 + 12 * S, ry + 8 * S);
-    ctx.font = fontPx(5.5);
-    ctx.fillStyle = '#7d8899';
-    ctx.fillText('more and stronger wares', x0 + 12 * S, ry + 15 * S);
-    ctx.textAlign = 'right';
-    ctx.font = fontBold(6.5);
-    ctx.fillStyle = p.gold >= cost ? '#ffd23b' : '#ff6b7a';
-    ctx.fillText(cost + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
-    ctx.textAlign = 'left';
-    UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry: { upgrade: G.shopVendor } });
+    if (ry + rowH > listTop && ry < listBottom) {
+      const cost = VENDOR_UP_COST[lvl];
+      const hovU = G.mouse.x >= x0 + 8 * S && G.mouse.x < x0 + 8 * S + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
+      rcx(x0 + 8 * S, ry, rowW, rowH, hovU ? 'rgba(60,90,60,0.5)' : 'rgba(25,40,28,0.7)');
+      if (hovU) strokeRect(x0 + 8 * S, ry, rowW, rowH, '#7fd0a0', 1);
+      ctx.font = fontBold(6.5); ctx.fillStyle = '#7fd0a0';
+      ctx.fillText('⌂ Upgrade: ' + STALL_NAMES[lvl - 1] + ' → ' + STALL_NAMES[lvl], x0 + 12 * S, ry + 8 * S);
+      ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899';
+      ctx.fillText('more and stronger wares', x0 + 12 * S, ry + 15 * S);
+      ctx.textAlign = 'right'; ctx.font = fontBold(6.5);
+      ctx.fillStyle = p.gold >= cost ? '#ffd23b' : '#ff6b7a';
+      ctx.fillText(cost + ' g', x0 + 8 * S + rowW - 4 * S, ry + 11 * S);
+      ctx.textAlign = 'left';
+      UI.shopRects.push({ x: x0 + 8 * S, y: ry, w: rowW, h: rowH, entry: { upgrade: G.shopVendor } });
+    }
+    ry += rowStride;
+  }
+  ctx.restore();
+  // скрол-индикатор (палец)
+  if (maxScroll > 0) {
+    const trackH = listBottom - listTop, thumbH = Math.max(14 * S, trackH * trackH / (nRows * rowStride));
+    const thumbY = listTop + (trackH - thumbH) * (G.shopScroll / maxScroll);
+    rcx(x0 + 9 * S + rowW, thumbY, 2 * S, thumbH, '#6a7690');
   }
   } // end търговска част
 
@@ -1050,7 +1065,7 @@ function drawShop() {
   UI.shopActRects = [];
   let hoverSell = null;
   const gx0 = x0 + 146 * S, gy0 = y0 + 40 * S;
-  const cols = 4, cw2 = 24 * S, gp = 2 * S, rw = 114 * S;
+  const cols = 5, cw2 = 24 * S, gp = 2 * S, rw = 130 * S; // мрежата с моите предмети: 5 колони (като инвентара)
   const gridItems = [];
   if (isMystic) {
     for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && it.affixes && it.affixes.length) gridItems.push(it); }
@@ -1060,6 +1075,7 @@ function drawShop() {
     for (const slot of ['weapon', 'armor', 'ring', 'ring2', 'amulet']) { const it = p.equip[slot]; if (it && vendorUpgradesSlot(G.shopVendor, it.slot)) gridItems.push(it); }
   }
   if (G.selItem && gridItems.indexOf(G.selItem) === -1) G.selItem = null;
+  if (G.selStock && stock.indexOf(G.selStock) === -1) G.selStock = null; // маркираната стока вече не е налична
   ctx.font = fontBold(6.5);
   ctx.fillStyle = isMystic ? '#57e6c8' : '#a8b2c4';
   ctx.fillText(isMystic ? 'ENCHANTING (shards)' : 'YOUR ITEMS (choose)', gx0, y0 + 35 * S);
@@ -1075,7 +1091,28 @@ function drawShop() {
     gi++;
   }
   let ay = gy0 + (Math.ceil(gridItems.length / cols) || 1) * (cw2 + gp) + 6 * S;
-  if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'No items with affixes.' : 'Inventory is empty.', gx0, gy0 + 8 * S, rw, 8 * S); }
+  if (G.selStock) {
+    // МАРКИРАНА СТОКА: инфо + бутон „Buy" (за да няма случайна покупка)
+    const e = G.selStock;
+    const nm = e.potion ? (POTIONS[e.potion].n + ' (unlock)') : (e.item ? e.item.name : 'item');
+    const nmCol = e.potion ? POTIONS[e.potion].col : (e.item ? Items.rarityCol(e.item) : '#e8e4d0');
+    ctx.textAlign = 'left'; ctx.font = fontPx(6.5); ctx.fillStyle = nmCol;
+    ctx.fillText(String(nm).slice(0, 24), gx0, ay); ay += 9 * S;
+    ctx.font = fontPx(5.5); ctx.fillStyle = '#a8b2c4';
+    let sub = e.potion ? POTIONS[e.potion].d
+      : e.item ? (e.item.dmg ? e.item.dmg + ' damage' : e.item.armor ? e.item.armor + ' armor' : RARITY[e.item.rarity].n)
+        + (e.item.affixes && e.item.affixes.length ? ' · +' + e.item.affixes.length + ' properties' : '') : '';
+    wrapText(sub, gx0, ay, rw, 7 * S); ay += (sub.length > 26 ? 16 : 8) * S;
+    const can = p.gold >= e.price, bh = 17 * S;
+    rcx(gx0, ay, rw, bh, can ? 'rgba(40,72,46,0.75)' : 'rgba(52,26,30,0.65)');
+    strokeRect(gx0, ay, rw, bh, can ? '#7fd0a0' : '#ff6b7a', 1);
+    ctx.font = fontBold(7.5); ctx.textAlign = 'center'; ctx.fillStyle = can ? '#7fd0a0' : '#ff6b7a';
+    ctx.fillText('Buy  —  ' + e.price + ' g', gx0 + rw / 2, ay + 11.5 * S);
+    ctx.textAlign = 'left';
+    UI.shopActRects.push({ x: gx0, y: ay, w: rw, h: bh, act: 'buy' });
+    if (e.item) hoverStockItem = hoverStockItem || e.item; // тултип с пълните данни (desktop hover)
+  }
+  else if (!gridItems.length) { ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f'; wrapText(isMystic ? 'No items with affixes.' : 'Inventory is empty.', gx0, gy0 + 8 * S, rw, 8 * S); }
   else if (!G.selItem) { ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899'; wrapText(isMystic ? 'Choose an item to upgrade an affix or enchant it.' : 'Choose an item to sell or level up.', gx0, ay + 4 * S, rw, 8 * S); }
   else {
     const sit = G.selItem;
@@ -1171,20 +1208,29 @@ function shopClick(mx, my) {
     return;
   }
   if (hit(UI.shopCloseRect)) { closeShop(); return; }
-  for (const r of UI.shopRects) if (hit(r)) { shopBuy(r.entry); return; }
-  for (const r of UI.enchPotRects || []) if (hit(r)) { enchantPotion(r.key); return; } // вдигане на отвара (Захари)
-  // действия върху избрания предмет
+  // действия върху избрания предмет (вкл. бутона „Buy")
   for (const r of UI.shopActRects || []) if (hit(r)) {
+    if (r.act === 'buy') { if (G.selStock) shopBuy(G.selStock); return; }
     const sit = G.selItem;
     if (r.act === 'sell') { const idx = G.player.inv.indexOf(sit); if (idx !== -1) { shopSell(idx); G.selItem = null; } }
     else if (r.act === 'levelup') upgradeItemLevel(sit, G.shopVendor);
     else if (r.act === 'scramble') { if (sit) G.shopConfirm = { item: sit }; }
     return;
   }
+  // стока (ляво): тап МАРКИРА (после Buy); само надграждането на сергията е директно
+  const inList = UI.shopListRect && mx >= UI.shopListRect.x && mx < UI.shopListRect.x + UI.shopListRect.w && my >= UI.shopListRect.y && my < UI.shopListRect.y + UI.shopListRect.h;
+  if (inList || !UI.shopListRect) {
+    for (const r of UI.shopRects) if (hit(r)) {
+      if (r.entry.upgrade) { shopBuy(r.entry); }
+      else { G.selStock = r.entry; G.selItem = null; Sfx.play('pickup'); }
+      return;
+    }
+  }
+  for (const r of UI.enchPotRects || []) if (hit(r)) { enchantPotion(r.key); return; } // вдигане на отвара (Захари)
   // афикс редове (Захари)
   for (const r of UI.enchAffixRects || []) if (hit(r)) { enchantAffix(G.selItem, r.ai); return; }
-  // избор на предмет от грида
-  for (const r of UI.shopInvRects) if (hit(r)) { G.selItem = r.item; Sfx.play('pickup'); return; }
+  // избор на предмет от грида (моите предмети)
+  for (const r of UI.shopInvRects) if (hit(r)) { G.selItem = r.item; G.selStock = null; Sfx.play('pickup'); return; }
 }
 
 // ---------- КНИГА С МАГИИ: колекцията е завинаги, избираш 3 активни ----------

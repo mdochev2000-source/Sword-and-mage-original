@@ -238,7 +238,14 @@ function setupTouch() {
         ctrlEditPress(p0.x, p0.y, t.identifier);
         continue;
       }
-      if (G.state !== 'play') { handlePress(p0.x, p0.y, 0); continue; }
+      if (G.state !== 'play') {
+        // магазин: влаченето по списъка със стока скролва; тапът (без влачене) селектира на touchend
+        if (G.state === 'shop' && UI.shopListRect && p0.x >= UI.shopListRect.x && p0.x < UI.shopListRect.x + UI.shopListRect.w && p0.y >= UI.shopListRect.y && p0.y < UI.shopListRect.y + UI.shopListRect.h) {
+          G.shopDrag = { id: t.identifier, sy: p0.y, sScroll: G.shopScroll || 0, moved: false, tapX: p0.x, tapY: p0.y };
+          continue;
+        }
+        handlePress(p0.x, p0.y, 0); continue;
+      }
       let hot = false;
       for (const hb of UI.hotRects) if (p0.x >= hb.x && p0.x < hb.x + hb.w && p0.y >= hb.y && p0.y < hb.y + hb.h) { if (hb.act) hb.act(); hot = true; }
       if (hot) continue;
@@ -269,6 +276,12 @@ function setupTouch() {
       const p0 = touchPos(t);
       if (G.state === 'ctrledit' && G.editDrag && G.editDrag.touchId === t.identifier) { ctrlEditMove(p0.x, p0.y); continue; }
       if (G.state === 'settings' && G.setDrag && UI.volRect) { Sfx.setVolume((p0.x - UI.volRect.x) / UI.volRect.w); continue; }
+      if (G.state === 'shop' && G.shopDrag && G.shopDrag.id === t.identifier) {
+        const dy = p0.y - G.shopDrag.sy;
+        if (Math.abs(dy) > 4 * SCALE) G.shopDrag.moved = true;
+        G.shopScroll = G.shopDrag.sScroll - dy; // clamp-ва се в drawShop
+        continue;
+      }
       if (G.joy && t.identifier === G.joy.id) {
         G.joy.dx = p0.x - G.joy.sx;
         G.joy.dy = p0.y - G.joy.sy;
@@ -277,6 +290,10 @@ function setupTouch() {
   }, { passive: false });
   const touchEnd = e => {
     for (const t of e.changedTouches) {
+      if (G.shopDrag && G.shopDrag.id === t.identifier) {
+        if (!G.shopDrag.moved) handlePress(G.shopDrag.tapX, G.shopDrag.tapY, 0); // тап без влачене -> селектирай
+        G.shopDrag = null;
+      }
       if (G.joy && t.identifier === G.joy.id) G.joy = null;
       if (t.identifier === G.atkHold) G.atkHold = null;
       if (t.identifier === G.fireHold) G.fireHold = null;
@@ -286,6 +303,13 @@ function setupTouch() {
   };
   cv.addEventListener('touchend', touchEnd);
   cv.addEventListener('touchcancel', touchEnd);
+  // колелце на мишката — скрол в магазина (десктоп)
+  cv.addEventListener('wheel', e => {
+    if (G.state === 'shop' && UI.shopListRect && UI.shopListRect.maxScroll > 0) {
+      G.shopScroll = clamp((G.shopScroll || 0) + Math.sign(e.deltaY) * 24 * SCALE, 0, UI.shopListRect.maxScroll);
+      e.preventDefault();
+    }
+  }, { passive: false });
 }
 
 // ---------- контролер (Gamepad API — GameSir и стандартни падове) ----------

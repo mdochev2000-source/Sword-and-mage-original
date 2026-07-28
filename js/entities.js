@@ -1068,13 +1068,14 @@ function doInteract() {
 function openShop(vtype) {
   if (!G.shops[vtype]) G.shops[vtype] = genShopStock(vtype);
   G.shopVendor = vtype;
+  G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт
   G.state = 'shop';
   document.body.classList.add('menu');
   Sfx.play('open');
 }
 function closeShop() {
   G.shopVendor = null;
-  G.selItem = null; G.shopConfirm = null; // изчистваме избора и модала
+  G.selItem = null; G.selStock = null; G.shopConfirm = null; G.shopDrag = null; G.shopScroll = 0; // изчистваме избора, модала и скрола
   G.state = 'play';
   document.body.classList.remove('menu');
   saveProfile();
@@ -1106,7 +1107,9 @@ function shopBuy(entry) {
     p.inv.push(entry.item);
     const stock = G.shops[G.shopVendor];
     stock.splice(stock.indexOf(entry), 1);
+    toast('Bought: ' + entry.item.name + '  (−' + entry.price + ' g)', '#7fd0a0'); // известие за покупката
   }
+  G.selStock = null; // покупката приключи -> махаме маркировката
   Sfx.play('coin');
   saveProfile();
 }
