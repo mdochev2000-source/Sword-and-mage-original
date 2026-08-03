@@ -210,8 +210,8 @@ function drawHUD() {
     potionSlot(0), potionSlot(1),
     { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
   ];
-  const sw = 24 * S, gap = 3 * S, stride = sw + gap;
-  const botY = by + 27 * S, topY = by;
+  const sw = 24 * S, gap = 0, stride = sw + gap; // клетките ЗАЛЕПЕНИ една до друга
+  const botY = by + sw, topY = by;               // и двата реда залепени (без междина)
   const botX = bx + (barW - (rowBot.length * sw + (rowBot.length - 1) * gap)) / 2;
   const pas = p.activePassives || [null, null];
   const drawSlot = (s, sx, sy) => {
@@ -3086,10 +3086,9 @@ function settingsPress(mx, my) {
 
 // ---------- редактор на контролите ----------
 function ensureCtrl() {
-  if (!G.meta.ctrl) {
-    G.meta.ctrl = {};
-    for (const id in CTRL_DEFS) G.meta.ctrl[id] = { fx: CTRL_DEFS[id].fx, fy: CTRL_DEFS[id].fy, fr: CTRL_DEFS[id].fr };
-  }
+  if (!G.meta.ctrl) G.meta.ctrl = {};
+  // допълваме и ЛИПСВАЩИ бутони (нови като 'act' при стар запазен layout) — иначе не могат да се местят
+  for (const id in CTRL_DEFS) if (!G.meta.ctrl[id]) G.meta.ctrl[id] = { fx: CTRL_DEFS[id].fx, fy: CTRL_DEFS[id].fy, fr: CTRL_DEFS[id].fr };
 }
 function drawCtrlEdit() {
   const S = SCALE;
