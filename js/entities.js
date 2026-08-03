@@ -97,7 +97,7 @@ function calcStats(p) {
   const buff = k => (p.buffs && p.buffs[k]) ? p.buffs[k].pow : 0;
   st.dmg = ((w ? w.dmg : 7) + 1.6 * (p.lvl - 1) + sum('dmg')) * (1 + 0.14 * perkCount(p, 'might')) * (1 + 0.08 * sk('sw1')) * (1 + 0.25 * buff('rage'));
   st.atkCd = (w ? w.cd : 0.4) / ((1 + sum('aspd') / 100) * (1 + 0.12 * perkCount(p, 'fury')) * (1 + 0.1 * sk('sw2')) * (1 + 0.20 * buff('swift')));
-  st.range = (w ? w.range : 1.3) * (1 + sum('range') / 100);
+  st.range = w ? w.range : 1.3; // обхватът идва САМО от размера на оръжието (без афикси/пъркове)
   st.arc = (w && w.arc) || 1.2;
   st.maxhp = Math.round((100 + 12 * (p.lvl - 1) + sum('hp') + 30 * perkCount(p, 'vit')) * (1 + 0.12 * sk('bd1')));
   st.maxmp = 40 + 4 * (p.lvl - 1) + sum('mp') + 25 * perkCount(p, 'arcane') + 25 * sk('mg1');
@@ -2244,6 +2244,8 @@ function saveProfile() {
 function normItem(it) {
   if (!it || typeof it !== 'object') return;
   if (!Array.isArray(it.affixes)) it.affixes = [];
+  // обхватът вече идва САМО от оръжието — старите 'range' афикси отпадат от записите
+  for (let i = it.affixes.length - 1; i >= 0; i--) if (it.affixes[i] && it.affixes[i].k === 'range') it.affixes.splice(i, 1);
 }
 // миграция на запис на герой към текущата версия; при невъзможност -> null
 function migrateChar(c) {

@@ -996,6 +996,8 @@ function drawPlayer(p, sx, sy) {
     ctx.save();
     ctx.translate((bx0 + ax * S) | 0, (by0 + anchor[1] * S) | 0); // ОС: дланта от текущата поза
     ctx.rotate(weaponAng);
+    // веригите с остриета се РАЗТЯГАТ по време на замаха (най-дълги в средата му)
+    if (wt === 'chains' && attacking) ctx.scale(1, 1 + 0.9 * Math.sin(Math.PI * atkT01));
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 4 * S) | 0, held.width * S, held.height * S);
     ctx.restore();

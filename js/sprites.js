@@ -509,9 +509,10 @@ function genHeldWeapon(wt) {
   const g = mk(9, 18);
   const SL = '#cdd9ea', SM = '#8a97ad', ST = '#9aa7bd', SD = '#5f6a84', GOLD = '#e8c04a', WOOD = '#7d5636';
   if (wt === 'axe') {
+    // ЧУК с две глави — както изглежда иконата в инвентара
     rc(g, 4, 3, 1, 14, WOOD);                                             // дръжка
-    rc(g, 1, 2, 4, 4, ST); rc(g, 1, 2, 3, 1, SL); px(g, 0, 3, SL);        // широко острие
-    rc(g, 1, 5, 4, 1, SD);
+    rc(g, 1, 2, 3, 5, ST); px(g, 0, 3, SL); rc(g, 1, 2, 2, 1, SL);        // лява глава
+    rc(g, 5, 2, 3, 5, ST); px(g, 8, 3, SD); rc(g, 5, 6, 3, 1, SD);        // дясна глава
   } else if (wt === 'dagger') {
     rc(g, 3, 8, 2, 5, SL); px(g, 3, 7, '#ffffff');
     rc(g, 2, 13, 5, 1, GOLD);

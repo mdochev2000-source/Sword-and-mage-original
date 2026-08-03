@@ -49,8 +49,9 @@ const AFFIXES = {
   potionPow:{ r: [6, 14], n: '% potion power',    pre: 'Alchemical',    pref: 'Alchemical',     pct: true, pool: 'suf' },
 };
 // разделени пулове за теглене
-const AFFIX_PRE = Object.keys(AFFIXES).filter(k => AFFIXES[k].pool === 'pre');
-const AFFIX_SUF = Object.keys(AFFIXES).filter(k => AFFIXES[k].pool === 'suf');
+// 'range' е ИЗКЛЮЧЕН от генерирането: обхватът идва САМО от размера на оръжието (кама < меч < ... < вериги)
+const AFFIX_PRE = Object.keys(AFFIXES).filter(k => AFFIXES[k].pool === 'pre' && k !== 'range');
+const AFFIX_SUF = Object.keys(AFFIXES).filter(k => AFFIXES[k].pool === 'suf' && k !== 'range');
 // тегли `count` афикса: половината от префиксите, половината от суфиксите (при 1 -> произволен пул)
 function rollAffixes(depth, count, slot, valMult) {
   const mult = (1 + 0.11 * (depth - 1)) * (valMult || 1);
