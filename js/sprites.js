@@ -358,7 +358,8 @@ function drawKnight(o) {
     const wt = o.weapon || 'sword';
     if (o.atk) {
       rc(g, 17, ty - 3, 2, 3, ST);                                       // вдигната ръка
-      if (wt === 'axe') {
+      if (o.noWeapon) { /* оръжието се рисува отделно и ЗАМАХВА (drawPlayer) */ }
+      else if (wt === 'axe') {
         rc(g, 18, ty - 8, 1, 5, '#7d5636');                              // дръжка
         rc(g, 16, ty - 11, 4, 3, ST); rc(g, 16, ty - 11, 2, 1, SL);      // широко острие
         px(g, 15, ty - 10, SL); rc(g, 16, ty - 9, 4, 1, SD);
@@ -440,7 +441,8 @@ function drawKnight(o) {
     rc(g, shx + 1, shy + 1, 1, 3, SL);
     if (o.atk) {
       const wt2 = o.weapon || 'sword';
-      if (wt2 === 'axe') {
+      if (o.noWeapon) { /* оръжието замахва отделно */ }
+      else if (wt2 === 'axe') {
         rc(g, 18, ty - 8, 1, 5, '#7d5636');
         rc(g, 16, ty - 11, 4, 3, ST); rc(g, 16, ty - 11, 2, 1, SL);
       } else if (wt2 === 'dagger') {
@@ -483,6 +485,39 @@ function drawKnight(o) {
   px(g, 12, hy - 2, RD); px(g, 13, hy - 1, RDD); px(g, 12, hy - 1, RDD);  // опашка
   px(g, 14, hy, RDD);
 
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+
+// отделен спрайт на оръжието (сочи НАГОРЕ, дръжката долу) — за анимацията на ЗАМАХА
+function genHeldWeapon(wt) {
+  const g = mk(9, 18);
+  const SL = '#cdd9ea', SM = '#8a97ad', ST = '#9aa7bd', SD = '#5f6a84', GOLD = '#e8c04a', WOOD = '#7d5636';
+  if (wt === 'axe') {
+    rc(g, 4, 3, 1, 14, WOOD);                                             // дръжка
+    rc(g, 1, 2, 4, 4, ST); rc(g, 1, 2, 3, 1, SL); px(g, 0, 3, SL);        // широко острие
+    rc(g, 1, 5, 4, 1, SD);
+  } else if (wt === 'dagger') {
+    rc(g, 3, 8, 2, 5, SL); px(g, 3, 7, '#ffffff');
+    rc(g, 2, 13, 5, 1, GOLD);
+    rc(g, 4, 14, 1, 3, WOOD);
+  } else if (wt === 'greatsword') {
+    rc(g, 3, 1, 3, 11, SL); px(g, 4, 0, '#ffffff'); rc(g, 5, 2, 1, 10, SM);
+    rc(g, 1, 12, 7, 1, GOLD);                                             // широк гард
+    rc(g, 4, 13, 1, 4, WOOD);
+  } else if (wt === 'spear') {
+    rc(g, 4, 4, 1, 13, WOOD);
+    px(g, 4, 3, SL); px(g, 4, 2, SL); px(g, 4, 1, '#ffffff');             // връх
+    px(g, 4, 12, GOLD);                                                   // обков
+  } else if (wt === 'chains') {
+    rc(g, 3, 1, 2, 4, SL); px(g, 4, 0, '#ffffff');                        // острие в края
+    px(g, 4, 6, SM); px(g, 3, 8, SD); px(g, 4, 10, SM);                   // брънки
+    px(g, 3, 12, SD); px(g, 4, 14, SM); px(g, 4, 16, SD);
+  } else { // меч
+    rc(g, 3, 3, 2, 9, SL); px(g, 3, 2, '#ffffff'); rc(g, 4, 4, 1, 8, SM);
+    rc(g, 2, 12, 5, 1, GOLD);                                             // гард
+    rc(g, 4, 13, 1, 4, WOOD);
+  }
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -1058,7 +1093,7 @@ function initSprites(themeIdx) {
     // герой: комплект спрайтове за всеки тип оръжие
     Spr.player = {};
     for (const wt of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains']) {
-      const set = { down: [], up: [], atkDown: [], atkUp: [] };
+      const set = { down: [], up: [], atkDown: [], atkUp: [], atkDownNW: [], atkUpNW: [] };
       for (let f = 0; f < 4; f++) {
         set.down.push(drawKnight({ dir: 'down', frame: f, weapon: wt }));
         set.up.push(drawKnight({ dir: 'up', frame: f, weapon: wt }));
@@ -1066,7 +1101,11 @@ function initSprites(themeIdx) {
       for (let a = 1; a <= 2; a++) {
         set.atkDown.push(drawKnight({ dir: 'down', frame: 0, atk: a, weapon: wt }));
         set.atkUp.push(drawKnight({ dir: 'up', frame: 0, atk: a, weapon: wt }));
+        // кадри БЕЗ вградено оръжие — то се рисува отделно и замахва
+        set.atkDownNW.push(drawKnight({ dir: 'down', frame: 0, atk: a, weapon: wt, noWeapon: true }));
+        set.atkUpNW.push(drawKnight({ dir: 'up', frame: 0, atk: a, weapon: wt, noWeapon: true }));
       }
+      set.held = genHeldWeapon(wt); // спрайтът, който ЗАМАХВА
       set.white = whiteVersion(set.down[0]);
       Spr.player[wt] = set;
     }

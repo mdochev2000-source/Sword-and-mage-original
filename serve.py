@@ -14,4 +14,5 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-http.server.HTTPServer(('0.0.0.0', 8741), NoCacheHandler).serve_forever()
+# ThreadingHTTPServer: една висяща връзка да НЕ блокира останалите заявки
+http.server.ThreadingHTTPServer(('0.0.0.0', 8741), NoCacheHandler).serve_forever()
