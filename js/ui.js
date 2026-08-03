@@ -152,36 +152,53 @@ function drawHUD() {
   const S = SCALE;
   UI.hotRects = [];
 
-  // орбове + хотбар (ДВА РЕДА) долу в средата — свалени с 40px надолу (клампнато)
-  const shift = hudBottomShift();
-  const barW = 200 * S, barH = 34 * S;
-  const bx = (CW - barW) / 2, by = CH - barH - 6 * S + shift - 27 * S; // ред 1 по-нагоре, ред 2 отдолу
-  // орбовете за кръв/мана — 1.5x от оригинала (радиус 24), изнесени встрани от хотбара
-  const orbR = 24, orbCy = CH - 38 * S + shift;
-  const hpCx = bx - 28 * S, mpCx = bx + barW + 28 * S;
-  drawOrb(hpCx, orbCy, orbR, p.hp / p.st.maxhp, 'hp');
-  drawOrb(mpCx, orbCy, orbR, p.mp / p.st.maxmp, 'mp');
-  ctx.textAlign = 'center';
-  ctx.font = fontBold(7);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(Math.ceil(p.hp) + '/' + p.st.maxhp, hpCx, orbCy + 2 * S);
-  ctx.fillText(Math.ceil(p.mp) + '/' + p.st.maxmp, mpCx, orbCy + 2 * S);
-
-  // XP лента
-  const xw = barW, xh = 3 * S;
-  rcx(bx, by - 2 * S, xw, xh, '#171c28');
-  rcx(bx, by - 2 * S, xw * clamp(p.xp / p.xpNext, 0, 1), xh, '#c8a832');
-  strokeRect(bx, by - 2 * S, xw, xh, '#3a4456', 1);
-  // ниво на героя — центрирано НАД XP лентата, в зелено (преместено от горе вляво)
-  {
-    const lvlTxt = 'Hero level: ' + p.lvl;
-    ctx.font = fontBold(6);
-    const ltw = ctx.measureText(lvlTxt).width;
-    rcx(CW / 2 - ltw / 2 - 4 * S, by - 14 * S, ltw + 8 * S, 11 * S, 'rgba(10,13,20,0.72)');
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#7fd0a0';
-    ctx.fillText(lvlTxt, CW / 2, by - 6 * S);
+  // ЦЕНТРАЛНА КОЛБА: живот (ляво, червено) | мана (дясно, синьо), с XP ПРЪСТЕН като рамка
+  const cx0 = CW / 2, cy0 = CH - 52 * S, orbCr = 28 * S;
+  // XP пръстен — фон (рамката на колбата)
+  ctx.lineWidth = 3 * S;
+  ctx.strokeStyle = '#171c28';
+  ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, 0, Math.PI * 2); ctx.stroke();
+  // двете половини се пълнят отдолу нагоре
+  const orbHalf = (side, frac, body, topCol) => {
+    ctx.save();
+    ctx.beginPath();
+    if (side === 'l') ctx.arc(cx0, cy0, orbCr, Math.PI / 2, Math.PI * 1.5);
+    else ctx.arc(cx0, cy0, orbCr, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath(); ctx.clip();
+    ctx.fillStyle = '#10141f';
+    ctx.fillRect(cx0 - orbCr, cy0 - orbCr, orbCr * 2, orbCr * 2);
+    const hgt = 2 * orbCr * clamp(frac, 0, 1);
+    ctx.fillStyle = body;
+    ctx.fillRect(cx0 - orbCr, cy0 + orbCr - hgt, orbCr * 2, hgt);
+    ctx.fillStyle = topCol; // светла линия на повърхността на течността
+    ctx.fillRect(cx0 - orbCr, cy0 + orbCr - hgt, orbCr * 2, 2 * S);
+    ctx.restore();
+  };
+  orbHalf('l', p.hp / p.st.maxhp, '#c22836', '#ff6b7a');
+  orbHalf('r', p.mp / p.st.maxmp, '#2456a8', '#7fb0ff');
+  // контур + разделител по средата
+  ctx.lineWidth = Math.max(2, S);
+  ctx.strokeStyle = '#454f63';
+  ctx.beginPath(); ctx.arc(cx0, cy0, orbCr, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#0a0d14';
+  ctx.fillRect(cx0 - S / 2, cy0 - orbCr, S, orbCr * 2);
+  // XP прогресът запълва пръстена (от върха, по часовниковата стрелка)
+  const xpFrac = clamp(p.xp / p.xpNext, 0, 1);
+  if (xpFrac > 0) {
+    ctx.lineWidth = 3 * S;
+    ctx.strokeStyle = '#c8a832';
+    ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * xpFrac); ctx.stroke();
   }
+  // числа + ниво на героя (в зелено, върху колбата)
+  ctx.textAlign = 'center';
+  ctx.font = fontBold(6.5);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(Math.ceil(p.hp) + '/' + p.st.maxhp, cx0 - orbCr * 0.52, cy0 - 4 * S);
+  ctx.fillText(Math.ceil(p.mp) + '/' + p.st.maxmp, cx0 + orbCr * 0.52, cy0 - 4 * S);
+  rcx(cx0 - 13 * S, cy0 + 8 * S, 26 * S, 10 * S, 'rgba(10,13,20,0.75)');
+  ctx.font = fontBold(6);
+  ctx.fillStyle = '#7fd0a0';
+  ctx.fillText('LV ' + p.lvl, cx0, cy0 + 15.5 * S);
 
   // слотове: оръжие, 3 магии, отскок, отвари
   p.spellCd = p.spellCd || [0, 0, 0];
@@ -197,22 +214,19 @@ function drawHUD() {
       act: () => castSpell(idx),
     };
   };
-  // ШАХМАТНА подредба в два реда: ДОЛУ магиите (3 активни + 2 пасивни), ГОРЕ оръжие/отвари/скок
-  const rowBot = [
+  // подредба ОКОЛО КОЛБАТА: ляво — оръжие/скок/двете отвари; дясно — 3-те магии; отгоре — двете аури
+  const leftStack = [
+    { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
+    { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
+    potionSlot(0), potionSlot(1),
+  ];
+  const rightStack = [
     spellSlot(0, 'RMB', true),
     spellSlot(1, '3', G.meta.magic3),
     spellSlot(2, '4', G.meta.magic4),
-    { key: 'P1', passive: 0 },
-    { key: 'P2', passive: 1 },
   ];
-  const rowTop = [
-    { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
-    potionSlot(0), potionSlot(1),
-    { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
-  ];
-  const sw = 24 * S, gap = 0, stride = sw + gap; // клетките ЗАЛЕПЕНИ една до друга
-  const botY = by + sw, topY = by;               // и двата реда залепени (без междина)
-  const botX = bx + (barW - (rowBot.length * sw + (rowBot.length - 1) * gap)) / 2;
+  const topPair = [{ key: 'P1', passive: 0 }, { key: 'P2', passive: 1 }];
+  const sw = 24 * S; // клетките са залепени
   const pas = p.activePassives || [null, null];
   const drawSlot = (s, sx, sy) => {
     panel(sx, sy, sw, sw);
@@ -300,8 +314,9 @@ function drawHUD() {
     }
     if (s.act) UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: s.act });
   };
-  rowBot.forEach((s, i) => drawSlot(s, botX + i * stride, botY));
-  rowTop.forEach((s, i) => drawSlot(s, botX + (i + 0.5) * stride, topY)); // шахматно — в „процепите" на долния ред
+  leftStack.forEach((s, i) => drawSlot(s, cx0 - orbCr - 4 * S - sw, cy0 - 48 * S + i * sw));  // ляв стълб, залепен до колбата
+  rightStack.forEach((s, i) => drawSlot(s, cx0 + orbCr + 4 * S, cy0 - 36 * S + i * sw));      // десен стълб
+  topPair.forEach((s, i) => drawSlot(s, cx0 - sw + i * sw, cy0 - orbCr - 4 * S - sw));        // „ореол" — аурите над колбата
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
   // (Надписът за локацията е под миникартата; нивото на героя е над XP лентата.)
@@ -383,7 +398,7 @@ function drawHUD() {
     const txt = G.interactHint.txt;
     ctx.font = fontBold(7);
     const tw = ctx.measureText(txt).width;
-    const hx = CW / 2, hy = CH - 52 * S;
+    const hx = CW / 2, hy = CH - 118 * S; // над кръглия HUD
     const pad = 6 * S, hh = 13 * S;
     const rx = hx - tw / 2 - pad, ry = hy - hh + 4 * S;
     rcx(rx, ry, tw + pad * 2, hh, 'rgba(10,13,20,0.9)');
@@ -397,9 +412,9 @@ function drawHUD() {
     ctx.font = fontBold(8);
     ctx.globalAlpha = clamp(G.msgT / 0.5, 0, 1);
     const tw = ctx.measureText(G.msg.str).width;
-    rcx(CW / 2 - tw / 2 - 8 * S, CH - 76 * S, tw + 16 * S, 14 * S, 'rgba(10,13,20,0.85)');
+    rcx(CW / 2 - tw / 2 - 8 * S, CH - 124 * S, tw + 16 * S, 14 * S, 'rgba(10,13,20,0.85)');
     ctx.fillStyle = G.msg.color;
-    ctx.fillText(G.msg.str, CW / 2, CH - 66 * S);
+    ctx.fillText(G.msg.str, CW / 2, CH - 114 * S);
     ctx.globalAlpha = 1;
   }
 
@@ -562,7 +577,7 @@ function invWindowGeom() {
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
-  const xpY = CH - 69 * SCALE + hudBottomShift(); // XP лентата (следва двуредовия хотбар)
+  const xpY = CH - 114 * SCALE; // горният ръб на кръглия HUD (колбата + аурите отгоре)
   const ph = Math.min(xpY - 5 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
   // долният ръб е съвсем малко над жълтата XP лента
