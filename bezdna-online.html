@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 15:10 UTC";
+window.__BUILD__ = "2026-08-03 15:16 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5277,53 +5277,81 @@ function drawHUD() {
   const S = SCALE;
   UI.hotRects = [];
 
-  // ЦЕНТРАЛНА КОЛБА: живот (ляво, червено) | мана (дясно, синьо), с XP ПРЪСТЕН като рамка
+  // ЦЕНТРАЛНА КОЛБА: живот (ляво) | мана (дясно), XP пръстен-рамка, НИВОТО ОТГОРЕ
   const cx0 = CW / 2, cy0 = CH - 52 * S, orbCr = 28 * S;
-  // XP пръстен — фон (рамката на колбата)
+  // двоен ръб: тъмен външен + фон на XP пръстена
+  ctx.lineWidth = 5 * S;
+  ctx.strokeStyle = '#0a0d14';
+  ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, 0, Math.PI * 2); ctx.stroke();
   ctx.lineWidth = 3 * S;
   ctx.strokeStyle = '#171c28';
   ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, 0, Math.PI * 2); ctx.stroke();
-  // двете половини се пълнят отдолу нагоре
-  const orbHalf = (side, frac, body, topCol) => {
+  // половини: течност с дълбочина и ВЪЛНИСТА повърхност
+  const orbHalf = (side, frac, body, deep, topCol) => {
     ctx.save();
     ctx.beginPath();
     if (side === 'l') ctx.arc(cx0, cy0, orbCr, Math.PI / 2, Math.PI * 1.5);
     else ctx.arc(cx0, cy0, orbCr, -Math.PI / 2, Math.PI / 2);
     ctx.closePath(); ctx.clip();
-    ctx.fillStyle = '#10141f';
+    ctx.fillStyle = '#0d1119';
     ctx.fillRect(cx0 - orbCr, cy0 - orbCr, orbCr * 2, orbCr * 2);
-    const hgt = 2 * orbCr * clamp(frac, 0, 1);
+    const lvlY = cy0 + orbCr - 2 * orbCr * clamp(frac, 0, 1);
     ctx.fillStyle = body;
-    ctx.fillRect(cx0 - orbCr, cy0 + orbCr - hgt, orbCr * 2, hgt);
-    ctx.fillStyle = topCol; // светла линия на повърхността на течността
-    ctx.fillRect(cx0 - orbCr, cy0 + orbCr - hgt, orbCr * 2, 2 * S);
+    ctx.fillRect(cx0 - orbCr, lvlY, orbCr * 2, 2 * orbCr);
+    ctx.fillStyle = deep; // по-тъмно към дъното
+    ctx.fillRect(cx0 - orbCr, Math.max(lvlY, cy0 + orbCr * 0.55), orbCr * 2, orbCr * 0.45);
+    ctx.fillStyle = topCol; // вълниста повърхност (пиксел стил)
+    for (let wx = -orbCr; wx < orbCr; wx += 3 * S) {
+      const wy = Math.sin(wx * 0.09 / S + G.time * 2.2 + (side === 'l' ? 0 : 2)) * 1.5 * S;
+      ctx.fillRect(cx0 + wx, lvlY + wy, 3 * S, 2 * S);
+    }
     ctx.restore();
   };
-  orbHalf('l', p.hp / p.st.maxhp, '#c22836', '#ff6b7a');
-  orbHalf('r', p.mp / p.st.maxmp, '#2456a8', '#7fb0ff');
+  orbHalf('l', p.hp / p.st.maxhp, '#a81f2d', '#7c1622', '#ff5b6e');
+  orbHalf('r', p.mp / p.st.maxmp, '#1f4d99', '#173a7a', '#6aa8ff');
+  // стъклен отблясък горе-вляво
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx0, cy0, orbCr, 0, Math.PI * 2); ctx.clip();
+  ctx.globalAlpha = 0.10;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(cx0 - orbCr * 0.28, cy0 - orbCr * 0.34, orbCr * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
   // контур + разделител по средата
   ctx.lineWidth = Math.max(2, S);
   ctx.strokeStyle = '#454f63';
   ctx.beginPath(); ctx.arc(cx0, cy0, orbCr, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#0a0d14';
   ctx.fillRect(cx0 - S / 2, cy0 - orbCr, S, orbCr * 2);
-  // XP прогресът запълва пръстена (от върха, по часовниковата стрелка)
+  // XP прогресът тръгва от ДЪНОТО (за да не се крие под нивото отгоре)
   const xpFrac = clamp(p.xp / p.xpNext, 0, 1);
   if (xpFrac > 0) {
     ctx.lineWidth = 3 * S;
     ctx.strokeStyle = '#c8a832';
-    ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * xpFrac); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx0, cy0, orbCr + 4 * S, Math.PI / 2, Math.PI / 2 + Math.PI * 2 * xpFrac); ctx.stroke();
   }
-  // числа + ниво на героя (в зелено, върху колбата)
+  // САМО количеството (без „/макс"), със сянка за четимост
   ctx.textAlign = 'center';
-  ctx.font = fontBold(6.5);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(Math.ceil(p.hp) + '/' + p.st.maxhp, cx0 - orbCr * 0.52, cy0 - 4 * S);
-  ctx.fillText(Math.ceil(p.mp) + '/' + p.st.maxmp, cx0 + orbCr * 0.52, cy0 - 4 * S);
-  rcx(cx0 - 13 * S, cy0 + 8 * S, 26 * S, 10 * S, 'rgba(10,13,20,0.75)');
-  ctx.font = fontBold(6);
-  ctx.fillStyle = '#7fd0a0';
-  ctx.fillText('LV ' + p.lvl, cx0, cy0 + 15.5 * S);
+  ctx.font = fontBold(9);
+  const orbNum = (v, x) => {
+    ctx.fillStyle = 'rgba(5,7,12,0.85)';
+    ctx.fillText(v, x + S, cy0 + 3 * S + S);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(v, x, cy0 + 3 * S);
+  };
+  orbNum(String(Math.ceil(p.hp)), cx0 - orbCr * 0.5);
+  orbNum(String(Math.ceil(p.mp)), cx0 + orbCr * 0.5);
+  // НИВОТО — ОТГОРЕ на колбата (златна табелка)
+  {
+    const lt = 'LV ' + p.lvl;
+    ctx.font = fontBold(6);
+    const ltw = ctx.measureText(lt).width;
+    const bw2 = Math.max(24 * S, ltw + 8 * S);
+    rcx(cx0 - bw2 / 2, cy0 - orbCr - 10 * S, bw2, 11 * S, '#0e121c');
+    strokeRect(cx0 - bw2 / 2, cy0 - orbCr - 10 * S, bw2, 11 * S, '#c8a832', S);
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillText(lt, cx0, cy0 - orbCr - 2 * S);
+  }
 
   // слотове: оръжие, 3 магии, отскок, отвари
   p.spellCd = p.spellCd || [0, 0, 0];
@@ -5339,18 +5367,18 @@ function drawHUD() {
       act: () => castSpell(idx),
     };
   };
-  // подредба ОКОЛО КОЛБАТА: ляво — оръжие/скок/двете отвари; дясно — 3-те магии; отгоре — двете аури
-  const leftStack = [
+  // подредба САМО ЛЯВО и ДЯСНО от колбата, на колони (нищо отгоре/отдолу)
+  const colInL = [ // вътрешна лява колона: оръжие + скок
     { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
     { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
-    potionSlot(0), potionSlot(1),
   ];
-  const rightStack = [
+  const colOutL = [potionSlot(0), potionSlot(1)]; // външна лява: двете отвари
+  const colInR = [ // вътрешна дясна: трите активни магии
     spellSlot(0, 'RMB', true),
     spellSlot(1, '3', G.meta.magic3),
     spellSlot(2, '4', G.meta.magic4),
   ];
-  const topPair = [{ key: 'P1', passive: 0 }, { key: 'P2', passive: 1 }];
+  const colOutR = [{ key: 'P1', passive: 0 }, { key: 'P2', passive: 1 }]; // външна дясна: двете аури
   const sw = 24 * S; // клетките са залепени
   const pas = p.activePassives || [null, null];
   const drawSlot = (s, sx, sy) => {
@@ -5439,9 +5467,13 @@ function drawHUD() {
     }
     if (s.act) UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: s.act });
   };
-  leftStack.forEach((s, i) => drawSlot(s, cx0 - orbCr - 4 * S - sw, cy0 - 48 * S + i * sw));  // ляв стълб, залепен до колбата
-  rightStack.forEach((s, i) => drawSlot(s, cx0 + orbCr + 4 * S, cy0 - 36 * S + i * sw));      // десен стълб
-  topPair.forEach((s, i) => drawSlot(s, cx0 - sw + i * sw, cy0 - orbCr - 4 * S - sw));        // „ореол" — аурите над колбата
+  // колоните са вертикално центрирани спрямо колбата
+  const colInLx = cx0 - orbCr - 6 * S - sw, colOutLx = colInLx - sw;
+  const colInRx = cx0 + orbCr + 6 * S, colOutRx = colInRx + sw;
+  colInL.forEach((s, i) => drawSlot(s, colInLx, cy0 - sw + i * sw));       // оръжие + скок (до колбата)
+  colOutL.forEach((s, i) => drawSlot(s, colOutLx, cy0 - sw + i * sw));     // двете отвари (навън)
+  colInR.forEach((s, i) => drawSlot(s, colInRx, cy0 - 36 * S + i * sw));   // трите магии (до колбата)
+  colOutR.forEach((s, i) => drawSlot(s, colOutRx, cy0 - sw + i * sw));     // двете аури (навън)
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
   // (Надписът за локацията е под миникартата; нивото на героя е над XP лентата.)
@@ -5523,7 +5555,7 @@ function drawHUD() {
     const txt = G.interactHint.txt;
     ctx.font = fontBold(7);
     const tw = ctx.measureText(txt).width;
-    const hx = CW / 2, hy = CH - 118 * S; // над кръглия HUD
+    const hx = CW / 2, hy = CH - 98 * S; // точно над кръглия HUD
     const pad = 6 * S, hh = 13 * S;
     const rx = hx - tw / 2 - pad, ry = hy - hh + 4 * S;
     rcx(rx, ry, tw + pad * 2, hh, 'rgba(10,13,20,0.9)');
@@ -5702,7 +5734,7 @@ function invWindowGeom() {
   const PS = Math.max(SCALE, Math.min(SCALE * 1.5, (CH - reserve - 12) / phA)); // мащаб само на ВИСОЧИНАТА (не мърда с ширината)
   const pw = Math.min(CW - 16, 1700);                                          // правоъгълен: фиксирана ширина ~1700px (свита до екрана)
   // по-нисък с ~48px, но никога под съдържанието; и с капак да не слиза под XP лентата на къси екрани
-  const xpY = CH - 114 * SCALE; // горният ръб на кръглия HUD (колбата + аурите отгоре)
+  const xpY = CH - 96 * SCALE; // горният ръб на кръглия HUD (табелката с нивото)
   const ph = Math.min(xpY - 5 * SCALE - 8, Math.max(phA * SCALE, phA * PS - 16 * SCALE));
   const x0 = (CW - pw) / 2;
   // долният ръб е съвсем малко над жълтата XP лента
