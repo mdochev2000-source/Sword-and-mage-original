@@ -647,6 +647,37 @@ function updatePlayer(dt) {
     p.meleeHitT -= dt;
     if (p.meleeHitT < 0) resolveMelee();
   }
+  // ЗАМАХЪТ УДРЯ: острието поразява врага в момента, в който мине през него
+  if (p.swingActive) {
+    const aimRef = p.swingAimA !== undefined ? p.swingAimA : p.aimA; // заключеният прицел на удара
+    const t01 = G.slashFx ? clamp(G.slashFx.t / 0.18, 0, 1) : 1;
+    const arc = p.st.arc;
+    const swRel = -arc + 2 * arc * t01;                 // текущ ъгъл на острието (спрямо прицела)
+    const lo = Math.min(p.swingPrevA, swRel) - 0.3, hi = Math.max(p.swingPrevA, swRel) + 0.3;
+    for (const e of G.enemies) {
+      if (e.dead || e.swingHit === p.swingId) continue;
+      const d = dist(p.x, p.y, e.x, e.y);
+      if (d > p.st.range + e.t.r) continue;
+      const a = Math.atan2(e.y - p.y, e.x - p.x);
+      const rel = angDiff(a, aimRef);
+      if (rel < lo || rel > hi || Math.abs(rel) > arc + 0.1) continue; // острието още не е стигнало дотам
+      if (!losClear(p.x, p.y, e.x, e.y)) continue;
+      e.swingHit = p.swingId;
+      meleeHitEnemy(e, a);
+    }
+    // бъчвите се чупят, когато острието ги достигне
+    for (const pr of G.props) {
+      if (pr.hp === undefined || pr.broken) continue;
+      const d = dist(p.x, p.y, pr.x, pr.y);
+      if (d > p.st.range + 0.4) continue;
+      const a = Math.atan2(pr.y - p.y, pr.x - p.x);
+      const rel = angDiff(a, aimRef);
+      if (rel < lo - 0.05 || rel > hi + 0.05 || Math.abs(rel) > arc + 0.15) continue;
+      breakProp(pr);
+    }
+    p.swingPrevA = swRel;
+    if (t01 >= 1 || p.atkAnim <= 0) p.swingActive = false;
+  }
 
   // ниска кръв — пулс
   if (p.hp < p.st.maxhp * 0.25) {
@@ -672,19 +703,29 @@ function tryMelee() {
   if (p.atkT > 0 || p.dashT > 0) return;
   p.atkT = p.st.atkCd * (p.frenzyT > 0 ? 0.75 : 1); // Опиянение
   p.atkAnim = 0.22;
-  p.meleeHitT = 0.08;
+  const w = p.equip.weapon;
+  p.swingAimA = p.aimA; // замахът е ЗАКЛЮЧЕН към прицела от началото на удара (като slash ефекта)
+  if (w && w.uid === 'dawnsting') {
+    p.meleeHitT = 0.08; // Жилото на зората: мигновено пробождане по линия
+  } else {
+    // САМОТО ОРЪЖИЕ удря: острието поразява враговете, когато мине през тях в замаха
+    p.meleeHitT = -1;
+    p.swingActive = true;
+    p.swingId = (p.swingId || 0) + 1;
+    p.swingPrevA = -p.st.arc; // относително спрямо прицела: от -дъга към +дъга
+  }
   // обръщане по прицела
   const sdx = Math.cos(p.aimA) - Math.sin(p.aimA);
   const sdy = (Math.cos(p.aimA) + Math.sin(p.aimA)) / 2;
   p.dirUp = sdy < 0;
   if (Math.abs(sdx) > 0.15) p.flip = sdx < 0;
   Sfx.play('swing');
-  // ефект дъга — мащабира се с обхвата и ширината на оръжието
+  // ефект дъга — ПО-БЛИЗО и ПО-МАЛЪК (натурален, колкото реалния замах на оръжието)
   G.slashFx = {
-    x: p.x + Math.cos(p.aimA) * 0.55 * p.st.range,
-    y: p.y + Math.sin(p.aimA) * 0.55 * p.st.range,
+    x: p.x + Math.cos(p.aimA) * 0.45 * p.st.range,
+    y: p.y + Math.sin(p.aimA) * 0.45 * p.st.range,
     a: p.aimA, t: 0,
-    k: p.st.range / 1.6 * (0.8 + p.st.arc * 0.25),
+    k: p.st.range / 1.6 * (0.62 + p.st.arc * 0.2),
   };
 }
 
@@ -706,14 +747,58 @@ function autoMelee() {
   tryMelee();
 }
 function tryFireballAuto() { castSpell(0); }
-function resolveMelee() {
+// удар върху ЕДИН враг от близкия бой (ползва се от ЗАМАХА и от уникатите)
+function meleeHitEnemy(e, a) {
   const p = G.player;
   const w = p.equip.weapon;
   const mountain = w && w.uid === 'mountain';
   const gravedigger = w && w.uid === 'gravedigger'; // Гробарят на крале: екзекуция
-  const dawnsting = w && w.uid === 'dawnsting';      // Жилото на зората: пробожда по линия
   const chaosbind = w && w.uid === 'chaosbind';      // Окови на хаоса: притегля
-  let hitAny = false;
+  let isCrit = chance(p.st.crit / 100);
+  // Шепот в мрака: сигурен крит след отскок / срещу незасякъл те враг
+  if (w && w.uid === 'whisper' && ((G.time - (p.lastDashT || -99)) < 1.5 || !e.aggro)) isCrit = true;
+  let dmg = p.st.dmg * rnd(0.9, 1.1);
+  if (isCrit) dmg *= p.st.critd;
+  // Гробарят на крале: +60% щети срещу враг под 30% живот (екзекуция)
+  const execute = gravedigger && e.maxhp && e.hp < e.maxhp * 0.3;
+  if (execute) dmg *= 1.6;
+  // Окови на хаоса: притегля към теб (ъгъл към играча) вместо да отблъсква
+  const kbA = chaosbind ? a + Math.PI : a;
+  const kbF = chaosbind ? 0.5 : (mountain ? 0.65 : 0.25);
+  damageEnemy(e, dmg, isCrit, kbA, kbF);
+  // Гробарят на крале: убийство с екзекуция разтриса земята
+  if (execute && e.dead) { G.shake = Math.min(9, G.shake + 4); Sfx.play('boom'); addText(e.x, e.y + 0.4, 'EXECUTION', '#ff4757', true); }
+  // Втори замах: мигновен повторен удар
+  if (!e.dead && p.st.doubleStrike && chance(p.st.doubleStrike)) {
+    damageEnemy(e, dmg * 0.8, false, a, 0.1);
+    addText(e.x, e.y + 0.5, 'x2', '#d84a5a');
+  }
+  if (!e.dead) {
+    // Гневът на планината: удар в стена = двойни щети
+    if (mountain && hitsWall(e.x + Math.cos(a) * 0.18, e.y + Math.sin(a) * 0.18, e.r)) {
+      damageEnemy(e, dmg, false);
+      addText(e.x, e.y + 0.4, 'SLAM!', '#ff8a1f', true);
+      G.shake = Math.min(8, G.shake + 3);
+      Sfx.play('boom');
+    }
+    // перкове при попадение
+    if (!e.dead && perkCount(p, 'chill')) e.slowT = Math.max(e.slowT, 1);
+    if (!e.dead && perkCount(p, 'burncrit') && isCrit) { e.burnT = 2; e.burnDps = dmg * 0.2; }
+    // Chain Lightning „Electrify" (ниво 3): зареденият враг избухва при близък удар
+    if (!e.dead && (e.chargedT || 0) > 0) { e.chargedT = 0; castChain(e, spellDmg(0.7), 4, false, false); burst(e.x, e.y, ['#ffd23b', '#fff2a0'], 6, 3, 0.3); }
+  }
+  if (perkCount(p, 'static')) {
+    p.hitCount = (p.hitCount || 0) + 1;
+    if (p.hitCount % 5 === 0) castChain(e.dead ? null : e, p.st.dmg * 0.8, 3);
+  }
+  if (p.st.vamp > 0) p.hp = Math.min(p.st.maxhp, p.hp + dmg * p.st.vamp / 100);
+  G.shake = Math.min(6, G.shake + 1);
+}
+// мигновен удар (само за Жилото на зората — пробожда по линия)
+function resolveMelee() {
+  const p = G.player;
+  const w = p.equip.weapon;
+  const dawnsting = w && w.uid === 'dawnsting';
   for (const e of G.enemies) {
     if (e.dead) continue;
     const d = dist(p.x, p.y, e.x, e.y);
@@ -725,45 +810,7 @@ function resolveMelee() {
       if (Math.abs(ad) > Math.PI / 2 || Math.abs(d * Math.sin(ad)) > 0.7 + e.t.r) continue;
     } else if (Math.abs(angDiff(a, p.aimA)) > p.st.arc) continue;
     if (!losClear(p.x, p.y, e.x, e.y)) continue; // не удряме през стени
-    let isCrit = chance(p.st.crit / 100);
-    // Шепот в мрака: сигурен крит след отскок / срещу незасякъл те враг
-    if (w && w.uid === 'whisper' && ((G.time - (p.lastDashT || -99)) < 1.5 || !e.aggro)) isCrit = true;
-    let dmg = p.st.dmg * rnd(0.9, 1.1);
-    if (isCrit) dmg *= p.st.critd;
-    // Гробарят на крале: +60% щети срещу враг под 30% живот (екзекуция)
-    const execute = gravedigger && e.maxhp && e.hp < e.maxhp * 0.3;
-    if (execute) dmg *= 1.6;
-    // Окови на хаоса: притегля към теб (ъгъл към играча) вместо да отблъсква
-    const kbA = chaosbind ? a + Math.PI : a;
-    const kbF = chaosbind ? 0.5 : (mountain ? 0.65 : 0.25);
-    damageEnemy(e, dmg, isCrit, kbA, kbF);
-    // Гробарят на крале: убийство с екзекуция разтриса земята
-    if (execute && e.dead) { G.shake = Math.min(9, G.shake + 4); Sfx.play('boom'); addText(e.x, e.y + 0.4, 'EXECUTION', '#ff4757', true); }
-    // Втори замах: мигновен повторен удар
-    if (!e.dead && p.st.doubleStrike && chance(p.st.doubleStrike)) {
-      damageEnemy(e, dmg * 0.8, false, a, 0.1);
-      addText(e.x, e.y + 0.5, 'x2', '#d84a5a');
-    }
-    hitAny = true;
-    if (!e.dead) {
-      // Гневът на планината: удар в стена = двойни щети
-      if (mountain && hitsWall(e.x + Math.cos(a) * 0.18, e.y + Math.sin(a) * 0.18, e.r)) {
-        damageEnemy(e, dmg, false);
-        addText(e.x, e.y + 0.4, 'SLAM!', '#ff8a1f', true);
-        G.shake = Math.min(8, G.shake + 3);
-        Sfx.play('boom');
-      }
-      // перкове при попадение
-      if (!e.dead && perkCount(p, 'chill')) e.slowT = Math.max(e.slowT, 1);
-      if (!e.dead && perkCount(p, 'burncrit') && isCrit) { e.burnT = 2; e.burnDps = dmg * 0.2; }
-      // Chain Lightning „Electrify" (ниво 3): зареденият враг избухва при близък удар
-      if (!e.dead && (e.chargedT || 0) > 0) { e.chargedT = 0; castChain(e, spellDmg(0.7), 4, false, false); burst(e.x, e.y, ['#ffd23b', '#fff2a0'], 6, 3, 0.3); }
-    }
-    if (perkCount(p, 'static')) {
-      p.hitCount = (p.hitCount || 0) + 1;
-      if (p.hitCount % 5 === 0) castChain(e.dead ? null : e, p.st.dmg * 0.8, 3);
-    }
-    if (p.st.vamp > 0) p.hp = Math.min(p.st.maxhp, p.hp + dmg * p.st.vamp / 100);
+    meleeHitEnemy(e, a);
   }
   // чупим бъчви
   for (const pr of G.props) {
@@ -773,9 +820,7 @@ function resolveMelee() {
     const a = Math.atan2(pr.y - p.y, pr.x - p.x);
     if (Math.abs(angDiff(a, p.aimA)) > p.st.arc + 0.15) continue;
     breakProp(pr);
-    hitAny = true;
   }
-  if (hitAny) G.shake = Math.min(6, G.shake + 1);
 }
 function breakProp(pr) {
   pr.broken = true;

@@ -983,7 +983,7 @@ function drawPlayer(p, sx, sy) {
   // ъгълът на оръжието: в покой лек наклон (люлее се с ходенето); при атака — дъгата на удара
   let weaponAng;
   if (attacking && hasComp) {
-    const a = p.aimA;
+    const a = p.swingAimA !== undefined ? p.swingAimA : p.aimA; // заключеният прицел на удара
     const sa = Math.atan2((Math.cos(a) + Math.sin(a)) / 2, Math.cos(a) - Math.sin(a)); // екранен ъгъл
     weaponAng = sa - 1.15 + 2.3 * atkT01 + Math.PI / 2; // спрайтът сочи нагоре
   } else {
@@ -995,11 +995,28 @@ function drawPlayer(p, sx, sy) {
     const held = set.held;
     ctx.save();
     ctx.translate((bx0 + ax * S) | 0, (by0 + anchor[1] * S) | 0); // ОС: дланта от текущата поза
-    ctx.rotate(weaponAng);
-    // веригите с остриета се РАЗТЯГАТ по време на замаха (най-дълги в средата му)
-    if (wt === 'chains' && attacking) ctx.scale(1, 1 + 0.9 * Math.sin(Math.PI * atkT01));
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 4 * S) | 0, held.width * S, held.height * S);
+    if (wt === 'chains' && attacking) {
+      // GoW стил: острието ИЗЛИТА на верига от дланта; върхът ИЗОСТАВА като камшик и се прибира
+      const dirA = weaponAng - Math.PI / 2;            // накъде сочи ръката
+      const swing = Math.sin(Math.PI * atkT01);        // 0 -> 1 (среда) -> 0
+      const bend = -0.55 * swing;                      // камшично изоставане на върха
+      const reach = (8 + 30 * swing) * S;              // разтягане на веригата
+      let tx = 0, ty2 = 0;
+      for (let li = 1; li <= 6; li++) {                // брънките по извитата дъга
+        const f = li / 6;
+        const a2 = dirA + bend * f * f;
+        tx = Math.cos(a2) * reach * f; ty2 = Math.sin(a2) * reach * f;
+        ctx.fillStyle = li % 2 ? '#8a97ad' : '#67738c';
+        ctx.fillRect((tx - S) | 0, (ty2 - S) | 0, 2 * S, 2 * S);
+      }
+      ctx.translate(tx | 0, ty2 | 0);                  // острието на върха на веригата
+      ctx.rotate(dirA + bend + Math.PI / 2);
+      ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 8 * S) | 0, held.width * S, held.height * S);
+    } else {
+      ctx.rotate(weaponAng);
+      ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 4 * S) | 0, held.width * S, held.height * S);
+    }
     ctx.restore();
   };
   const flash = p.hurtT > 0.15;
