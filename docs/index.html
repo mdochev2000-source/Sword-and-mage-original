@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-07-28 18:17 UTC";
+window.__BUILD__ = "2026-08-03 14:21 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5307,37 +5307,70 @@ function drawHUD() {
       act: () => castSpell(idx),
     };
   };
-  const slots = [
-    { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
+  // ШАХМАТНА подредба в два реда: ДОЛУ магиите (3 активни + 2 пасивни), ГОРЕ оръжие/отвари/скок
+  const rowBot = [
     spellSlot(0, 'RMB', true),
     spellSlot(1, '3', G.meta.magic3),
     spellSlot(2, '4', G.meta.magic4),
-    { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
-    potionSlot(0), potionSlot(1),
+    { key: 'P1', passive: 0 },
+    { key: 'P2', passive: 1 },
   ];
-  const sw = 24 * S, gap = 3 * S;
-  let sx = bx + (barW - (slots.length * sw + (slots.length - 1) * gap)) / 2;
-  for (const s of slots) {
-    panel(sx, by, sw, sw);
+  const rowTop = [
+    { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
+    potionSlot(0), potionSlot(1),
+    { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
+  ];
+  const sw = 24 * S, gap = 3 * S, stride = sw + gap;
+  const botY = by + 27 * S, topY = by;
+  const botX = bx + (barW - (rowBot.length * sw + (rowBot.length - 1) * gap)) / 2;
+  const pas = p.activePassives || [null, null];
+  const drawSlot = (s, sx, sy) => {
+    panel(sx, sy, sw, sw);
+    if (s.passive !== undefined) {
+      // пасивен слот (аура): руна + пулс + резервирана мана; тап отваря Книгата
+      const pid = pas[s.passive];
+      if (pid && SPELLS[pid]) {
+        const sp2 = SPELLS[pid];
+        const cx0 = sx + sw / 2, cy0 = sy + sw / 2;
+        ctx.fillStyle = sp2.col;
+        ctx.beginPath();
+        ctx.moveTo(cx0, cy0 - 6 * S); ctx.lineTo(cx0 + 5 * S, cy0); ctx.lineTo(cx0, cy0 + 6 * S); ctx.lineTo(cx0 - 5 * S, cy0);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(G.time * 3 + s.passive);
+        strokeRect(sx + S, sy + S, sw - 2 * S, sw - 2 * S, sp2.col, S);
+        ctx.globalAlpha = 1;
+        ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
+        ctx.fillText(String(50 * ((p.spellLvl && p.spellLvl[pid]) || 1)), sx + sw - 2 * S, sy + sw - 2 * S);
+        ctx.textAlign = 'center';
+      } else {
+        rcx(sx + 2 * S, sy + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(sx + sw / 2 - S, sy + sw / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(5); ctx.fillStyle = '#7d8899';
+      ctx.fillText(s.key, sx + sw / 2, sy + 6 * S);
+      UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: ((idx) => () => { openSpellbook(); G.sbSel = 3 + idx; })(s.passive) });
+      return;
+    }
     if (s.locked) {
       // заключен слот за магия: катинарче (Майсторът го отваря срещу Печат)
-      rcx(sx + 2 * S, by + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(8,10,16,0.55)');
-      const cx0 = sx + sw / 2, cy0 = by + sw / 2;
+      rcx(sx + 2 * S, sy + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(8,10,16,0.55)');
+      const cx0 = sx + sw / 2, cy0 = sy + sw / 2;
       strokeRect(cx0 - 2 * S, cy0 - 5 * S, 4 * S, 4 * S, '#454e63', S);   // скоба
       rcx(cx0 - 3 * S, cy0 - 1 * S, 6 * S, 5 * S, '#454e63');             // тяло
       rcx(cx0 - S / 2, cy0 + S, S, 2 * S, '#171c28');                     // ключалка
     }
     else if (s.empty) {
       // отключен, но празен: гнездо, чакащо том
-      rcx(sx + 2 * S, by + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(30,20,50,0.5)');
-      strokeRect(sx + 5 * S, by + 5 * S, sw - 10 * S, sw - 10 * S, '#6a4f9e', S);
+      rcx(sx + 2 * S, sy + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(30,20,50,0.5)');
+      strokeRect(sx + 5 * S, sy + 5 * S, sw - 10 * S, sw - 10 * S, '#6a4f9e', S);
       const pl = 0.4 + 0.25 * Math.sin(G.time * 3);
       ctx.fillStyle = 'rgba(200,79,255,' + pl.toFixed(2) + ')';
-      ctx.fillRect(sx + sw / 2 - S, by + sw / 2 - S, 2 * S, 2 * S);
+      ctx.fillRect(sx + sw / 2 - S, sy + sw / 2 - S, 2 * S, 2 * S);
     }
     else if (s.spell) {
       // руна на магията в нейния цвят
-      const cx0 = sx + sw / 2, cy0 = by + sw / 2;
+      const cx0 = sx + sw / 2, cy0 = sy + sw / 2;
       ctx.fillStyle = s.spell.col;
       ctx.beginPath();
       ctx.moveTo(cx0, cy0 - 6 * S); ctx.lineTo(cx0 + 5 * S, cy0); ctx.lineTo(cx0, cy0 + 6 * S); ctx.lineTo(cx0 - 5 * S, cy0);
@@ -5347,71 +5380,38 @@ function drawHUD() {
     }
     else if (s.potion) {
       // флакон в цвета на отварата (без брой — само презареждане)
-      drawPotionGlyph(sx + sw / 2, by + sw / 2 + S, s.potion.col);
+      drawPotionGlyph(sx + sw / 2, sy + sw / 2 + S, s.potion.col);
     }
     else if (s.emptyPotion) {
       // празен слот за отвара (валиден билд: 1 отвара + бъф)
-      rcx(sx + 2 * S, by + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(20,25,38,0.5)');
+      rcx(sx + 2 * S, sy + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(20,25,38,0.5)');
       ctx.fillStyle = '#454e63';
-      ctx.fillRect(sx + sw / 2 - S, by + sw / 2 - S, 2 * S, 2 * S);
+      ctx.fillRect(sx + sw / 2 - S, sy + sw / 2 - S, 2 * S, 2 * S);
     }
     else if (s.icon === 'dash') {
       ctx.font = fontBold(9);
       ctx.fillStyle = '#c9d1d9';
-      ctx.fillText('»', sx + sw / 2, by + sw / 2 + 3 * S);
+      ctx.fillText('»', sx + sw / 2, sy + sw / 2 + 3 * S);
       // пипове за зарядите
       for (let k = 0; k < p.st.dashMax; k++) {
         ctx.fillStyle = k < (p.dashCharges || 0) ? '#ffd23b' : '#454e63';
-        ctx.fillRect(sx + 4 * S + k * 5 * S, by + sw - 5 * S, 3 * S, 2 * S);
+        ctx.fillRect(sx + 4 * S + k * 5 * S, sy + sw - 5 * S, 3 * S, 2 * S);
       }
     }
-    else blit(ctx, Spr.icons[s.icon], sx + sw / 2 - 6 * S, by + sw / 2 - 7 * S);
-    if (s.cd > 0) rcx(sx, by + sw * (1 - clamp(s.cd, 0, 1)), sw, sw * clamp(s.cd, 0, 1), 'rgba(8,10,16,0.65)');
+    else blit(ctx, Spr.icons[s.icon], sx + sw / 2 - 6 * S, sy + sw / 2 - 7 * S);
+    if (s.cd > 0) rcx(sx, sy + sw * (1 - clamp(s.cd, 0, 1)), sw, sw * clamp(s.cd, 0, 1), 'rgba(8,10,16,0.65)');
     ctx.font = fontPx(5);
     ctx.fillStyle = '#7d8899';
-    ctx.fillText(s.key, sx + sw / 2, by + 6 * S);
+    ctx.fillText(s.key, sx + sw / 2, sy + 6 * S);
     if (s.info !== null && s.info !== undefined) {
       ctx.font = fontBold(6);
       ctx.fillStyle = s.infoCol || '#e8e4d0';
-      ctx.fillText(s.info, sx + sw - 5 * S, by + sw - 3 * S);
+      ctx.fillText(s.info, sx + sw - 5 * S, sy + sw - 3 * S);
     }
-    if (s.act) UI.hotRects.push({ x: sx, y: by, w: sw, h: sw, act: s.act });
-    sx += sw + gap;
-  }
-
-  // ВТОРИ РЕД на хотбара: двата ПАСИВНИ слота (аури — работят постоянно, резервират мана)
-  {
-    const sw2 = 24 * S, gap2 = 3 * S, row2y = by + 27 * S;
-    let sx2 = bx + (barW - (2 * sw2 + gap2)) / 2;
-    const pas = p.activePassives || [null, null];
-    for (let pi = 0; pi < 2; pi++) {
-      panel(sx2, row2y, sw2, sw2);
-      const pid = pas[pi];
-      if (pid && SPELLS[pid]) {
-        const sp2 = SPELLS[pid];
-        const cx0 = sx2 + sw2 / 2, cy0 = row2y + sw2 / 2;
-        ctx.fillStyle = sp2.col;
-        ctx.beginPath();
-        ctx.moveTo(cx0, cy0 - 6 * S); ctx.lineTo(cx0 + 5 * S, cy0); ctx.lineTo(cx0, cy0 + 6 * S); ctx.lineTo(cx0 - 5 * S, cy0);
-        ctx.closePath(); ctx.fill();
-        // лека пулсираща рамка — аурата е активна
-        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(G.time * 3 + pi);
-        strokeRect(sx2 + S, row2y + S, sw2 - 2 * S, sw2 - 2 * S, sp2.col, S);
-        ctx.globalAlpha = 1;
-        // резервираната мана — долу вдясно
-        ctx.font = fontPx(4.5); ctx.textAlign = 'right'; ctx.fillStyle = '#7fb0ff';
-        ctx.fillText(String(50 * ((p.spellLvl && p.spellLvl[pid]) || 1)), sx2 + sw2 - 2 * S, row2y + sw2 - 2 * S);
-      } else {
-        rcx(sx2 + 2 * S, row2y + 2 * S, sw2 - 4 * S, sw2 - 4 * S, 'rgba(12,15,24,0.6)');
-        ctx.fillStyle = '#2c3444';
-        ctx.fillRect(sx2 + sw2 / 2 - S, row2y + sw2 / 2 - S, 2 * S, 2 * S);
-      }
-      ctx.font = fontPx(5); ctx.textAlign = 'center'; ctx.fillStyle = '#7d8899';
-      ctx.fillText('P' + (pi + 1), sx2 + sw2 / 2, row2y + 6 * S);
-      UI.hotRects.push({ x: sx2, y: row2y, w: sw2, h: sw2, act: ((idx) => () => { openSpellbook(); G.sbSel = 3 + idx; })(pi) });
-      sx2 += sw2 + gap2;
-    }
-  }
+    if (s.act) UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: s.act });
+  };
+  rowBot.forEach((s, i) => drawSlot(s, botX + i * stride, botY));
+  rowTop.forEach((s, i) => drawSlot(s, botX + (i + 0.5) * stride, topY)); // шахматно — в „процепите" на долния ред
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
   // (Надписът за локацията е под миникартата; нивото на героя е над XP лентата.)
@@ -5487,20 +5487,18 @@ function drawHUD() {
     }
   }
 
-  // подсказка за взаимодействие: на клавиатура "E — ...", на тъч — голям бутон за докосване
-  if (G.interactHint) {
+  // подсказка за взаимодействие: на клавиатура текст "E — ..."; на тъч е КРЪГЛИЯТ местим бутон (в контролите)
+  if (G.interactHint && !G.isTouch) {
     ctx.textAlign = 'center';
-    const txt = G.isTouch ? G.interactHint.txt.replace(/^E — /, '') : G.interactHint.txt;
-    ctx.font = fontBold(G.isTouch ? 8 : 7);
+    const txt = G.interactHint.txt;
+    ctx.font = fontBold(7);
     const tw = ctx.measureText(txt).width;
     const hx = CW / 2, hy = CH - 52 * S;
-    const pad = G.isTouch ? 10 * S : 6 * S, hh = G.isTouch ? 20 * S : 13 * S;
+    const pad = 6 * S, hh = 13 * S;
     const rx = hx - tw / 2 - pad, ry = hy - hh + 4 * S;
     rcx(rx, ry, tw + pad * 2, hh, 'rgba(10,13,20,0.9)');
-    if (G.isTouch) strokeRect(rx, ry, tw + pad * 2, hh, '#ffd23b', S);
     ctx.fillStyle = '#ffd23b';
     ctx.fillText(txt, hx, hy);
-    if (G.isTouch) UI.hotRects.push({ x: rx, y: ry, w: tw + pad * 2, h: hh, act: () => doInteract() });
   }
 
   // тост съобщение
@@ -7645,6 +7643,7 @@ const CTRL_DEFS = {
   dash: { fx: 0.868, fy: 0.435, fr: 0.06,  name: 'Dash' },
   hp:   { fx: 0.90,  fy: 0.305, fr: 0.055, name: 'Life' },
   mp:   { fx: 0.953, fy: 0.205, fr: 0.055, name: 'Mana' },
+  act:  { fx: 0.638, fy: 0.845, fr: 0.06,  name: 'Interact' }, // кръгъл, показва се само до обект; мести се като другите
 };
 function ctrlLayout() {
   const out = {};
@@ -7662,6 +7661,7 @@ function ctrlHit(px, py, includeAll) {
     if (!includeAll) {
       if (id === 'm2' && !G.meta.magic3) continue;
       if (id === 'm3' && !G.meta.magic4) continue;
+      if (id === 'act' && !G.interactHint) continue; // скрит, когато няма обект наблизо
     }
     const c = L[id];
     const d = Math.hypot(px - c.x, py - c.y);
@@ -7759,11 +7759,26 @@ function drawTouchControls(editor) {
   };
   drawPot(L.hp, 0);
   drawPot(L.mp, 1);
+  // бутон за ВЗАИМОДЕЙСТВИЕ (кръгъл, местим) — вижда се само когато си до обект (огън/сергия/портал…)
+  if (editor || G.interactHint) {
+    const c = L.act;
+    const pl = 0.45 + 0.2 * Math.sin(G.time * 5);
+    circleBtn(c, 'rgba(255,210,59,0.16)', 'rgba(255,210,59,' + (editor ? '0.5' : pl.toFixed(2)) + ')');
+    ctx.fillStyle = '#ffd23b';
+    ctx.font = fontBold(11);
+    ctx.textAlign = 'center';
+    ctx.fillText('!', c.x, c.y + 4 * S);
+    if (!editor && G.interactHint) { // какво ще направи — малък надпис над бутона
+      ctx.font = fontPx(5.5);
+      ctx.fillText(G.interactHint.txt.replace(/^E — /, ''), c.x, c.y - c.r - 4 * S);
+    }
+  }
   ctx.textAlign = 'left';
 }
 function ctrlPress(id) {
   switch (id) {
     case 'atk': autoMelee(); break;
+    case 'act': doInteract(); break;
     case 'm1': castSpell(0); break;
     case 'm2': castSpell(1); break;
     case 'm3': castSpell(2); break;
