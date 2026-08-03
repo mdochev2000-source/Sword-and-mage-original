@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 15:17 UTC";
+window.__BUILD__ = "2026-08-03 15:22 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5368,9 +5368,10 @@ function drawHUD() {
     };
   };
   // подредба САМО ЛЯВО и ДЯСНО от колбата, на колони (нищо отгоре/отдолу)
-  const colInL = [ // вътрешна лява колона: оръжие + скок
+  const colInL = [ // вътрешна лява колона: оръжие + скок + Камъка на живота (под скока)
     { key: 'LMB', icon: p.equip.weapon ? p.equip.weapon.icon : 'sword', info: null, act: () => autoMelee() },
     { key: 'SP', icon: 'dash', cd: (p.dashCharges || 0) < p.st.dashMax ? (p.dashRegen || 0) / p.st.dashCd : 0, act: () => tryDash() },
+    { key: 'SS', soulstoneSlot: true },
   ];
   const colOutL = [potionSlot(0), potionSlot(1)]; // външна лява: двете отвари
   const colInR = [ // вътрешна дясна: трите активни магии
@@ -5407,6 +5408,23 @@ function drawHUD() {
       ctx.font = fontPx(5); ctx.fillStyle = '#7d8899';
       ctx.fillText(s.key, sx + sw / 2, sy + 6 * S);
       UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: ((idx) => () => { openSpellbook(); G.sbSel = 3 + idx; })(s.passive) });
+      return;
+    }
+    if (s.soulstoneSlot) {
+      // Камъкът на живота: вижда се, че е екипиран (розова пулсираща рамка); празен слот, когато го няма
+      if (p.equip.soulstone) {
+        blit(ctx, Spr.icons.soulstone, sx + sw / 2 - 6 * S, sy + sw / 2 - 7 * S);
+        ctx.globalAlpha = 0.35 + 0.2 * Math.sin(G.time * 3);
+        strokeRect(sx + S, sy + S, sw - 2 * S, sw - 2 * S, '#ff8aa0', S);
+        ctx.globalAlpha = 1;
+      } else {
+        rcx(sx + 2 * S, sy + 2 * S, sw - 4 * S, sw - 4 * S, 'rgba(12,15,24,0.6)');
+        ctx.fillStyle = '#2c3444';
+        ctx.fillRect(sx + sw / 2 - S, sy + sw / 2 - S, 2 * S, 2 * S);
+      }
+      ctx.font = fontPx(5); ctx.fillStyle = '#7d8899';
+      ctx.fillText(s.key, sx + sw / 2, sy + 6 * S);
+      UI.hotRects.push({ x: sx, y: sy, w: sw, h: sw, act: () => { G.state = 'inventory'; document.body.classList.add('menu'); } });
       return;
     }
     if (s.locked) {
