@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 15:22 UTC";
+window.__BUILD__ = "2026-08-03 15:27 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -5488,10 +5488,11 @@ function drawHUD() {
   // колоните са вертикално центрирани спрямо колбата
   const colInLx = cx0 - orbCr - 6 * S - sw, colOutLx = colInLx - sw;
   const colInRx = cx0 + orbCr + 6 * S, colOutRx = colInRx + sw;
-  colInL.forEach((s, i) => drawSlot(s, colInLx, cy0 - sw + i * sw));       // оръжие + скок (до колбата)
-  colOutL.forEach((s, i) => drawSlot(s, colOutLx, cy0 - sw + i * sw));     // двете отвари (навън)
+  // ШАХМАТНО и от двете страни: вътрешните колони (3 слота) започват от -36, външните (2) от -24
+  colInL.forEach((s, i) => drawSlot(s, colInLx, cy0 - 36 * S + i * sw));   // оръжие + скок + Камъка (до колбата)
+  colOutL.forEach((s, i) => drawSlot(s, colOutLx, cy0 - sw + i * sw));     // двете отвари (навън, изместени)
   colInR.forEach((s, i) => drawSlot(s, colInRx, cy0 - 36 * S + i * sw));   // трите магии (до колбата)
-  colOutR.forEach((s, i) => drawSlot(s, colOutRx, cy0 - sw + i * sw));     // двете аури (навън)
+  colOutR.forEach((s, i) => drawSlot(s, colOutRx, cy0 - sw + i * sw));     // двете аури (навън, изместени)
 
   // горе вляво: злато, осколки/печати, бъфове — под двата бутона (настройки+чанта).
   // (Надписът за локацията е под миникартата; нивото на героя е над XP лентата.)
