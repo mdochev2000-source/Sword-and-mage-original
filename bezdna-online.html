@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 18:47 UTC";
+window.__BUILD__ = "2026-08-03 19:14 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -605,10 +605,19 @@ function drawKnight(o) {
     rc(g, 15, ty - 1, 4, 3, ST); px(g, 18, ty, SD);
     // дясна ръка + екипираното оръжие
     const wt = o.weapon || 'sword';
-    if (o.atk) {
+    if (o.atk && o.noWeapon) {
+      // РЪКАТА ЗАМАХВА (3 пози) — оръжието е отделен компонент, закачен за дланта
+      if (o.atk === 1) {        // засилване: ръката вдигната нагоре
+        rc(g, 17, ty - 4, 2, 4, ST); px(g, 17, ty - 4, SL); px(g, 18, ty - 1, SD);
+      } else if (o.atk === 2) { // среда: ръката изпъната встрани
+        rc(g, 17, ty - 1, 4, 2, ST); px(g, 17, ty - 1, SL); px(g, 20, ty, SD);
+      } else {                  // завършек: ръката надолу-напред
+        rc(g, 16, ty + 2, 2, 4, ST); px(g, 16, ty + 2, SL); px(g, 17, ty + 5, SD);
+      }
+    }
+    else if (o.atk) {
       rc(g, 17, ty - 3, 2, 3, ST);                                       // вдигната ръка
-      if (o.noWeapon) { /* оръжието се рисува отделно и ЗАМАХВА (drawPlayer) */ }
-      else if (wt === 'axe') {
+      if (wt === 'axe') {
         rc(g, 18, ty - 8, 1, 5, '#7d5636');                              // дръжка
         rc(g, 16, ty - 11, 4, 3, ST); rc(g, 16, ty - 11, 2, 1, SL);      // широко острие
         px(g, 15, ty - 10, SL); rc(g, 16, ty - 9, 4, 1, SD);
@@ -633,7 +642,8 @@ function drawKnight(o) {
       }
     } else {
       rc(g, 17, ty + 2, 2, 3, SM); px(g, 17, ty + 4, SD);                // ръка
-      if (wt === 'axe') {
+      if (o.noWeapon) { /* оръжието виси отделно, закачено за дланта */ }
+      else if (wt === 'axe') {
         rc(g, 19, ty - 4, 1, 8, '#7d5636'); px(g, 19, ty + 3, '#5c4a36');
         rc(g, 17, ty - 5, 2, 4, ST); px(g, 17, ty - 5, SL);              // острие наляво
         px(g, 18, ty - 6, SM); px(g, 17, ty - 2, SD);
@@ -688,10 +698,15 @@ function drawKnight(o) {
       px(g, shx + sp[0], shy + yy, SDD); px(g, shx + sp[1], shy + yy, SDD);
     });
     rc(g, shx + 1, shy + 1, 1, 3, SL);
-    if (o.atk) {
+    if (o.atk && o.noWeapon) {
+      // ръката замахва (3 пози) и от гръб — над пелерината
+      if (o.atk === 1) { rc(g, 17, ty - 3, 2, 4, ST); px(g, 17, ty - 3, SL); px(g, 18, ty, SD); }
+      else if (o.atk === 2) { rc(g, 17, ty, 4, 2, ST); px(g, 17, ty, SL); px(g, 20, ty + 1, SD); }
+      else { rc(g, 16, ty + 3, 2, 4, ST); px(g, 16, ty + 3, SL); px(g, 17, ty + 6, SD); }
+    }
+    else if (o.atk) {
       const wt2 = o.weapon || 'sword';
-      if (o.noWeapon) { /* оръжието замахва отделно */ }
-      else if (wt2 === 'axe') {
+      if (wt2 === 'axe') {
         rc(g, 18, ty - 8, 1, 5, '#7d5636');
         rc(g, 16, ty - 11, 4, 3, ST); rc(g, 16, ty - 11, 2, 1, SL);
       } else if (wt2 === 'dagger') {
@@ -1342,22 +1357,35 @@ function initSprites(themeIdx) {
     // герой: комплект спрайтове за всеки тип оръжие
     Spr.player = {};
     for (const wt of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains']) {
-      const set = { down: [], up: [], atkDown: [], atkUp: [], atkDownNW: [], atkUpNW: [] };
+      const set = { down: [], up: [], atkDown: [], atkUp: [], downNW: [], upNW: [], atkDownNW: [], atkUpNW: [] };
       for (let f = 0; f < 4; f++) {
         set.down.push(drawKnight({ dir: 'down', frame: f, weapon: wt }));
         set.up.push(drawKnight({ dir: 'up', frame: f, weapon: wt }));
+        // тялото БЕЗ оръжие — оръжието е отделен компонент, закачен за дланта
+        set.downNW.push(drawKnight({ dir: 'down', frame: f, weapon: wt, noWeapon: true }));
+        set.upNW.push(drawKnight({ dir: 'up', frame: f, weapon: wt, noWeapon: true }));
       }
       for (let a = 1; a <= 2; a++) {
         set.atkDown.push(drawKnight({ dir: 'down', frame: 0, atk: a, weapon: wt }));
         set.atkUp.push(drawKnight({ dir: 'up', frame: 0, atk: a, weapon: wt }));
-        // кадри БЕЗ вградено оръжие — то се рисува отделно и замахва
+      }
+      // атаката: 3 пози на РЪКАТА (засилване/среда/завършек), без вградено оръжие
+      for (let a = 1; a <= 3; a++) {
         set.atkDownNW.push(drawKnight({ dir: 'down', frame: 0, atk: a, weapon: wt, noWeapon: true }));
         set.atkUpNW.push(drawKnight({ dir: 'up', frame: 0, atk: a, weapon: wt, noWeapon: true }));
       }
-      set.held = genHeldWeapon(wt); // спрайтът, който ЗАМАХВА
+      set.held = genHeldWeapon(wt); // оръжието-компонент (закача се за дланта)
       set.white = whiteVersion(set.down[0]);
       Spr.player[wt] = set;
     }
+    // котви на ДЛАНТА (пиксели в спрайта 22x26) — точката, за която се закача оръжието.
+    // ходене: кадри 1 и 3 подскачат с 1px (bob); атака: по една котва за всяка от 3-те пози
+    Spr.playerAnchors = {
+      down: [[18, 18], [18, 19], [18, 18], [18, 19]],
+      up: [[19, 16], [19, 17], [19, 16], [19, 17]],
+      atkDown: [[18, 10], [20, 14], [17, 20]],
+      atkUp: [[18, 11], [20, 15], [17, 21]],
+    };
 
     Spr.enemies = {
       boss2: packFrames([0, 1, 2, 3].map(f => drawGolem({ frame: f }))),
@@ -9402,39 +9430,55 @@ function drawPlayer(p, sx, sy) {
   blit(ctx, Spr.shadow, sx - Spr.shadow.width * S / 2, sy - Spr.shadow.height * S / 2 + 2 * S);
   const wt = (p.equip.weapon && Spr.player[p.equip.weapon.type]) ? p.equip.weapon.type : 'sword';
   const set = Spr.player[wt];
-  const swinging = p.atkAnim > 0 && set.held; // истински ЗАМАХ: оръжието се рисува отделно
-  let spr;
-  if (p.atkAnim > 0) {
+  const A = Spr.playerAnchors;
+  const hasComp = !!(set.held && set.downNW && A); // компонентна система: тяло + оръжие в дланта
+  const attacking = p.atkAnim > 0;
+  let spr, anchor = null, atkT01 = 0;
+  if (attacking && hasComp) {
+    // РЪКАТА замахва в 3 пози, синхронно със slash дъгата; мечът е закачен за дланта ѝ
+    atkT01 = G.slashFx ? clamp(G.slashFx.t / 0.18, 0, 1) : clamp(1 - p.atkAnim / 0.22, 0, 1);
+    const ph = atkT01 < 0.34 ? 0 : atkT01 < 0.67 ? 1 : 2;
+    spr = p.dirUp ? set.atkUpNW[ph] : set.atkDownNW[ph];
+    anchor = (p.dirUp ? A.atkUp : A.atkDown)[ph];
+  } else if (attacking) {
     const fr = p.atkAnim > 0.11 ? 0 : 1;
-    spr = swinging ? (p.dirUp ? set.atkUpNW[fr] : set.atkDownNW[fr])
-                   : (p.dirUp ? set.atkUp[fr] : set.atkDown[fr]);
+    spr = p.dirUp ? set.atkUp[fr] : set.atkDown[fr];
   } else if (p.moving) {
     const fr = Math.floor(p.animT * 9) % 4;
-    spr = p.dirUp ? set.up[fr] : set.down[fr];
+    spr = hasComp ? (p.dirUp ? set.upNW[fr] : set.downNW[fr]) : (p.dirUp ? set.up[fr] : set.down[fr]);
+    if (hasComp) anchor = (p.dirUp ? A.up : A.down)[fr];
   } else {
-    spr = p.dirUp ? set.up[0] : set.down[0];
+    spr = hasComp ? (p.dirUp ? set.upNW[0] : set.downNW[0]) : (p.dirUp ? set.up[0] : set.down[0]);
+    if (hasComp) anchor = (p.dirUp ? A.up : A.down)[0];
     sy += Math.sin(G.time * 2.5) > 0.6 ? S : 0; // леко дишане
   }
-  // замахът минава през СЪЩАТА дъга и време като slash ефекта (пълен синхрон)
-  const drawSwing = () => {
-    const t01 = G.slashFx ? clamp(G.slashFx.t / 0.18, 0, 1) : clamp(1 - p.atkAnim / 0.22, 0, 1);
+  const bx0 = sx - spr.width * S / 2, by0 = sy - spr.height * S + 3 * S; // горе-ляво на тялото
+  // ъгълът на оръжието: в покой лек наклон (люлее се с ходенето); при атака — дъгата на удара
+  let weaponAng;
+  if (attacking && hasComp) {
     const a = p.aimA;
-    const sa = Math.atan2((Math.cos(a) + Math.sin(a)) / 2, Math.cos(a) - Math.sin(a)); // екранен ъгъл на удара
-    const ang = sa - 1.15 + 2.3 * t01; // от -66° до +66° около посоката
+    const sa = Math.atan2((Math.cos(a) + Math.sin(a)) / 2, Math.cos(a) - Math.sin(a)); // екранен ъгъл
+    weaponAng = sa - 1.15 + 2.3 * atkT01 + Math.PI / 2; // спрайтът сочи нагоре
+  } else {
+    weaponAng = (p.flip ? -0.22 : 0.22) + (p.moving ? Math.sin(p.animT * 9) * 0.06 * (p.flip ? -1 : 1) : 0);
+  }
+  const drawWeapon = () => {
+    if (!anchor) return;
+    const ax = p.flip ? (spr.width - anchor[0]) : anchor[0]; // котвата се обръща с героя
     const held = set.held;
     ctx.save();
-    ctx.translate(sx | 0, (sy - 10 * S) | 0);          // ос: ръката на героя
-    ctx.rotate(ang + Math.PI / 2);                     // спрайтът сочи нагоре
+    ctx.translate((bx0 + ax * S) | 0, (by0 + anchor[1] * S) | 0); // ОС: дланта от текущата поза
+    ctx.rotate(weaponAng);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 4 * S) | 0, held.width * S, held.height * S);
     ctx.restore();
   };
   const flash = p.hurtT > 0.15;
   if (p.iframes > 0 && Math.floor(G.time * 20) % 2 === 0 && p.dashT <= 0) ctx.globalAlpha = 0.5;
-  if (swinging && p.dirUp) drawSwing(); // с гръб — оръжието минава ЗАД тялото
-  blit(ctx, flash ? set.white : spr, sx - spr.width * S / 2, sy - spr.height * S + 3 * S, p.flip);
+  if (hasComp && p.dirUp) drawWeapon(); // с гръб — оръжието е ЗАД тялото
+  blit(ctx, flash ? set.white : spr, bx0, by0, p.flip);
   ctx.globalAlpha = 1;
-  if (swinging && !p.dirUp) drawSwing(); // с лице — оръжието е ПРЕД тялото
+  if (hasComp && !p.dirUp) drawWeapon(); // с лице — оръжието е ПРЕД тялото
 }
 
 function drawEnemy(e, sx, sy) {

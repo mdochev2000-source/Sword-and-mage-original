@@ -957,39 +957,55 @@ function drawPlayer(p, sx, sy) {
   blit(ctx, Spr.shadow, sx - Spr.shadow.width * S / 2, sy - Spr.shadow.height * S / 2 + 2 * S);
   const wt = (p.equip.weapon && Spr.player[p.equip.weapon.type]) ? p.equip.weapon.type : 'sword';
   const set = Spr.player[wt];
-  const swinging = p.atkAnim > 0 && set.held; // истински ЗАМАХ: оръжието се рисува отделно
-  let spr;
-  if (p.atkAnim > 0) {
+  const A = Spr.playerAnchors;
+  const hasComp = !!(set.held && set.downNW && A); // компонентна система: тяло + оръжие в дланта
+  const attacking = p.atkAnim > 0;
+  let spr, anchor = null, atkT01 = 0;
+  if (attacking && hasComp) {
+    // РЪКАТА замахва в 3 пози, синхронно със slash дъгата; мечът е закачен за дланта ѝ
+    atkT01 = G.slashFx ? clamp(G.slashFx.t / 0.18, 0, 1) : clamp(1 - p.atkAnim / 0.22, 0, 1);
+    const ph = atkT01 < 0.34 ? 0 : atkT01 < 0.67 ? 1 : 2;
+    spr = p.dirUp ? set.atkUpNW[ph] : set.atkDownNW[ph];
+    anchor = (p.dirUp ? A.atkUp : A.atkDown)[ph];
+  } else if (attacking) {
     const fr = p.atkAnim > 0.11 ? 0 : 1;
-    spr = swinging ? (p.dirUp ? set.atkUpNW[fr] : set.atkDownNW[fr])
-                   : (p.dirUp ? set.atkUp[fr] : set.atkDown[fr]);
+    spr = p.dirUp ? set.atkUp[fr] : set.atkDown[fr];
   } else if (p.moving) {
     const fr = Math.floor(p.animT * 9) % 4;
-    spr = p.dirUp ? set.up[fr] : set.down[fr];
+    spr = hasComp ? (p.dirUp ? set.upNW[fr] : set.downNW[fr]) : (p.dirUp ? set.up[fr] : set.down[fr]);
+    if (hasComp) anchor = (p.dirUp ? A.up : A.down)[fr];
   } else {
-    spr = p.dirUp ? set.up[0] : set.down[0];
+    spr = hasComp ? (p.dirUp ? set.upNW[0] : set.downNW[0]) : (p.dirUp ? set.up[0] : set.down[0]);
+    if (hasComp) anchor = (p.dirUp ? A.up : A.down)[0];
     sy += Math.sin(G.time * 2.5) > 0.6 ? S : 0; // леко дишане
   }
-  // замахът минава през СЪЩАТА дъга и време като slash ефекта (пълен синхрон)
-  const drawSwing = () => {
-    const t01 = G.slashFx ? clamp(G.slashFx.t / 0.18, 0, 1) : clamp(1 - p.atkAnim / 0.22, 0, 1);
+  const bx0 = sx - spr.width * S / 2, by0 = sy - spr.height * S + 3 * S; // горе-ляво на тялото
+  // ъгълът на оръжието: в покой лек наклон (люлее се с ходенето); при атака — дъгата на удара
+  let weaponAng;
+  if (attacking && hasComp) {
     const a = p.aimA;
-    const sa = Math.atan2((Math.cos(a) + Math.sin(a)) / 2, Math.cos(a) - Math.sin(a)); // екранен ъгъл на удара
-    const ang = sa - 1.15 + 2.3 * t01; // от -66° до +66° около посоката
+    const sa = Math.atan2((Math.cos(a) + Math.sin(a)) / 2, Math.cos(a) - Math.sin(a)); // екранен ъгъл
+    weaponAng = sa - 1.15 + 2.3 * atkT01 + Math.PI / 2; // спрайтът сочи нагоре
+  } else {
+    weaponAng = (p.flip ? -0.22 : 0.22) + (p.moving ? Math.sin(p.animT * 9) * 0.06 * (p.flip ? -1 : 1) : 0);
+  }
+  const drawWeapon = () => {
+    if (!anchor) return;
+    const ax = p.flip ? (spr.width - anchor[0]) : anchor[0]; // котвата се обръща с героя
     const held = set.held;
     ctx.save();
-    ctx.translate(sx | 0, (sy - 10 * S) | 0);          // ос: ръката на героя
-    ctx.rotate(ang + Math.PI / 2);                     // спрайтът сочи нагоре
+    ctx.translate((bx0 + ax * S) | 0, (by0 + anchor[1] * S) | 0); // ОС: дланта от текущата поза
+    ctx.rotate(weaponAng);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(held, 0, 0, held.width, held.height, (-held.width * S / 2) | 0, (-held.height * S + 4 * S) | 0, held.width * S, held.height * S);
     ctx.restore();
   };
   const flash = p.hurtT > 0.15;
   if (p.iframes > 0 && Math.floor(G.time * 20) % 2 === 0 && p.dashT <= 0) ctx.globalAlpha = 0.5;
-  if (swinging && p.dirUp) drawSwing(); // с гръб — оръжието минава ЗАД тялото
-  blit(ctx, flash ? set.white : spr, sx - spr.width * S / 2, sy - spr.height * S + 3 * S, p.flip);
+  if (hasComp && p.dirUp) drawWeapon(); // с гръб — оръжието е ЗАД тялото
+  blit(ctx, flash ? set.white : spr, bx0, by0, p.flip);
   ctx.globalAlpha = 1;
-  if (swinging && !p.dirUp) drawSwing(); // с лице — оръжието е ПРЕД тялото
+  if (hasComp && !p.dirUp) drawWeapon(); // с лице — оръжието е ПРЕД тялото
 }
 
 function drawEnemy(e, sx, sy) {
