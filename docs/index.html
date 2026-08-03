@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 15:04 UTC";
+window.__BUILD__ = "2026-08-03 15:08 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -4944,7 +4944,7 @@ const SAVE_VERSION = 1;
 function saveProfile() {
   try {
     const p = G.player;
-    localStorage.setItem(charKey(G.charSlot || 0), JSON.stringify({
+    const data = JSON.stringify({
       v: SAVE_VERSION,                             // версия на записа — за бъдещи миграции
       name: G.charName || 'Exile',
       gold: p.gold, equip: p.equip, inv: p.inv, meta: G.meta,
@@ -4953,7 +4953,9 @@ function saveProfile() {
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
-    }));
+    });
+    localStorage.setItem(charKey(G.charSlot || 0), data);
+    localStorage.setItem(charKey(G.charSlot || 0) + '_bak', data); // РЕЗЕРВНО копие — пази прогреса при повреден запис
   } catch (e) {}
 }
 // счупен/липсващ affixes да не срива calcStats
@@ -4996,24 +4998,37 @@ function migrateChar(c) {
     return c;
   } catch (e) { return null; }
 }
+// четене на запис за слот: първо основния, при липса/повреда — РЕЗЕРВНОТО копие (и го възстановява)
+function readCharSlot(slot) {
+  try {
+    const main = migrateChar(JSON.parse(localStorage.getItem(charKey(slot)) || 'null'));
+    if (main) return main;
+  } catch (e) {}
+  try {
+    const bak = migrateChar(JSON.parse(localStorage.getItem(charKey(slot) + '_bak') || 'null'));
+    if (bak) {
+      try { localStorage.setItem(charKey(slot), JSON.stringify(bak)); } catch (e2) {}
+      return bak;
+    }
+  } catch (e) {}
+  return null;
+}
 function loadCharList() {
   const out = [];
   for (let i = 0; i < 3; i++) {
-    try {
-      const c = migrateChar(JSON.parse(localStorage.getItem(charKey(i)) || 'null'));
-      out.push(c ? { slot: i, name: c.name || 'Exile', gold: c.gold || 0, depth: (c.meta && c.meta.bestDepth) || 1, deaths: (c.meta && c.meta.deaths) || 0 } : null);
-    } catch (e) { out.push(null); }
+    const c = readCharSlot(i);
+    out.push(c ? { slot: i, name: c.name || 'Exile', gold: c.gold || 0, depth: (c.meta && c.meta.bestDepth) || 1, deaths: (c.meta && c.meta.deaths) || 0 } : null);
   }
   return out;
 }
 function loadProfile() {
-  try { return migrateChar(JSON.parse(localStorage.getItem(charKey(G.charSlot || 0)) || 'null')); } catch (e) { return null; }
+  return readCharSlot(G.charSlot || 0);
 }
 function wipeProfile() {
-  try { localStorage.removeItem(charKey(G.charSlot || 0)); } catch (e) {}
+  try { localStorage.removeItem(charKey(G.charSlot || 0)); localStorage.removeItem(charKey(G.charSlot || 0) + '_bak'); } catch (e) {}
 }
 function deleteChar(slot) {
-  try { localStorage.removeItem(charKey(slot)); } catch (e) {}
+  try { localStorage.removeItem(charKey(slot)); localStorage.removeItem(charKey(slot) + '_bak'); } catch (e) {}
 }
 // старият единичен запис става герой №1
 function migrateOldProfile() {
