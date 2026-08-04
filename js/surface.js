@@ -11,8 +11,25 @@ const VENDOR_DEFS = {
 const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
 
 // РЪЧНАТА подредба на Мирхолд (от градския dev-едитор, ?editor=1 + F2).
-// null = автоматична; щом дизайнерът прати layout от COPY LAYOUT — вгражда се тук и важи ЗА ВСИЧКИ.
-const MIRHOLD_LAYOUT = null;
+// Наредена на ръка от дизайнера на 2026-08-04 — важи ЗА ВСИЧКИ играчи.
+const MIRHOLD_LAYOUT = {
+  houses: [
+    { x: 25, y: 12, t: 0, v: 0 }, { x: 33, y: 14, t: 0, v: 1 }, { x: 15, y: 28, t: 1, v: 0 },
+    { x: 11, y: 24, t: 1, v: 1 }, { x: 26, y: 29, t: 1, v: 0 }, { x: 30, y: 11, t: 0, v: 1 },
+    { x: 15, y: 12, t: 0, v: 0 }, { x: 12, y: 16, t: 1, v: 1 }, { x: 34, y: 18, t: 0, v: 0 },
+    { x: 13, y: 20, t: 0, v: 1 }, { x: 33, y: 22, t: 0, v: 0 }, { x: 30, y: 26, t: 0, v: 1 },
+    { x: 9, y: 19, t: 0, v: 0 },
+  ],
+  shops: {
+    weapon: { x: 26, y: 25 },
+    armor: { x: 18, y: 24 },
+    potion: { x: 27, y: 9 },
+    jewel: { x: 18, y: 9 },
+    exchange: { x: 28, y: 17 },
+  },
+  church: { x: 21, y: 14 },
+  tower: { x: 21, y: 20 },
+};
 function mirholdLayout() {
   try {
     const local = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null');
