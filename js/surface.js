@@ -9,6 +9,17 @@ const VENDOR_DEFS = {
   exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
 const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
+
+// РЪЧНАТА подредба на Мирхолд (от градския dev-едитор, ?editor=1 + F2).
+// null = автоматична; щом дизайнерът прати layout от COPY LAYOUT — вгражда се тук и важи ЗА ВСИЧКИ.
+const MIRHOLD_LAYOUT = null;
+function mirholdLayout() {
+  try {
+    const local = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null');
+    if (local && local.houses) return local; // локалната (на дизайнера) е с предимство
+  } catch (e) {}
+  return MIRHOLD_LAYOUT;
+}
 const STALL_NAMES = ['cart', 'small tent', 'tent', 'large tent', 'pavilion'];
 
 const Surface = {
@@ -169,7 +180,9 @@ const Surface = {
     }
 
     // СТРУКТУРАТА: ПЛОЩАД в центъра (кулата, огънят и магазините около него),
-    // къщите — в пръстен покрай стената, свързани с околовръстна улица
+    // къщите — в пръстен покрай стената, свързани с околовръстна улица.
+    // Ако има РЪЧНА подредба от едитора — тя замества позициите на сградите.
+    const LAY = mirholdLayout();
     const spots = {
       tower: { x: cx, y: cy - 1 },
       jewel: { x: cx + 4, y: cy - 6 },    // Мистикът — североизточния ръб на площада (север е за църквата)
@@ -180,6 +193,10 @@ const Surface = {
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
+    if (LAY) {
+      if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
+      for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+    }
     // улици вътре + пътища навън
     const carve = (ax, ay, bx, by) => {
       let x = ax, y = ay;
@@ -238,7 +255,7 @@ const Surface = {
     props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
-    const ch = { x: cx - 4, y: cy - 6 };
+    const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
     for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(ch.x + di, ch.y + dj);
     props.push({ kind: 'church', x: ch.x + 0.5, y: ch.y + 0.6, r: 0.6, solid: false });
     props.push({ kind: 'priest', x: ch.x - 0.8, y: ch.y + 1.6, r: 0.3, solid: true });
@@ -259,6 +276,13 @@ const Surface = {
 
     // ЖИЛИЩНИ КЪЩИ: гъсто и естествено НАВСЯКЪДЕ около площада — от ръба му до
     // стените, с врата към улица. Площадът остава открит. 2x2 клетки колизия.
+    if (LAY && LAY.houses && LAY.houses.length) {
+      // РЪЧНАТА подредба от едитора: къщите са точно където са оставени
+      for (const hh of LAY.houses) {
+        for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(hh.x + di, hh.y + dj);
+        props.push({ kind: 'house', t: hh.t || 0, v: hh.v || 0, x: hh.x + 1.0, y: hh.y + 0.6, r: 0.6, solid: false });
+      }
+    } else {
     const candidates = [];
     for (let y = cy - RAD + 3; y <= cy + RAD - 4; y++) for (let x = cx - RAD + 3; x <= cx + RAD - 3; x++) {
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
@@ -302,6 +326,7 @@ const Surface = {
       props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: x + 1.0, y: y + 0.6, r: 0.6, solid: false });
       placed++;
     }
+    } // край на автоматичното разположение (без ръчна подредба)
     // ЛОКВИ — по калните пътища и из града
     for (let t = 0; t < 30; t++) {
       const x = ri(B + 1, w - B - 2), y = ri(B + 1, h - B - 2);

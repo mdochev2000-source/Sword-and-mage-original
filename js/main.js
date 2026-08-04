@@ -100,6 +100,11 @@ function setupInput() {
         else if (e.code === 'ArrowRight' || e.code === kbBind('right')) G.perkSel = clamp((G.perkSel || 0) + 1, 0, 2);
         else if (e.code === 'Enter' || e.code === 'Space') applyPerk(G.perkSel || 0);
         break;
+      case 'play':
+        // ГРАДСКИЯТ ЕДИТОР: само с ?editor=1 в адреса (dev), F2 в Мирхолд
+        if (e.code === 'F2' && G.editorOn && G.onSurface && G.city === 'mirhold') cityEditToggle();
+        else if (e.code === 'Escape' && G.cityEdit) cityEditToggle();
+        break;
       case 'settings':
         if (e.code === 'Escape') closeSettings();
         break;
@@ -187,6 +192,8 @@ function handlePress(mx, my, button) {
         break;
       case 'shop': shopClick(mx, my); break;
       case 'play': {
+        // ГРАДСКИЯТ ЕДИТОР (dev, ?editor=1 + F2) поглъща кликовете
+        if (G.cityEdit && cityEditClick(mx, my)) break;
         let usedHot = false;
         for (const hb of UI.hotRects) if (mx >= hb.x && mx < hb.x + hb.w && my >= hb.y && my < hb.y + hb.h) { if (hb.act) hb.act(); usedHot = true; }
         // виртуалните бутони работят и с мишка, ако този режим е избран
@@ -1253,6 +1260,7 @@ function render() {
   renderWorld();
   drawVignette();
   drawHUD();
+  if (G.cityEdit && G.state === 'play') drawCityEditOverlay();
 
   if (G.state === 'inventory') drawInventory();
   else if (G.state === 'stats') drawStats();
@@ -1304,6 +1312,8 @@ function drawCursorSprite(menuMode) {
 function boot() {
   cv = document.getElementById('game');
   ctx = cv.getContext('2d');
+  // dev-едиторът на града се отключва САМО с ?editor=1 в адреса
+  G.editorOn = /[?&]editor=1/.test(location.search);
   window.addEventListener('resize', resize);
   resize();
   setupInput();
@@ -1322,3 +1332,122 @@ function boot() {
   requestAnimationFrame(loop);
 }
 boot();
+
+// ================= ГРАДСКИ ЕДИТОР (dev): ?editor=1 + F2 в Мирхолд =================
+// Местиш сгради на живо; подредбата се пази локално и се копира като код (COPY),
+// който се вгражда в играта (MIRHOLD_LAYOUT) — така става градът ЗА ВСИЧКИ.
+const BLD_DEFS = {
+  house:     { ax: 1.0, ay: 0.6, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
+  shophouse: { ax: 1.0, ay: 0.6, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
+  church:    { ax: 0.5, ay: 0.6, cells: (x, y) => [[x - 1, y - 1], [x, y - 1], [x + 1, y - 1], [x - 1, y], [x, y], [x + 1, y]] },
+  tower:     { ax: 0.5, ay: 0.7, cells: (x, y) => [[x, y - 1], [x, y]] },
+};
+function bldBase(pr) {
+  const def = BLD_DEFS[pr.kind];
+  return { bx: Math.round(pr.x - def.ax), by: Math.round(pr.y - def.ay) };
+}
+function cityEditToggle() {
+  G.cityEdit = !G.cityEdit;
+  G.editSelBld = null;
+  toast(G.cityEdit ? 'CITY EDITOR: tap a building, then tap a tile. F2/ESC — exit.' : 'Editor closed. The layout is saved on this device.', '#ffd23b');
+}
+function bldCellsFree(cellsList, self) {
+  const m = G.map;
+  const selfDef = self ? BLD_DEFS[self.kind] : null;
+  const sb = self ? bldBase(self) : null;
+  for (const [x, y] of cellsList) {
+    if (x < 3 || y < 3 || x >= m.w - 3 || y >= m.h - 3) return false;
+    if (m.cells[y * m.w + x] !== FLOOR) {
+      // клетка, заета от САМАТА местена сграда, е позволена
+      if (!self || !selfDef.cells(sb.bx, sb.by).some(([a, b]) => a === x && b === y)) return false;
+    }
+  }
+  return true;
+}
+function moveBuilding(pr, bx, by) {
+  const def = BLD_DEFS[pr.kind];
+  const cellsNew = def.cells(bx, by);
+  if (!bldCellsFree(cellsNew, pr)) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return; }
+  const m = G.map;
+  const sb = bldBase(pr);
+  for (const [x, y] of def.cells(sb.bx, sb.by)) m.cells[y * m.w + x] = FLOOR;
+  for (const [x, y] of cellsNew) m.cells[y * m.w + x] = 0;
+  const ox = bx + def.ax - pr.x, oy = by + def.ay - pr.y;
+  pr.x += ox; pr.y += oy;
+  if (pr.kind === 'church') for (const q of G.props) if (q.kind === 'priest' || q.kind === 'almsbox') { q.x += ox; q.y += oy; }
+  saveCityLayout();
+  Sfx.play('open');
+}
+function saveCityLayout() {
+  const L = { houses: [], shops: {}, church: null, tower: null };
+  for (const pr of G.props) {
+    if (!BLD_DEFS[pr.kind]) continue;
+    const { bx, by } = bldBase(pr);
+    if (pr.kind === 'house') L.houses.push({ x: bx, y: by, t: pr.t || 0, v: pr.v || 0 });
+    else if (pr.kind === 'shophouse') L.shops[pr.vtype] = { x: bx, y: by };
+    else if (pr.kind === 'church') L.church = { x: bx, y: by };
+    else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
+  }
+  try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
+  return L;
+}
+function cityEditClick(mx, my) {
+  // бутоните на лентата
+  for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
+  const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
+  // избор на сграда (клик върху някоя от клетките ѝ)
+  let hit = null;
+  for (const pr of G.props) {
+    if (!BLD_DEFS[pr.kind]) continue;
+    const { bx, by } = bldBase(pr);
+    if (BLD_DEFS[pr.kind].cells(bx, by).some(([a, b]) => a === cellX && b === cellY)) { hit = pr; break; }
+  }
+  if (hit) { G.editSelBld = hit === G.editSelBld ? null : hit; Sfx.play('coin'); return true; }
+  if (!G.editSelBld) return true;
+  moveBuilding(G.editSelBld, cellX, cellY);
+  return true;
+}
+function drawCityEditOverlay() {
+  const S = SCALE;
+  const diamond = (x, y, col) => {
+    const sx = isoX(x, y) + G.camRX, sy = isoY(x, y) + G.camRY;
+    ctx.strokeStyle = col; ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy); ctx.lineTo(sx + TW / 2, sy + TH / 2); ctx.lineTo(sx, sy + TH); ctx.lineTo(sx - TW / 2, sy + TH / 2);
+    ctx.closePath(); ctx.stroke();
+  };
+  // клетките на избраната сграда — жълти
+  if (G.editSelBld && BLD_DEFS[G.editSelBld.kind]) {
+    const { bx, by } = bldBase(G.editSelBld);
+    for (const [x, y] of BLD_DEFS[G.editSelBld.kind].cells(bx, by)) diamond(x, y, 'rgba(255,210,59,0.9)');
+    // клетката под курсора — зелена/червена според валидността
+    const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+    const ok = bldCellsFree(BLD_DEFS[G.editSelBld.kind].cells(cx2, cy2), G.editSelBld);
+    diamond(cx2, cy2, ok ? 'rgba(127,208,160,0.9)' : 'rgba(255,107,122,0.9)');
+  }
+  // лентата с бутоните
+  rcx(0, 0, CW, 17 * S, 'rgba(4,6,11,0.85)');
+  ctx.font = fontBold(6.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
+  ctx.fillText('CITY EDITOR — tap a building, then tap a tile · F2/ESC exit', CW / 2, 7 * S);
+  UI.cityEditBtns = [];
+  const btn = (label, x, wpx, col, act) => {
+    panel(x, 9 * S, wpx, 12 * S);
+    ctx.font = fontBold(6); ctx.fillStyle = col;
+    ctx.fillText(label, x + wpx / 2, 17.5 * S);
+    UI.cityEditBtns.push({ x, y: 9 * S, w: wpx, h: 12 * S, act });
+  };
+  btn('COPY LAYOUT', CW / 2 - 76 * S, 62 * S, '#7fd0a0', () => {
+    const code = JSON.stringify(saveCityLayout());
+    try { navigator.clipboard.writeText(code); } catch (e) {}
+    console.log('MIRHOLD_LAYOUT =', code);
+    toast('Layout copied — send it to Claude to bake it into the game.', '#7fd0a0');
+  });
+  btn('RESET', CW / 2 - 8 * S, 44 * S, '#ff6b7a', () => {
+    try { localStorage.removeItem('sm_layout_mirhold'); } catch (e) {}
+    G.editSelBld = null;
+    startSurface('mirhold');
+    toast('Back to the automatic layout.', '#ffd23b');
+  });
+  btn('EXIT', CW / 2 + 42 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
+  ctx.textAlign = 'left';
+}
