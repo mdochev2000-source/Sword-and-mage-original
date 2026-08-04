@@ -73,9 +73,14 @@ const THEMES = [
   { name: 'Heart of Darkness', sub: 'here the light dies',
     base: '#252c44', dark: '#1d2336', light: '#33405e', crack: '#141a2b', edge: '#1a2033', accent: '#5c78e8',
     top: '#313a58', topLight: '#41507a', topDark: '#28304a', faceL: '#1e2438', faceR: '#171c2c', mortar: '#0e1220' },
+  { name: 'Garrison Depths', sub: 'flooded cells and rusted bars', // МИРХОЛД: наводнена тъмница на гарнизона
+    base: '#3a4a4d', dark: '#2f3d40', light: '#4a5e60', crack: '#233032', edge: '#293738', accent: '#4f8a7d',
+    top: '#485a5c', topLight: '#5a7072', topDark: '#3c4c4e', faceL: '#2c3a3c', faceR: '#243032', mortar: '#182224' },
 ];
+const MIRHOLD_THEME = THEMES.length - 1; // темата на Гарнизонната тъмница
 // визията се сменя на всеки 10 етажа (всеки арх-бос пази своя), нова след етаж 50
 function themeIndexFor(depth) {
+  if (G.dungeonId === 'mirhold') return MIRHOLD_THEME;
   return depth > 50 ? 4 : Math.min(3, Math.floor((depth - 1) / 10));
 }
 
@@ -1469,6 +1474,91 @@ function genPortal() {
   return frames;
 }
 
+// ---------- МИРХОЛД: сгради, стена, кула, порта ----------
+// палитра: сив камък, кафява кал/дърво, тъмни покриви, едно топло оранжево (фенери/прозорци)
+function genMirHouse(R, v) {
+  const g = mk(26, 24);
+  // v0: тъмни плочи (сиво-сини), v1: потъмняла слама
+  const wall = '#5a5347', wallD = '#463f35';
+  const roofA = v ? '#4a3a26' : '#3a3f45', roofB = v ? '#3c3020' : '#2e3238';
+  rc(g, 3, 12, 20, 10, wall);                                       // стени
+  rc(g, 3, 21, 20, 1, wallD);
+  for (let i = 0; i < 5; i++) rc(g, 3 + i * 2, 12 - i, 20 - i * 4, 1, i % 2 ? roofA : roofB); // симетричен двускатен покрив
+  rc(g, 11, 7, 4, 1, roofB);                                        // билото
+  rc(g, 16, 4, 3, 6, '#57504a'); rc(g, 16, 4, 3, 1, '#6a625a');     // комин
+  rc(g, 11, 15, 4, 7, '#241f1a'); rc(g, 12, 16, 2, 5, '#171310');   // врата
+  rc(g, 5, 15, 3, 3, '#171310'); px(g, 6, 16, '#c98a3b');           // топло прозорче
+  rc(g, 18, 15, 3, 3, '#171310');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirShopHouse(vtype) {
+  const g = mk(28, 26);
+  const wall = '#5f574a', wallD = '#4a4238', roofA = '#3a3f45', roofB = '#2e3238';
+  const sign = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f' }[vtype] || '#8f2a3a';
+  rc(g, 2, 13, 24, 11, wall);
+  rc(g, 2, 23, 24, 1, wallD);
+  for (let i = 0; i < 7; i++) rc(g, 2 + i, 12 - i, 24 - 2 * i, 1, i % 2 ? roofA : roofB); // покрив
+  rc(g, 12, 16, 5, 8, '#241f1a'); rc(g, 13, 17, 3, 6, '#171310');   // широка врата
+  rc(g, 4, 16, 4, 4, '#171310'); px(g, 5, 17, '#c98a3b'); px(g, 6, 18, '#c98a3b'); // светещ прозорец
+  // ТАБЕЛА с цвета на занаята + символ
+  rc(g, 19, 14, 7, 6, sign);
+  strokeRect(g, 19, 14, 7, 6, '#241f1a', 1);
+  if (vtype === 'weapon') { rc(g, 22, 15, 1, 4, '#e6ecf5'); rc(g, 21, 18, 3, 1, '#c9a23b'); } // мечче
+  else if (vtype === 'armor') { rc(g, 21, 15, 3, 3, '#aab6c8'); px(g, 22, 18, '#aab6c8'); }   // щит
+  else if (vtype === 'potion') { rc(g, 22, 15, 1, 1, '#e6ecf5'); rc(g, 21, 16, 3, 3, '#4fd0a0'); } // флакон
+  else { rc(g, 22, 15, 1, 4, '#e0c0ff'); rc(g, 21, 16, 3, 1, '#e0c0ff'); }                    // руна
+  rc(g, 6, 1, 3, 5, '#57504a');                                     // комин
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirTower() {
+  const g = mk(22, 46);
+  const st = '#5c6068', stD = '#4a4e56', stL = '#6d7280', mort = '#3a3e46';
+  rc(g, 4, 14, 14, 30, st);                                          // тяло
+  for (let y = 16; y < 43; y += 4) rc(g, 4, y, 14, 1, mort);         // фуги
+  rc(g, 4, 14, 2, 30, stL); rc(g, 16, 14, 2, 30, stD);               // ръбове
+  rc(g, 9, 36, 4, 8, '#241f1a'); rc(g, 10, 37, 2, 6, '#171310');     // врата
+  rc(g, 9, 24, 4, 3, '#171310'); rc(g, 9, 18, 4, 3, '#171310');      // бойници
+  rc(g, 2, 12, 18, 2, stD); for (let i = 0; i < 5; i++) rc(g, 2 + i * 4, 10, 2, 2, st); // зъбери
+  // дървен покрив + ФЕНЕРЪТ (мъждука — свети се анимирано в рендера)
+  rc(g, 5, 6, 12, 4, '#3f2f28'); rc(g, 7, 4, 8, 2, '#332622');
+  rc(g, 9, 1, 4, 4, '#241f1a');
+  rc(g, 10, 2, 2, 2, '#ffb84d');                                     // фенерът
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirWallSeg(R) {
+  const g = mk(22, 16);
+  const st = '#565a62', stD = '#44484f', stL = '#686d76';
+  rc(g, 1, 6, 20, 9, st);                                            // ниска каменна стена
+  rc(g, 1, 6, 20, 1, stL); rc(g, 1, 14, 20, 1, stD);
+  for (let x = 3; x < 20; x += 5) rc(g, x, 8 + (x % 2), 2, 1, stD);  // камъни
+  for (let x = 2; x < 21; x += 6) { rc(g, x, 1, 2, 6, '#4a3a28'); px(g, x, 1, '#5c4a34'); } // палисада колове
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirGate() {
+  const g = mk(30, 24);
+  const st = '#565a62', stD = '#44484f';
+  rc(g, 1, 8, 8, 15, st); rc(g, 21, 8, 8, 15, st);                   // две кулички
+  rc(g, 1, 8, 8, 1, '#686d76'); rc(g, 21, 8, 8, 1, '#686d76');
+  rc(g, 9, 10, 12, 3, st);                                           // арка
+  rc(g, 10, 13, 10, 10, '#171310');                                  // отворът
+  // избледнели ЧЕРВЕНИ ЗНАМЕНА
+  rc(g, 3, 2, 1, 7, '#4a3a28'); rc(g, 4, 2, 3, 5, '#7a2e33'); px(g, 4, 7, '#7a2e33');
+  rc(g, 26, 2, 1, 7, '#4a3a28'); rc(g, 23, 2, 3, 5, '#6e2a30'); px(g, 25, 7, '#6e2a30');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirPuddle(R) {
+  const g = mk(14, 8);
+  const w1 = '#3a4450', w2 = '#46525f';
+  rc(g, 2, 2, 10, 4, w1); rc(g, 1, 3, 12, 2, w1);
+  rc(g, 3, 3, 4, 1, w2); px(g, 9, 4, w2);                            // отблясък
+  return g.canvas;
+}
+
 function initSurfaceSprites() {
   if (Spr.surf) return;
   const R = mulberry32(4242);
@@ -1501,6 +1591,18 @@ function initSurfaceSprites() {
       jewel: genVendor('jewel'),
     },
     portal: genPortal(),
+    // МИРХОЛД
+    houses: [genMirHouse(R, 0), genMirHouse(R, 1)],
+    shophouses: {
+      weapon: genMirShopHouse('weapon'),
+      armor: genMirShopHouse('armor'),
+      potion: genMirShopHouse('potion'),
+      jewel: genMirShopHouse('jewel'),
+    },
+    tower: genMirTower(),
+    wallseg: genMirWallSeg(R),
+    gate: genMirGate(),
+    puddle: genMirPuddle(R),
   };
 }
 

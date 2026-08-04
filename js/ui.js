@@ -420,10 +420,11 @@ function drawHUD() {
     ctx.textAlign = 'center';
     ctx.font = fontBold(8);
     ctx.fillStyle = '#e8e4d0';
-    ctx.fillText(G.onSurface ? 'THE CAMP' : 'FLOOR ' + G.depth, cxm, mr.y + mr.h + 13 * S);
+    const mir = G.city === 'mirhold';
+    ctx.fillText(G.onSurface ? (mir ? 'MIRHOLD' : 'THE CAMP') : 'FLOOR ' + G.depth + (G.dungeonId === 'mirhold' ? '/10' : ''), cxm, mr.y + mr.h + 13 * S);
     ctx.font = fontPx(7);
     ctx.fillStyle = '#7d8899';
-    ctx.fillText(G.onSurface ? 'of the Exiles' : THEMES[Spr.themeIdx].name, cxm, mr.y + mr.h + 23 * S);
+    ctx.fillText(G.onSurface ? (mir ? 'the crossroads hold' : 'of the Exiles') : THEMES[Spr.themeIdx].name, cxm, mr.y + mr.h + 23 * S);
     ctx.textAlign = 'left';
   }
 
@@ -1110,7 +1111,7 @@ function drawShop() {
   const S = SCALE, p = G.player;
   const def = VENDOR_DEFS[G.shopVendor];
   const isMystic = G.shopVendor === 'jewel';
-  const stock = G.shops[G.shopVendor] || [];
+  const stock = G.shops[shopKey(G.shopVendor)] || [];
   UI.shopRects = [];
   UI.shopInvRects = [];
   UI.enchPotRects = [];

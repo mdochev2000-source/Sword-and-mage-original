@@ -697,7 +697,8 @@ function renderWorld() {
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const idx = j * m.w + i;
     if (!G.explored[idx]) continue;
-    if (m.cells[idx] !== FLOOR) continue;
+    // в Мирхолд блокираните клетки (сгради/стена) също са върху трева — без черни дупки
+    if (m.cells[idx] !== FLOOR && !(G.onSurface && G.city === 'mirhold')) continue;
     const vis = G.visible[idx] === 1;
     const sx = isoX(i, j) + camX - TW / 2;
     const sy = isoY(i, j) + camY;
@@ -722,9 +723,9 @@ function renderWorld() {
     blit(ctx, spr, isoX(d.x, d.y) + camX - spr.width * S / 2, isoY(d.x, d.y) + camY - spr.height * S / 2, false, G.visible[idx] ? 0.85 : 0.4);
   }
 
-  // --- топла светлина около мангалите и огъня (остри ромбове) ---
+  // --- топла светлина около мангалите, огъня и фенера на кулата (остри ромбове) ---
   for (const pr of G.props) {
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire') || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower') || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -835,6 +836,13 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'portal') spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
     else if (pr.kind === 'homeportal') { initSurfaceSprites(); spr = Spr.surf.portal[Math.floor(G.time * 4) % 3]; }
+    else if (pr.kind === 'cityportal') spr = Spr.surf.portal[Math.floor(G.time * 4 + 1) % 3];
+    else if (pr.kind === 'house') spr = Spr.surf.houses[pr.v || 0];
+    else if (pr.kind === 'shophouse') spr = Spr.surf.shophouses[pr.vtype];
+    else if (pr.kind === 'tower') spr = Spr.surf.tower;
+    else if (pr.kind === 'wallseg') spr = Spr.surf.wallseg;
+    else if (pr.kind === 'gate') spr = Spr.surf.gate;
+    else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : 0)); o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
@@ -897,6 +905,31 @@ function renderWorld() {
 
   draws.sort((a, b) => a.d - b.d);
   for (const it of draws) drawItem(it);
+
+  // --- МИРХОЛД: дим от комините + ниска мъгла (плоски пиксели, без градиенти) ---
+  if (G.onSurface && G.city === 'mirhold') {
+    for (const pr of G.props) {
+      if (pr.kind !== 'house' && pr.kind !== 'shophouse') continue;
+      const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
+      if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
+      const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
+      const chx = sx + (pr.kind === 'house' ? 6 : -8) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 26 : 28) * S;
+      for (let sm = 0; sm < 4; sm++) {
+        const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
+        const a2 = 0.30 * (1 - t2);
+        ctx.fillStyle = 'rgba(150,155,165,' + a2.toFixed(2) + ')';
+        const wob = Math.sin(G.time * 1.5 + sm * 2 + pr.y) * 2 * S;
+        ctx.fillRect((chx + wob) | 0, (base - t2 * 16 * S) | 0, 2 * S, 2 * S);
+      }
+    }
+    // ниска мъгла в далечината — тънки полупрозрачни ленти, бавно пълзящи
+    for (let fi = 0; fi < 3; fi++) {
+      const fy = CH * (0.30 + fi * 0.22) + Math.sin(G.time * 0.25 + fi * 2.1) * 6 * S;
+      ctx.fillStyle = 'rgba(148,156,166,' + (0.045 + fi * 0.01).toFixed(3) + ')';
+      ctx.fillRect(0, fy | 0, CW, (10 + fi * 4) * S);
+    }
+  }
 
   // верижни мълнии — начупени отсечки
   if (G.zaps) for (const z of G.zaps) {

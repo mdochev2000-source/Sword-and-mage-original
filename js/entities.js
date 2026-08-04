@@ -474,14 +474,20 @@ function killEnemy(e) {
     if (G.depth % 10 === 0) {
       spawnDrop(e.x, e.y, { seal: 2 });      // архибос: 2 Печата на Бездната (НЕ растат с етажа)
       spawnDrop(e.x, e.y, { shard: Math.round(25 + G.depth * 1.5) });    // + осколки, растящи с дълбочината
-      // портал към лагера: прибираш се без да губиш нивото и уменията си
+      // портал у дома: прибираш се без да губиш нивото и уменията си
       // (слага се на валидна подова плочка, за да не се озове в стена = неизползваем)
       const pp = freeFloorNear(e.x, e.y - 1.2);
       G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
-      toast('A portal to camp has opened!', '#8ab0ff');
+      toast(G.dungeonId === 'mirhold' ? 'A portal back to Mirhold has opened!' : 'A portal to camp has opened!', '#8ab0ff');
     } else {
       // пазител (Костен крал/Кървав голем/Архилич — етаж 5/15/25) -> осколки, растящи с дълбочината
       spawnDrop(e.x, e.y, { shard: Math.round(15 + G.depth) });
+      // Гарнизонната тъмница: и МЕЖДИННИЯТ бос (ет. 5) отваря портал за прибиране без загуба
+      if (G.dungeonId === 'mirhold' && G.depth === 5) {
+        const pp = freeFloorNear(e.x, e.y - 1.2);
+        G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
+        toast('A portal back to Mirhold has opened!', '#8ab0ff');
+      }
     }
     // отпечатваме стълбите и стаята
     for (const pr of G.props) if (pr.kind === 'stairs') pr.sealed = false;
@@ -1108,7 +1114,7 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
@@ -1130,8 +1136,15 @@ function updateInteract() {
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
-  else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
-  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — to camp (keep your level and skills)' };
+  else if (best.kind === 'portal') {
+    if (best.dungeon === 'mirhold') {
+      const cp = (G.mirCheckpoint || 1);
+      G.interactHint = { pr: best, txt: 'E — the Garrison Depths (floor ' + (cp > 1 ? cp : 1) + ' of 10)' };
+    } else G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
+  }
+  else if (best.kind === 'cityportal') G.interactHint = { pr: best, txt: best.city === 'mirhold' ? 'E — travel to MIRHOLD' : 'E — travel to the Camp of the Exiles' };
+  else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
+  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: G.dungeonId === 'mirhold' ? 'E — back to Mirhold (keep your level and skills)' : 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
   else if (best.kind === 'vaultdoor') G.interactHint = { pr: best, txt: 'Locked — the Key Guardian holds the key' };
   else if (best.kind === 'arena') G.interactHint = { pr: best, txt: (G.arena && G.arena.state !== 'idle') ? 'Arena — clear the waves!' : 'Arena — step inside to seal the doors' };
@@ -1163,11 +1176,20 @@ function doInteract() {
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
-  } else if (pr.kind === 'vendor' || pr.kind === 'stall') {
+  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse') {
     openShop(pr.vtype);
+  } else if (pr.kind === 'cityportal') {
+    // телепорт между градовете
+    saveProfile();
+    Sfx.play('stairs');
+    startSurface(pr.city);
+    G.state = 'play';
+    toast(pr.city === 'mirhold' ? 'Welcome to Mirhold — the crossroads hold.' : 'Back at the Camp of the Exiles.', '#7fd0a0');
   } else if (pr.kind === 'portal') {
     saveProfile();
-    startTransition(G.checkpoint > 1 ? G.checkpoint : 1); // само контролната точка (смъртта я нулира)
+    G.dungeonId = pr.dungeon || 'abyss'; // от кой град в кое подземие влизаме
+    if (G.dungeonId === 'mirhold') startTransition((G.mirCheckpoint || 1) > 1 ? G.mirCheckpoint : 1);
+    else startTransition(G.checkpoint > 1 ? G.checkpoint : 1); // само контролната точка (смъртта я нулира)
   } else if (pr.kind === 'homeportal') {
     goHomeViaPortal();
   } else if (pr.kind === 'campfire') {
@@ -1179,11 +1201,13 @@ function doInteract() {
 }
 
 // ---------- магазин ----------
+// стоката е ОТДЕЛНА за всеки град (нивата на търговците са споделени)
+function shopKey(vt) { return (G.city || 'camp') + ':' + vt; }
 function openShop(vtype) {
   // ДНЕВНА стока: при нов ден (на всеки 24 часа) всичко се сменя
   const day = Math.floor(Date.now() / 86400000);
   if (G.shopsDay !== day) { G.shops = {}; G.shopsDay = day; }
-  if (!G.shops[vtype]) G.shops[vtype] = genShopStock(vtype);
+  if (!G.shops[shopKey(vtype)]) G.shops[shopKey(vtype)] = genShopStock(vtype);
   G.shopVendor = vtype;
   G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт
   G.state = 'shop';
@@ -1215,14 +1239,14 @@ function shopBuy(entry) {
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);
-    const stock = G.shops[G.shopVendor];
+    const stock = G.shops[shopKey(G.shopVendor)] || [];
     stock.splice(stock.indexOf(entry), 1);
     toast('Soul Stone — it will pull you back once.', '#ff8aa0');
   } else {
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);
-    const stock = G.shops[G.shopVendor];
+    const stock = G.shops[shopKey(G.shopVendor)] || [];
     stock.splice(stock.indexOf(entry), 1);
     toast('Bought: ' + entry.item.name + '  (−' + entry.price + ' g)', '#7fd0a0'); // известие за покупката
   }
@@ -1239,7 +1263,7 @@ function shopUpgrade(vtype) {
   if (p.gold < cost) { toast('You need ' + cost + ' gold.', '#ff6b7a'); Sfx.play('deny'); return; }
   p.gold -= cost;
   G.meta.vendorLvl[vtype] = lvl + 1;
-  G.shops[vtype] = genShopStock(vtype);
+  G.shops[shopKey(vtype)] = genShopStock(vtype);
   toast(VENDOR_DEFS[vtype].name + ' — the camp grows! (level ' + (lvl + 1) + ')', '#7fd0a0');
   burst(p.x, p.y, ['#7fd0a0', '#ffd23b'], 16, 3.5, 0.7);
   Sfx.play('level');
@@ -2121,7 +2145,7 @@ function startTransition(target) {
   G.transTarget = target === undefined ? G.depth + 1 : target;
   // надписът показва СЛЕДВАЩИЯ етаж още от началото на фейда
   const nd = G.transTarget, ti = themeIndexFor(nd);
-  G.transMsg = 'Floor ' + nd + ' — ' + THEMES[ti].name;
+  G.transMsg = (G.dungeonId === 'mirhold' ? 'Floor ' + nd + '/10' : 'Floor ' + nd) + ' — ' + THEMES[ti].name;
   G.transSub = THEMES[ti].sub;
   Sfx.play('stairs');
 }
@@ -2142,6 +2166,8 @@ function startFloor(depth) {
   G.visible = new Uint8Array(gen.map.w * gen.map.h);
   G.explored = new Uint8Array(gen.map.w * gen.map.h);
   G.props = gen.props;
+  // Гарнизонната тъмница е КРАЙНА: етаж 10 е дъното — няма стълби надолу
+  if (G.dungeonId === 'mirhold' && depth >= 10) G.props = G.props.filter(pr => pr.kind !== 'stairs');
   G.enemies = [];
   G.projectiles = [];
   G.particles = [];
@@ -2166,7 +2192,7 @@ function startFloor(depth) {
   G.camInit = false;
   G.miniDirty = true;
   const th = THEMES[gen.theme];
-  G.transMsg = 'Floor ' + depth + ' — ' + th.name;
+  G.transMsg = (G.dungeonId === 'mirhold' ? 'Floor ' + depth + '/10' : 'Floor ' + depth) + ' — ' + th.name;
   G.transSub = th.sub;
 }
 
@@ -2183,6 +2209,10 @@ function startGame(slot, freshName) {
   G.levelupQueue = 0;
   G.levelupChoices = null;
   G.checkpoint = 1;
+  G.mirCheckpoint = 1;
+  G.mirholdCleared = false;
+  G.city = 'camp';
+  G.dungeonId = 'abyss';
   G.heroBank = null;
   if (freshName !== undefined) {
     // чисто нов герой
@@ -2206,6 +2236,9 @@ function startGame(slot, freshName) {
     p.inv = prof.inv || [];
     G.meta = mergeMeta(prof.meta);
     G.checkpoint = prof.checkpoint || 1;
+    G.mirCheckpoint = prof.mirCheckpoint || 1;
+    G.mirholdCleared = !!prof.mirholdCleared;
+    G.city = prof.city || 'camp';
     p.spellsKnown = prof.spellsKnown || { fireball: true };
     p.activeSpells = prof.activeSpells || ['fireball', null, null];
     p.activePassives = Array.isArray(prof.activePassives) ? prof.activePassives.slice(0, 2) : [null, null];
@@ -2252,15 +2285,27 @@ function startGame(slot, freshName) {
   G.state = 'play';
   document.body.classList.remove('menu');
 }
-// прибиране у дома през портала на арх-боса: нивото и дарбите се БАНКИРАТ
+// прибиране у дома през портала: нивото и дарбите се БАНКИРАТ (без загуба)
 function goHomeViaPortal() {
   const p = G.player;
-  G.checkpoint = Math.max(G.checkpoint || 1, G.depth + 1);
   G.heroBank = { lvl: p.lvl, xp: p.xp, xpNext: p.xpNext, perks: p.perks };
   G.meta.bestDepth = Math.max(G.meta.bestDepth, G.maxDepth);
+  if (G.dungeonId === 'mirhold') {
+    // Гарнизонната тъмница: порталите на ет. 5 и ет. 10 прибират в МИРХОЛД
+    if (G.depth >= 10) {
+      G.mirholdCleared = true;
+      G.mirCheckpoint = 1;
+      toast('The Garrison Depths are CLEARED! Mirhold breathes easier.', '#ffd23b');
+    } else {
+      G.mirCheckpoint = Math.max(G.mirCheckpoint || 1, G.depth + 1);
+      toast('Back in Mirhold. The way down from floor ' + G.mirCheckpoint + ' is open.', '#7fd0a0');
+    }
+  } else {
+    G.checkpoint = Math.max(G.checkpoint || 1, G.depth + 1);
+    toast('Returned home with their glory. The entrance from floor ' + G.checkpoint + ' is open.', '#7fd0a0');
+  }
   saveProfile();
-  toast('Returned home with their glory. The entrance from floor ' + G.checkpoint + ' is open.', '#7fd0a0');
-  startSurface();
+  startSurface(); // връща в града, от който си влязъл (G.city се пази)
   G.state = 'play';
 }
 function newRun() { startGame(G.charSlot || 0); } // стар вход, ползван от менютата
@@ -2279,6 +2324,9 @@ function saveProfile() {
       spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, activePassives: p.activePassives || [null, null], spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
+      mirCheckpoint: G.mirCheckpoint || 1,           // контролна точка на Гарнизонната тъмница
+      mirholdCleared: !!G.mirholdCleared,            // финалният бос на Мирхолд е победен
+      city: G.city || 'camp',                        // в кой град е героят (пази се при зареждане)
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
     });
     localStorage.setItem(charKey(G.charSlot || 0), data);
@@ -2373,11 +2421,13 @@ function migrateOldProfile() {
 }
 
 // ---------- повърхността ----------
-function startSurface() {
+function startSurface(city) {
+  if (city) G.city = city;
+  G.city = G.city || 'camp';
   G.onSurface = true;
   G.depth = 0;
   if (!G.meta.worldSeed) G.meta.worldSeed = (Math.random() * 0xffffffff) >>> 0;
-  const gen = Surface.generate(G.meta.worldSeed);
+  const gen = G.city === 'mirhold' ? Surface.generateMirhold(G.meta.worldSeed) : Surface.generate(G.meta.worldSeed);
   G.map = gen.map;
   G.visible = new Uint8Array(gen.map.w * gen.map.h).fill(1);
   G.explored = new Uint8Array(gen.map.w * gen.map.h).fill(1);
@@ -2412,8 +2462,8 @@ function startSurface() {
   G.miniDirty = true;
   // стоката се опреснява при всяко завръщане
   G.shops = {};
-  G.transMsg = 'Camp of the Exiles';
-  G.transSub = 'here the dead take their rest';
+  G.transMsg = G.city === 'mirhold' ? 'MIRHOLD' : 'Camp of the Exiles';
+  G.transSub = G.city === 'mirhold' ? 'the last safe crossroads' : 'here the dead take their rest';
   saveProfile();
 }
 
@@ -2425,6 +2475,7 @@ function respawnAtCamp() {
   p.usedSecondChance = false;
   G.heroBank = null;   // банкираният герой умира със смъртта
   G.checkpoint = 1;    // входът пак е от етаж 1
+  G.mirCheckpoint = 1; // и в Гарнизонната тъмница започваш от етаж 1
   G.levelupQueue = 0;
   G.levelupChoices = null;
   p.buffs = {}; p.potionCd = [0, 0]; // бъфовете/презарежданията не оцеляват смъртта
@@ -2435,7 +2486,7 @@ function respawnAtCamp() {
   startSurface();
   G.state = 'play';
   document.body.classList.remove('menu');
-  toast('The Abyss spat you out. Your gear survived.', '#7fd0a0');
+  toast((G.dungeonId === 'mirhold' ? 'The Depths' : 'The Abyss') + ' spat you out. Your gear survived.', '#7fd0a0');
 }
 
 function saveBest() {

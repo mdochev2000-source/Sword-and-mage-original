@@ -1,3 +1,4 @@
+import base64
 import http.server
 import functools
 import os
@@ -9,6 +10,19 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
         super().end_headers()
+
+    def do_POST(self):
+        # дебъг: POST /shot с dataURL на canvas -> _debug_shot.jpg (за визуални проверки от Claude)
+        if self.path != '/shot':
+            self.send_error(404)
+            return
+        body = self.rfile.read(int(self.headers.get('Content-Length', 0))).decode('ascii')
+        data = base64.b64decode(body.split(',', 1)[1])
+        with open('_debug_shot.jpg', 'wb') as f:
+            f.write(data)
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'ok')
 
     def log_message(self, *args):
         pass

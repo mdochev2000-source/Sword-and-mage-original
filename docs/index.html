@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-03 19:45 UTC";
+window.__BUILD__ = "2026-08-04 10:35 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -322,9 +322,14 @@ const THEMES = [
   { name: 'Heart of Darkness', sub: 'here the light dies',
     base: '#252c44', dark: '#1d2336', light: '#33405e', crack: '#141a2b', edge: '#1a2033', accent: '#5c78e8',
     top: '#313a58', topLight: '#41507a', topDark: '#28304a', faceL: '#1e2438', faceR: '#171c2c', mortar: '#0e1220' },
+  { name: 'Garrison Depths', sub: 'flooded cells and rusted bars', // МИРХОЛД: наводнена тъмница на гарнизона
+    base: '#3a4a4d', dark: '#2f3d40', light: '#4a5e60', crack: '#233032', edge: '#293738', accent: '#4f8a7d',
+    top: '#485a5c', topLight: '#5a7072', topDark: '#3c4c4e', faceL: '#2c3a3c', faceR: '#243032', mortar: '#182224' },
 ];
+const MIRHOLD_THEME = THEMES.length - 1; // темата на Гарнизонната тъмница
 // визията се сменя на всеки 10 етажа (всеки арх-бос пази своя), нова след етаж 50
 function themeIndexFor(depth) {
+  if (G.dungeonId === 'mirhold') return MIRHOLD_THEME;
   return depth > 50 ? 4 : Math.min(3, Math.floor((depth - 1) / 10));
 }
 
@@ -1718,6 +1723,91 @@ function genPortal() {
   return frames;
 }
 
+// ---------- МИРХОЛД: сгради, стена, кула, порта ----------
+// палитра: сив камък, кафява кал/дърво, тъмни покриви, едно топло оранжево (фенери/прозорци)
+function genMirHouse(R, v) {
+  const g = mk(26, 24);
+  // v0: тъмни плочи (сиво-сини), v1: потъмняла слама
+  const wall = '#5a5347', wallD = '#463f35';
+  const roofA = v ? '#4a3a26' : '#3a3f45', roofB = v ? '#3c3020' : '#2e3238';
+  rc(g, 3, 12, 20, 10, wall);                                       // стени
+  rc(g, 3, 21, 20, 1, wallD);
+  for (let i = 0; i < 5; i++) rc(g, 3 + i * 2, 12 - i, 20 - i * 4, 1, i % 2 ? roofA : roofB); // симетричен двускатен покрив
+  rc(g, 11, 7, 4, 1, roofB);                                        // билото
+  rc(g, 16, 4, 3, 6, '#57504a'); rc(g, 16, 4, 3, 1, '#6a625a');     // комин
+  rc(g, 11, 15, 4, 7, '#241f1a'); rc(g, 12, 16, 2, 5, '#171310');   // врата
+  rc(g, 5, 15, 3, 3, '#171310'); px(g, 6, 16, '#c98a3b');           // топло прозорче
+  rc(g, 18, 15, 3, 3, '#171310');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirShopHouse(vtype) {
+  const g = mk(28, 26);
+  const wall = '#5f574a', wallD = '#4a4238', roofA = '#3a3f45', roofB = '#2e3238';
+  const sign = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f' }[vtype] || '#8f2a3a';
+  rc(g, 2, 13, 24, 11, wall);
+  rc(g, 2, 23, 24, 1, wallD);
+  for (let i = 0; i < 7; i++) rc(g, 2 + i, 12 - i, 24 - 2 * i, 1, i % 2 ? roofA : roofB); // покрив
+  rc(g, 12, 16, 5, 8, '#241f1a'); rc(g, 13, 17, 3, 6, '#171310');   // широка врата
+  rc(g, 4, 16, 4, 4, '#171310'); px(g, 5, 17, '#c98a3b'); px(g, 6, 18, '#c98a3b'); // светещ прозорец
+  // ТАБЕЛА с цвета на занаята + символ
+  rc(g, 19, 14, 7, 6, sign);
+  strokeRect(g, 19, 14, 7, 6, '#241f1a', 1);
+  if (vtype === 'weapon') { rc(g, 22, 15, 1, 4, '#e6ecf5'); rc(g, 21, 18, 3, 1, '#c9a23b'); } // мечче
+  else if (vtype === 'armor') { rc(g, 21, 15, 3, 3, '#aab6c8'); px(g, 22, 18, '#aab6c8'); }   // щит
+  else if (vtype === 'potion') { rc(g, 22, 15, 1, 1, '#e6ecf5'); rc(g, 21, 16, 3, 3, '#4fd0a0'); } // флакон
+  else { rc(g, 22, 15, 1, 4, '#e0c0ff'); rc(g, 21, 16, 3, 1, '#e0c0ff'); }                    // руна
+  rc(g, 6, 1, 3, 5, '#57504a');                                     // комин
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirTower() {
+  const g = mk(22, 46);
+  const st = '#5c6068', stD = '#4a4e56', stL = '#6d7280', mort = '#3a3e46';
+  rc(g, 4, 14, 14, 30, st);                                          // тяло
+  for (let y = 16; y < 43; y += 4) rc(g, 4, y, 14, 1, mort);         // фуги
+  rc(g, 4, 14, 2, 30, stL); rc(g, 16, 14, 2, 30, stD);               // ръбове
+  rc(g, 9, 36, 4, 8, '#241f1a'); rc(g, 10, 37, 2, 6, '#171310');     // врата
+  rc(g, 9, 24, 4, 3, '#171310'); rc(g, 9, 18, 4, 3, '#171310');      // бойници
+  rc(g, 2, 12, 18, 2, stD); for (let i = 0; i < 5; i++) rc(g, 2 + i * 4, 10, 2, 2, st); // зъбери
+  // дървен покрив + ФЕНЕРЪТ (мъждука — свети се анимирано в рендера)
+  rc(g, 5, 6, 12, 4, '#3f2f28'); rc(g, 7, 4, 8, 2, '#332622');
+  rc(g, 9, 1, 4, 4, '#241f1a');
+  rc(g, 10, 2, 2, 2, '#ffb84d');                                     // фенерът
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirWallSeg(R) {
+  const g = mk(22, 16);
+  const st = '#565a62', stD = '#44484f', stL = '#686d76';
+  rc(g, 1, 6, 20, 9, st);                                            // ниска каменна стена
+  rc(g, 1, 6, 20, 1, stL); rc(g, 1, 14, 20, 1, stD);
+  for (let x = 3; x < 20; x += 5) rc(g, x, 8 + (x % 2), 2, 1, stD);  // камъни
+  for (let x = 2; x < 21; x += 6) { rc(g, x, 1, 2, 6, '#4a3a28'); px(g, x, 1, '#5c4a34'); } // палисада колове
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirGate() {
+  const g = mk(30, 24);
+  const st = '#565a62', stD = '#44484f';
+  rc(g, 1, 8, 8, 15, st); rc(g, 21, 8, 8, 15, st);                   // две кулички
+  rc(g, 1, 8, 8, 1, '#686d76'); rc(g, 21, 8, 8, 1, '#686d76');
+  rc(g, 9, 10, 12, 3, st);                                           // арка
+  rc(g, 10, 13, 10, 10, '#171310');                                  // отворът
+  // избледнели ЧЕРВЕНИ ЗНАМЕНА
+  rc(g, 3, 2, 1, 7, '#4a3a28'); rc(g, 4, 2, 3, 5, '#7a2e33'); px(g, 4, 7, '#7a2e33');
+  rc(g, 26, 2, 1, 7, '#4a3a28'); rc(g, 23, 2, 3, 5, '#6e2a30'); px(g, 25, 7, '#6e2a30');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genMirPuddle(R) {
+  const g = mk(14, 8);
+  const w1 = '#3a4450', w2 = '#46525f';
+  rc(g, 2, 2, 10, 4, w1); rc(g, 1, 3, 12, 2, w1);
+  rc(g, 3, 3, 4, 1, w2); px(g, 9, 4, w2);                            // отблясък
+  return g.canvas;
+}
+
 function initSurfaceSprites() {
   if (Spr.surf) return;
   const R = mulberry32(4242);
@@ -1750,6 +1840,18 @@ function initSurfaceSprites() {
       jewel: genVendor('jewel'),
     },
     portal: genPortal(),
+    // МИРХОЛД
+    houses: [genMirHouse(R, 0), genMirHouse(R, 1)],
+    shophouses: {
+      weapon: genMirShopHouse('weapon'),
+      armor: genMirShopHouse('armor'),
+      potion: genMirShopHouse('potion'),
+      jewel: genMirShopHouse('jewel'),
+    },
+    tower: genMirTower(),
+    wallseg: genMirWallSeg(R),
+    gate: genMirGate(),
+    puddle: genMirPuddle(R),
   };
 }
 
@@ -2633,6 +2735,7 @@ const Surface = {
       potion: { x: cx - 6, y: cy + 6 },          // югозапад
       jewel: { x: cx + 1, y: cy - 9 },           // север, при руините
       portal: { x: cx + 9, y: cy + 9 },          // югоизток — гробището
+      travel: { x: cx - 9, y: cy + 8 },          // югозапад — порталът към МИРХОЛД
     };
 
     // пътеки от лагера до всяка точка
@@ -2643,7 +2746,7 @@ const Surface = {
       while (y !== by) { step(); y += y < by ? 1 : -1; }
       step();
     };
-    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'portal']) {
+    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'portal', 'travel']) {
       carvePath(spots.camp.x, spots.camp.y, spots[k].x, spots[k].y);
     }
 
@@ -2657,6 +2760,8 @@ const Surface = {
     props.push({ kind: 'campfire', x: spots.camp.x + 0.5, y: spots.camp.y + 0.5, r: 0.4, solid: true });
     // портал (вход към Бездната)
     props.push({ kind: 'portal', x: spots.portal.x + 0.5, y: spots.portal.y + 0.5, r: 0.55, solid: false });
+    // портал-телепорт към МИРХОЛД (градът-дом на кръстопътя)
+    props.push({ kind: 'cityportal', city: 'mirhold', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
 
     // търговци: сергия + продавач отпред-вдясно (за да не го скриват големите палатки)
     for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
@@ -2713,6 +2818,132 @@ const Surface = {
       props, spots,
     };
   },
+
+  // ---------- МИРХОЛД: укрепен граничен град на кръстопът (домът на героя) ----------
+  // ниска каменна стена с палисада, една порта на юг, кула с фенер в центъра,
+  // плътни къщи, кал и локви, голи дървета и изоставени ниви навън, 3 пътя в мъглата
+  generateMirhold(seed) {
+    const R = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+    const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
+    const w = this.SIZE, h = this.SIZE;
+    const cells = new Uint8Array(w * h);
+    const variant = new Uint8Array(w * h);
+    const path = new Uint8Array(w * h);
+    const B = 2;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      if (i >= B && j >= B && i < w - B && j < h - B) cells[j * w + i] = FLOOR;
+      variant[j * w + i] = Math.floor(R() * 4);
+    }
+    const cx = w >> 1, cy = (h >> 1) - 3; // градът е леко на север — място за кръстопътя на юг
+    const RAD = 12;
+    const props = [];
+    const used = new Set();
+    const block = (x, y) => { const idx = y * w + x; cells[idx] = 0; used.add(idx); };
+
+    // СТЕНАТА: нисък каменен пръстен с ПОРТА на юг
+    const gateX = cx, gateY = cy + RAD;
+    for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
+      const d = Math.hypot(i - cx, (j - cy) * 1.1);
+      if (d >= RAD - 0.5 && d < RAD + 0.6) {
+        if (Math.abs(i - gateX) <= 1 && j > cy + RAD - 4) continue; // отворът на портата
+        block(i, j);
+        props.push({ kind: 'wallseg', x: i + 0.5, y: j + 0.5, r: 0.5, solid: false });
+      }
+    }
+    props.push({ kind: 'gate', x: gateX + 0.5, y: gateY + 0.4, r: 0.1, solid: false }); // портата със знамената
+
+    const spots = {
+      tower: { x: cx, y: cy - 1 },
+      weapon: { x: cx - 7, y: cy - 1 },   // ковачницата — запад
+      armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — изток
+      potion: { x: cx - 5, y: cy + 5 },   // алхимикът — югозапад
+      jewel: { x: cx + 5, y: cy - 6 },    // Майстор Захари — североизток
+      dungeon: { x: cx + 5, y: cy + 5 },  // порталът към тъмницата — югоизток
+      travel: { x: cx - 2, y: cy + RAD - 3 }, // порталът към лагера — до портата
+    };
+    // улици вътре + пътища навън
+    const carve = (ax, ay, bx, by) => {
+      let x = ax, y = ay;
+      const st = () => { path[y * w + x] = 1; if (x + 1 < w) path[y * w + x + 1] = 1; };
+      while (y !== by) { st(); y += y < by ? 1 : -1; }
+      while (x !== bx) { st(); x += x < bx ? 1 : -1; }
+      st();
+    };
+    carve(gateX, gateY - 1, cx, cy + 1); // портата -> центъра
+    for (const k of ['weapon', 'armor', 'potion', 'jewel']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток)
+    const crossY = Math.min(h - B - 2, gateY + 4);
+    for (let y = gateY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
+    let dx2 = gateX, dy2 = crossY;
+    while (dx2 > B + 1 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 - 1] = 1; dx2--; if (R() < 0.5) dy2++; }
+    dx2 = gateX; dy2 = crossY;
+    while (dx2 < w - B - 2 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 + 1] = 1; dx2++; if (R() < 0.5) dy2++; }
+
+    const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
+
+    // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
+    for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
+      const s = spots[vt];
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(s.x + di, s.y + dj);
+      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
+      noProp(s.x, s.y + 1, 1); // свободно пред вратата
+    }
+    // КУЛАТА на гарнизона (центъра, с фенер)
+    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+    props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
+    // огън за почивка до кулата
+    props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
+    noProp(cx - 3, cy + 2, 1);
+    // ПОРТАЛИ: тъмницата на гарнизона + телепорт към лагера
+    props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.55, solid: false });
+    props.push({ kind: 'cityportal', city: 'camp', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
+    noProp(spots.dungeon.x, spots.dungeon.y, 1);
+    noProp(spots.travel.x, spots.travel.y, 1);
+
+    // ЖИЛИЩНИ КЪЩИ: плътно наблъскани в стените
+    let placed = 0, tries = 0;
+    while (placed < 10 && tries++ < 700) {
+      const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
+      const d = Math.hypot(x - cx, (y - cy) * 1.1);
+      if (d > RAD - 2.5) continue;
+      let free = true;
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) { // плътно наблъскани — само стъпката е свободна
+        const idx = (y + dj) * w + (x + di);
+        if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
+      }
+      if (!free) continue;
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(x + di, y + dj);
+      props.push({ kind: 'house', v: placed % 2, x: x + 0.5, y: y + 0.6, r: 0.6, solid: false });
+      placed++;
+    }
+    // ЛОКВИ — по калните пътища и из града
+    for (let t = 0; t < 30; t++) {
+      const x = ri(B + 1, w - B - 2), y = ri(B + 1, h - B - 2);
+      const idx = y * w + x;
+      if (cells[idx] !== FLOOR || used.has(idx)) continue;
+      if (!path[idx] && R() < 0.65) continue;
+      props.push({ kind: 'puddle', x: x + 0.5, y: y + 0.5, r: 0, solid: false, flat: true });
+    }
+    // навън: голи дървета, накъсани огради (изоставени ниви), камъни
+    for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
+      const idx = j * w + i;
+      if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) continue;
+      const d = Math.hypot(i - cx, (j - cy) * 1.1);
+      if (d < RAD + 1.5) continue;
+      let nearPath = false;
+      for (let dj = -1; dj <= 1 && !nearPath; dj++) for (let di = -1; di <= 1; di++) if (path[(j + dj) * w + (i + di)]) nearPath = true;
+      if (nearPath) continue;
+      const r2 = R();
+      if (r2 < 0.045) { used.add(idx); props.push({ kind: 'deadTree', x: i + 0.5, y: j + 0.5, r: 0.38, solid: true }); }
+      else if (r2 < 0.072) { used.add(idx); props.push({ kind: 'fence', x: i + 0.5, y: j + 0.5, r: 0.35, solid: true }); }
+      else if (r2 < 0.084) { used.add(idx); props.push({ kind: 'rock', x: i + 0.5, y: j + 0.5, r: 0.3, solid: true }); }
+    }
+
+    return {
+      map: { w, h, cells, variant, rooms: [], start: { x: gateX + 0.5, y: gateY - 1.5 }, path },
+      props, spots,
+    };
+  },
 };
 
 // ---------- магазини ----------
@@ -2734,7 +2965,7 @@ function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } 
 function dailyShopRng(vtype) {
   const day = Math.floor(Date.now() / 86400000);
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
-  const str = vtype + ':' + day + ':' + lvl;
+  const str = (G.city || 'camp') + ':' + vtype + ':' + day + ':' + lvl; // отделна дневна стока за всеки град
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
   return function () {
@@ -2751,10 +2982,13 @@ function genShopStock(vtype) {
   const def = VENDOR_DEFS[vtype];
   if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
+  // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
+  const cityTier = G.city === 'mirhold' ? 1 : 0;
+  const priceMult = 1 + cityTier * 0.35;
   const depthCap = [4, 8, 14, 22, 999][lvl - 1];
-  const rarCap = Math.min(4, lvl);
-  const depth = clamp(Math.min(G.meta.bestDepth, depthCap), 1, 99);
-  const boost = lvl * 3;
+  const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0));
+  const depth = clamp(Math.min(G.meta.bestDepth, depthCap) + cityTier * 3, 1, 99);
+  const boost = lvl * 3 + cityTier * 5;
   const items = [];
   const genSlots = (slots, count) => {
     for (let i = 0; i < count; i++) {
@@ -2763,7 +2997,7 @@ function genShopStock(vtype) {
         const cand = Items.gen(depth, boost, rarCap);
         if (slots.includes(cand.slot)) { it = cand; break; }
       }
-      if (it) items.push({ item: it, price: shopItemPrice(it) });
+      if (it) items.push({ item: it, price: Math.round(shopItemPrice(it) * priceMult) });
     }
   };
   if (vtype === 'potion') {
@@ -3261,14 +3495,20 @@ function killEnemy(e) {
     if (G.depth % 10 === 0) {
       spawnDrop(e.x, e.y, { seal: 2 });      // архибос: 2 Печата на Бездната (НЕ растат с етажа)
       spawnDrop(e.x, e.y, { shard: Math.round(25 + G.depth * 1.5) });    // + осколки, растящи с дълбочината
-      // портал към лагера: прибираш се без да губиш нивото и уменията си
+      // портал у дома: прибираш се без да губиш нивото и уменията си
       // (слага се на валидна подова плочка, за да не се озове в стена = неизползваем)
       const pp = freeFloorNear(e.x, e.y - 1.2);
       G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
-      toast('A portal to camp has opened!', '#8ab0ff');
+      toast(G.dungeonId === 'mirhold' ? 'A portal back to Mirhold has opened!' : 'A portal to camp has opened!', '#8ab0ff');
     } else {
       // пазител (Костен крал/Кървав голем/Архилич — етаж 5/15/25) -> осколки, растящи с дълбочината
       spawnDrop(e.x, e.y, { shard: Math.round(15 + G.depth) });
+      // Гарнизонната тъмница: и МЕЖДИННИЯТ бос (ет. 5) отваря портал за прибиране без загуба
+      if (G.dungeonId === 'mirhold' && G.depth === 5) {
+        const pp = freeFloorNear(e.x, e.y - 1.2);
+        G.props.push({ kind: 'homeportal', x: pp.x, y: pp.y, r: 0.55, solid: false });
+        toast('A portal back to Mirhold has opened!', '#8ab0ff');
+      }
     }
     // отпечатваме стълбите и стаята
     for (const pr of G.props) if (pr.kind === 'stairs') pr.sealed = false;
@@ -3895,7 +4135,7 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
@@ -3917,8 +4157,15 @@ function updateInteract() {
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
-  else if (best.kind === 'portal') G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
-  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: 'E — to camp (keep your level and skills)' };
+  else if (best.kind === 'portal') {
+    if (best.dungeon === 'mirhold') {
+      const cp = (G.mirCheckpoint || 1);
+      G.interactHint = { pr: best, txt: 'E — the Garrison Depths (floor ' + (cp > 1 ? cp : 1) + ' of 10)' };
+    } else G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
+  }
+  else if (best.kind === 'cityportal') G.interactHint = { pr: best, txt: best.city === 'mirhold' ? 'E — travel to MIRHOLD' : 'E — travel to the Camp of the Exiles' };
+  else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
+  else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: G.dungeonId === 'mirhold' ? 'E — back to Mirhold (keep your level and skills)' : 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
   else if (best.kind === 'vaultdoor') G.interactHint = { pr: best, txt: 'Locked — the Key Guardian holds the key' };
   else if (best.kind === 'arena') G.interactHint = { pr: best, txt: (G.arena && G.arena.state !== 'idle') ? 'Arena — clear the waves!' : 'Arena — step inside to seal the doors' };
@@ -3950,11 +4197,20 @@ function doInteract() {
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
-  } else if (pr.kind === 'vendor' || pr.kind === 'stall') {
+  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse') {
     openShop(pr.vtype);
+  } else if (pr.kind === 'cityportal') {
+    // телепорт между градовете
+    saveProfile();
+    Sfx.play('stairs');
+    startSurface(pr.city);
+    G.state = 'play';
+    toast(pr.city === 'mirhold' ? 'Welcome to Mirhold — the crossroads hold.' : 'Back at the Camp of the Exiles.', '#7fd0a0');
   } else if (pr.kind === 'portal') {
     saveProfile();
-    startTransition(G.checkpoint > 1 ? G.checkpoint : 1); // само контролната точка (смъртта я нулира)
+    G.dungeonId = pr.dungeon || 'abyss'; // от кой град в кое подземие влизаме
+    if (G.dungeonId === 'mirhold') startTransition((G.mirCheckpoint || 1) > 1 ? G.mirCheckpoint : 1);
+    else startTransition(G.checkpoint > 1 ? G.checkpoint : 1); // само контролната точка (смъртта я нулира)
   } else if (pr.kind === 'homeportal') {
     goHomeViaPortal();
   } else if (pr.kind === 'campfire') {
@@ -3966,11 +4222,13 @@ function doInteract() {
 }
 
 // ---------- магазин ----------
+// стоката е ОТДЕЛНА за всеки град (нивата на търговците са споделени)
+function shopKey(vt) { return (G.city || 'camp') + ':' + vt; }
 function openShop(vtype) {
   // ДНЕВНА стока: при нов ден (на всеки 24 часа) всичко се сменя
   const day = Math.floor(Date.now() / 86400000);
   if (G.shopsDay !== day) { G.shops = {}; G.shopsDay = day; }
-  if (!G.shops[vtype]) G.shops[vtype] = genShopStock(vtype);
+  if (!G.shops[shopKey(vtype)]) G.shops[shopKey(vtype)] = genShopStock(vtype);
   G.shopVendor = vtype;
   G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт
   G.state = 'shop';
@@ -4002,14 +4260,14 @@ function shopBuy(entry) {
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);
-    const stock = G.shops[G.shopVendor];
+    const stock = G.shops[shopKey(G.shopVendor)] || [];
     stock.splice(stock.indexOf(entry), 1);
     toast('Soul Stone — it will pull you back once.', '#ff8aa0');
   } else {
     if (p.inv.length >= G.meta.invSlots) { toast('Inventory is full!', '#ff6b7a'); Sfx.play('deny'); return; }
     p.gold -= entry.price;
     p.inv.push(entry.item);
-    const stock = G.shops[G.shopVendor];
+    const stock = G.shops[shopKey(G.shopVendor)] || [];
     stock.splice(stock.indexOf(entry), 1);
     toast('Bought: ' + entry.item.name + '  (−' + entry.price + ' g)', '#7fd0a0'); // известие за покупката
   }
@@ -4026,7 +4284,7 @@ function shopUpgrade(vtype) {
   if (p.gold < cost) { toast('You need ' + cost + ' gold.', '#ff6b7a'); Sfx.play('deny'); return; }
   p.gold -= cost;
   G.meta.vendorLvl[vtype] = lvl + 1;
-  G.shops[vtype] = genShopStock(vtype);
+  G.shops[shopKey(vtype)] = genShopStock(vtype);
   toast(VENDOR_DEFS[vtype].name + ' — the camp grows! (level ' + (lvl + 1) + ')', '#7fd0a0');
   burst(p.x, p.y, ['#7fd0a0', '#ffd23b'], 16, 3.5, 0.7);
   Sfx.play('level');
@@ -4908,7 +5166,7 @@ function startTransition(target) {
   G.transTarget = target === undefined ? G.depth + 1 : target;
   // надписът показва СЛЕДВАЩИЯ етаж още от началото на фейда
   const nd = G.transTarget, ti = themeIndexFor(nd);
-  G.transMsg = 'Floor ' + nd + ' — ' + THEMES[ti].name;
+  G.transMsg = (G.dungeonId === 'mirhold' ? 'Floor ' + nd + '/10' : 'Floor ' + nd) + ' — ' + THEMES[ti].name;
   G.transSub = THEMES[ti].sub;
   Sfx.play('stairs');
 }
@@ -4929,6 +5187,8 @@ function startFloor(depth) {
   G.visible = new Uint8Array(gen.map.w * gen.map.h);
   G.explored = new Uint8Array(gen.map.w * gen.map.h);
   G.props = gen.props;
+  // Гарнизонната тъмница е КРАЙНА: етаж 10 е дъното — няма стълби надолу
+  if (G.dungeonId === 'mirhold' && depth >= 10) G.props = G.props.filter(pr => pr.kind !== 'stairs');
   G.enemies = [];
   G.projectiles = [];
   G.particles = [];
@@ -4953,7 +5213,7 @@ function startFloor(depth) {
   G.camInit = false;
   G.miniDirty = true;
   const th = THEMES[gen.theme];
-  G.transMsg = 'Floor ' + depth + ' — ' + th.name;
+  G.transMsg = (G.dungeonId === 'mirhold' ? 'Floor ' + depth + '/10' : 'Floor ' + depth) + ' — ' + th.name;
   G.transSub = th.sub;
 }
 
@@ -4970,6 +5230,10 @@ function startGame(slot, freshName) {
   G.levelupQueue = 0;
   G.levelupChoices = null;
   G.checkpoint = 1;
+  G.mirCheckpoint = 1;
+  G.mirholdCleared = false;
+  G.city = 'camp';
+  G.dungeonId = 'abyss';
   G.heroBank = null;
   if (freshName !== undefined) {
     // чисто нов герой
@@ -4993,6 +5257,9 @@ function startGame(slot, freshName) {
     p.inv = prof.inv || [];
     G.meta = mergeMeta(prof.meta);
     G.checkpoint = prof.checkpoint || 1;
+    G.mirCheckpoint = prof.mirCheckpoint || 1;
+    G.mirholdCleared = !!prof.mirholdCleared;
+    G.city = prof.city || 'camp';
     p.spellsKnown = prof.spellsKnown || { fireball: true };
     p.activeSpells = prof.activeSpells || ['fireball', null, null];
     p.activePassives = Array.isArray(prof.activePassives) ? prof.activePassives.slice(0, 2) : [null, null];
@@ -5039,15 +5306,27 @@ function startGame(slot, freshName) {
   G.state = 'play';
   document.body.classList.remove('menu');
 }
-// прибиране у дома през портала на арх-боса: нивото и дарбите се БАНКИРАТ
+// прибиране у дома през портала: нивото и дарбите се БАНКИРАТ (без загуба)
 function goHomeViaPortal() {
   const p = G.player;
-  G.checkpoint = Math.max(G.checkpoint || 1, G.depth + 1);
   G.heroBank = { lvl: p.lvl, xp: p.xp, xpNext: p.xpNext, perks: p.perks };
   G.meta.bestDepth = Math.max(G.meta.bestDepth, G.maxDepth);
+  if (G.dungeonId === 'mirhold') {
+    // Гарнизонната тъмница: порталите на ет. 5 и ет. 10 прибират в МИРХОЛД
+    if (G.depth >= 10) {
+      G.mirholdCleared = true;
+      G.mirCheckpoint = 1;
+      toast('The Garrison Depths are CLEARED! Mirhold breathes easier.', '#ffd23b');
+    } else {
+      G.mirCheckpoint = Math.max(G.mirCheckpoint || 1, G.depth + 1);
+      toast('Back in Mirhold. The way down from floor ' + G.mirCheckpoint + ' is open.', '#7fd0a0');
+    }
+  } else {
+    G.checkpoint = Math.max(G.checkpoint || 1, G.depth + 1);
+    toast('Returned home with their glory. The entrance from floor ' + G.checkpoint + ' is open.', '#7fd0a0');
+  }
   saveProfile();
-  toast('Returned home with their glory. The entrance from floor ' + G.checkpoint + ' is open.', '#7fd0a0');
-  startSurface();
+  startSurface(); // връща в града, от който си влязъл (G.city се пази)
   G.state = 'play';
 }
 function newRun() { startGame(G.charSlot || 0); } // стар вход, ползван от менютата
@@ -5066,6 +5345,9 @@ function saveProfile() {
       spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, activePassives: p.activePassives || [null, null], spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
       checkpoint: G.checkpoint || 1,
+      mirCheckpoint: G.mirCheckpoint || 1,           // контролна точка на Гарнизонната тъмница
+      mirholdCleared: !!G.mirholdCleared,            // финалният бос на Мирхолд е победен
+      city: G.city || 'camp',                        // в кой град е героят (пази се при зареждане)
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
     });
     localStorage.setItem(charKey(G.charSlot || 0), data);
@@ -5160,11 +5442,13 @@ function migrateOldProfile() {
 }
 
 // ---------- повърхността ----------
-function startSurface() {
+function startSurface(city) {
+  if (city) G.city = city;
+  G.city = G.city || 'camp';
   G.onSurface = true;
   G.depth = 0;
   if (!G.meta.worldSeed) G.meta.worldSeed = (Math.random() * 0xffffffff) >>> 0;
-  const gen = Surface.generate(G.meta.worldSeed);
+  const gen = G.city === 'mirhold' ? Surface.generateMirhold(G.meta.worldSeed) : Surface.generate(G.meta.worldSeed);
   G.map = gen.map;
   G.visible = new Uint8Array(gen.map.w * gen.map.h).fill(1);
   G.explored = new Uint8Array(gen.map.w * gen.map.h).fill(1);
@@ -5199,8 +5483,8 @@ function startSurface() {
   G.miniDirty = true;
   // стоката се опреснява при всяко завръщане
   G.shops = {};
-  G.transMsg = 'Camp of the Exiles';
-  G.transSub = 'here the dead take their rest';
+  G.transMsg = G.city === 'mirhold' ? 'MIRHOLD' : 'Camp of the Exiles';
+  G.transSub = G.city === 'mirhold' ? 'the last safe crossroads' : 'here the dead take their rest';
   saveProfile();
 }
 
@@ -5212,6 +5496,7 @@ function respawnAtCamp() {
   p.usedSecondChance = false;
   G.heroBank = null;   // банкираният герой умира със смъртта
   G.checkpoint = 1;    // входът пак е от етаж 1
+  G.mirCheckpoint = 1; // и в Гарнизонната тъмница започваш от етаж 1
   G.levelupQueue = 0;
   G.levelupChoices = null;
   p.buffs = {}; p.potionCd = [0, 0]; // бъфовете/презарежданията не оцеляват смъртта
@@ -5222,7 +5507,7 @@ function respawnAtCamp() {
   startSurface();
   G.state = 'play';
   document.body.classList.remove('menu');
-  toast('The Abyss spat you out. Your gear survived.', '#7fd0a0');
+  toast((G.dungeonId === 'mirhold' ? 'The Depths' : 'The Abyss') + ' spat you out. Your gear survived.', '#7fd0a0');
 }
 
 function saveBest() {
@@ -5661,10 +5946,11 @@ function drawHUD() {
     ctx.textAlign = 'center';
     ctx.font = fontBold(8);
     ctx.fillStyle = '#e8e4d0';
-    ctx.fillText(G.onSurface ? 'THE CAMP' : 'FLOOR ' + G.depth, cxm, mr.y + mr.h + 13 * S);
+    const mir = G.city === 'mirhold';
+    ctx.fillText(G.onSurface ? (mir ? 'MIRHOLD' : 'THE CAMP') : 'FLOOR ' + G.depth + (G.dungeonId === 'mirhold' ? '/10' : ''), cxm, mr.y + mr.h + 13 * S);
     ctx.font = fontPx(7);
     ctx.fillStyle = '#7d8899';
-    ctx.fillText(G.onSurface ? 'of the Exiles' : THEMES[Spr.themeIdx].name, cxm, mr.y + mr.h + 23 * S);
+    ctx.fillText(G.onSurface ? (mir ? 'the crossroads hold' : 'of the Exiles') : THEMES[Spr.themeIdx].name, cxm, mr.y + mr.h + 23 * S);
     ctx.textAlign = 'left';
   }
 
@@ -6351,7 +6637,7 @@ function drawShop() {
   const S = SCALE, p = G.player;
   const def = VENDOR_DEFS[G.shopVendor];
   const isMystic = G.shopVendor === 'jewel';
-  const stock = G.shops[G.shopVendor] || [];
+  const stock = G.shops[shopKey(G.shopVendor)] || [];
   UI.shopRects = [];
   UI.shopInvRects = [];
   UI.enchPotRects = [];
@@ -9221,7 +9507,8 @@ function renderWorld() {
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const idx = j * m.w + i;
     if (!G.explored[idx]) continue;
-    if (m.cells[idx] !== FLOOR) continue;
+    // в Мирхолд блокираните клетки (сгради/стена) също са върху трева — без черни дупки
+    if (m.cells[idx] !== FLOOR && !(G.onSurface && G.city === 'mirhold')) continue;
     const vis = G.visible[idx] === 1;
     const sx = isoX(i, j) + camX - TW / 2;
     const sy = isoY(i, j) + camY;
@@ -9246,9 +9533,9 @@ function renderWorld() {
     blit(ctx, spr, isoX(d.x, d.y) + camX - spr.width * S / 2, isoY(d.x, d.y) + camY - spr.height * S / 2, false, G.visible[idx] ? 0.85 : 0.4);
   }
 
-  // --- топла светлина около мангалите и огъня (остри ромбове) ---
+  // --- топла светлина около мангалите, огъня и фенера на кулата (остри ромбове) ---
   for (const pr of G.props) {
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire') || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower') || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -9359,6 +9646,13 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'portal') spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
     else if (pr.kind === 'homeportal') { initSurfaceSprites(); spr = Spr.surf.portal[Math.floor(G.time * 4) % 3]; }
+    else if (pr.kind === 'cityportal') spr = Spr.surf.portal[Math.floor(G.time * 4 + 1) % 3];
+    else if (pr.kind === 'house') spr = Spr.surf.houses[pr.v || 0];
+    else if (pr.kind === 'shophouse') spr = Spr.surf.shophouses[pr.vtype];
+    else if (pr.kind === 'tower') spr = Spr.surf.tower;
+    else if (pr.kind === 'wallseg') spr = Spr.surf.wallseg;
+    else if (pr.kind === 'gate') spr = Spr.surf.gate;
+    else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : 0)); o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
@@ -9421,6 +9715,31 @@ function renderWorld() {
 
   draws.sort((a, b) => a.d - b.d);
   for (const it of draws) drawItem(it);
+
+  // --- МИРХОЛД: дим от комините + ниска мъгла (плоски пиксели, без градиенти) ---
+  if (G.onSurface && G.city === 'mirhold') {
+    for (const pr of G.props) {
+      if (pr.kind !== 'house' && pr.kind !== 'shophouse') continue;
+      const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
+      if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
+      const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
+      const chx = sx + (pr.kind === 'house' ? 6 : -8) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 26 : 28) * S;
+      for (let sm = 0; sm < 4; sm++) {
+        const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
+        const a2 = 0.30 * (1 - t2);
+        ctx.fillStyle = 'rgba(150,155,165,' + a2.toFixed(2) + ')';
+        const wob = Math.sin(G.time * 1.5 + sm * 2 + pr.y) * 2 * S;
+        ctx.fillRect((chx + wob) | 0, (base - t2 * 16 * S) | 0, 2 * S, 2 * S);
+      }
+    }
+    // ниска мъгла в далечината — тънки полупрозрачни ленти, бавно пълзящи
+    for (let fi = 0; fi < 3; fi++) {
+      const fy = CH * (0.30 + fi * 0.22) + Math.sin(G.time * 0.25 + fi * 2.1) * 6 * S;
+      ctx.fillStyle = 'rgba(148,156,166,' + (0.045 + fi * 0.01).toFixed(3) + ')';
+      ctx.fillRect(0, fy | 0, CW, (10 + fi * 4) * S);
+    }
+  }
 
   // верижни мълнии — начупени отсечки
   if (G.zaps) for (const z of G.zaps) {

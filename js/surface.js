@@ -35,6 +35,7 @@ const Surface = {
       potion: { x: cx - 6, y: cy + 6 },          // югозапад
       jewel: { x: cx + 1, y: cy - 9 },           // север, при руините
       portal: { x: cx + 9, y: cy + 9 },          // югоизток — гробището
+      travel: { x: cx - 9, y: cy + 8 },          // югозапад — порталът към МИРХОЛД
     };
 
     // пътеки от лагера до всяка точка
@@ -45,7 +46,7 @@ const Surface = {
       while (y !== by) { step(); y += y < by ? 1 : -1; }
       step();
     };
-    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'portal']) {
+    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'portal', 'travel']) {
       carvePath(spots.camp.x, spots.camp.y, spots[k].x, spots[k].y);
     }
 
@@ -59,6 +60,8 @@ const Surface = {
     props.push({ kind: 'campfire', x: spots.camp.x + 0.5, y: spots.camp.y + 0.5, r: 0.4, solid: true });
     // портал (вход към Бездната)
     props.push({ kind: 'portal', x: spots.portal.x + 0.5, y: spots.portal.y + 0.5, r: 0.55, solid: false });
+    // портал-телепорт към МИРХОЛД (градът-дом на кръстопътя)
+    props.push({ kind: 'cityportal', city: 'mirhold', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
 
     // търговци: сергия + продавач отпред-вдясно (за да не го скриват големите палатки)
     for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
@@ -115,6 +118,132 @@ const Surface = {
       props, spots,
     };
   },
+
+  // ---------- МИРХОЛД: укрепен граничен град на кръстопът (домът на героя) ----------
+  // ниска каменна стена с палисада, една порта на юг, кула с фенер в центъра,
+  // плътни къщи, кал и локви, голи дървета и изоставени ниви навън, 3 пътя в мъглата
+  generateMirhold(seed) {
+    const R = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+    const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
+    const w = this.SIZE, h = this.SIZE;
+    const cells = new Uint8Array(w * h);
+    const variant = new Uint8Array(w * h);
+    const path = new Uint8Array(w * h);
+    const B = 2;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      if (i >= B && j >= B && i < w - B && j < h - B) cells[j * w + i] = FLOOR;
+      variant[j * w + i] = Math.floor(R() * 4);
+    }
+    const cx = w >> 1, cy = (h >> 1) - 3; // градът е леко на север — място за кръстопътя на юг
+    const RAD = 12;
+    const props = [];
+    const used = new Set();
+    const block = (x, y) => { const idx = y * w + x; cells[idx] = 0; used.add(idx); };
+
+    // СТЕНАТА: нисък каменен пръстен с ПОРТА на юг
+    const gateX = cx, gateY = cy + RAD;
+    for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
+      const d = Math.hypot(i - cx, (j - cy) * 1.1);
+      if (d >= RAD - 0.5 && d < RAD + 0.6) {
+        if (Math.abs(i - gateX) <= 1 && j > cy + RAD - 4) continue; // отворът на портата
+        block(i, j);
+        props.push({ kind: 'wallseg', x: i + 0.5, y: j + 0.5, r: 0.5, solid: false });
+      }
+    }
+    props.push({ kind: 'gate', x: gateX + 0.5, y: gateY + 0.4, r: 0.1, solid: false }); // портата със знамената
+
+    const spots = {
+      tower: { x: cx, y: cy - 1 },
+      weapon: { x: cx - 7, y: cy - 1 },   // ковачницата — запад
+      armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — изток
+      potion: { x: cx - 5, y: cy + 5 },   // алхимикът — югозапад
+      jewel: { x: cx + 5, y: cy - 6 },    // Майстор Захари — североизток
+      dungeon: { x: cx + 5, y: cy + 5 },  // порталът към тъмницата — югоизток
+      travel: { x: cx - 2, y: cy + RAD - 3 }, // порталът към лагера — до портата
+    };
+    // улици вътре + пътища навън
+    const carve = (ax, ay, bx, by) => {
+      let x = ax, y = ay;
+      const st = () => { path[y * w + x] = 1; if (x + 1 < w) path[y * w + x + 1] = 1; };
+      while (y !== by) { st(); y += y < by ? 1 : -1; }
+      while (x !== bx) { st(); x += x < bx ? 1 : -1; }
+      st();
+    };
+    carve(gateX, gateY - 1, cx, cy + 1); // портата -> центъра
+    for (const k of ['weapon', 'armor', 'potion', 'jewel']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток)
+    const crossY = Math.min(h - B - 2, gateY + 4);
+    for (let y = gateY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
+    let dx2 = gateX, dy2 = crossY;
+    while (dx2 > B + 1 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 - 1] = 1; dx2--; if (R() < 0.5) dy2++; }
+    dx2 = gateX; dy2 = crossY;
+    while (dx2 < w - B - 2 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 + 1] = 1; dx2++; if (R() < 0.5) dy2++; }
+
+    const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
+
+    // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
+    for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
+      const s = spots[vt];
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(s.x + di, s.y + dj);
+      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
+      noProp(s.x, s.y + 1, 1); // свободно пред вратата
+    }
+    // КУЛАТА на гарнизона (центъра, с фенер)
+    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+    props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
+    // огън за почивка до кулата
+    props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
+    noProp(cx - 3, cy + 2, 1);
+    // ПОРТАЛИ: тъмницата на гарнизона + телепорт към лагера
+    props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.55, solid: false });
+    props.push({ kind: 'cityportal', city: 'camp', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
+    noProp(spots.dungeon.x, spots.dungeon.y, 1);
+    noProp(spots.travel.x, spots.travel.y, 1);
+
+    // ЖИЛИЩНИ КЪЩИ: плътно наблъскани в стените
+    let placed = 0, tries = 0;
+    while (placed < 10 && tries++ < 700) {
+      const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
+      const d = Math.hypot(x - cx, (y - cy) * 1.1);
+      if (d > RAD - 2.5) continue;
+      let free = true;
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) { // плътно наблъскани — само стъпката е свободна
+        const idx = (y + dj) * w + (x + di);
+        if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
+      }
+      if (!free) continue;
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(x + di, y + dj);
+      props.push({ kind: 'house', v: placed % 2, x: x + 0.5, y: y + 0.6, r: 0.6, solid: false });
+      placed++;
+    }
+    // ЛОКВИ — по калните пътища и из града
+    for (let t = 0; t < 30; t++) {
+      const x = ri(B + 1, w - B - 2), y = ri(B + 1, h - B - 2);
+      const idx = y * w + x;
+      if (cells[idx] !== FLOOR || used.has(idx)) continue;
+      if (!path[idx] && R() < 0.65) continue;
+      props.push({ kind: 'puddle', x: x + 0.5, y: y + 0.5, r: 0, solid: false, flat: true });
+    }
+    // навън: голи дървета, накъсани огради (изоставени ниви), камъни
+    for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
+      const idx = j * w + i;
+      if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) continue;
+      const d = Math.hypot(i - cx, (j - cy) * 1.1);
+      if (d < RAD + 1.5) continue;
+      let nearPath = false;
+      for (let dj = -1; dj <= 1 && !nearPath; dj++) for (let di = -1; di <= 1; di++) if (path[(j + dj) * w + (i + di)]) nearPath = true;
+      if (nearPath) continue;
+      const r2 = R();
+      if (r2 < 0.045) { used.add(idx); props.push({ kind: 'deadTree', x: i + 0.5, y: j + 0.5, r: 0.38, solid: true }); }
+      else if (r2 < 0.072) { used.add(idx); props.push({ kind: 'fence', x: i + 0.5, y: j + 0.5, r: 0.35, solid: true }); }
+      else if (r2 < 0.084) { used.add(idx); props.push({ kind: 'rock', x: i + 0.5, y: j + 0.5, r: 0.3, solid: true }); }
+    }
+
+    return {
+      map: { w, h, cells, variant, rooms: [], start: { x: gateX + 0.5, y: gateY - 1.5 }, path },
+      props, spots,
+    };
+  },
 };
 
 // ---------- магазини ----------
@@ -136,7 +265,7 @@ function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } 
 function dailyShopRng(vtype) {
   const day = Math.floor(Date.now() / 86400000);
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
-  const str = vtype + ':' + day + ':' + lvl;
+  const str = (G.city || 'camp') + ':' + vtype + ':' + day + ':' + lvl; // отделна дневна стока за всеки град
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
   return function () {
@@ -153,10 +282,13 @@ function genShopStock(vtype) {
   const def = VENDOR_DEFS[vtype];
   if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
+  // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
+  const cityTier = G.city === 'mirhold' ? 1 : 0;
+  const priceMult = 1 + cityTier * 0.35;
   const depthCap = [4, 8, 14, 22, 999][lvl - 1];
-  const rarCap = Math.min(4, lvl);
-  const depth = clamp(Math.min(G.meta.bestDepth, depthCap), 1, 99);
-  const boost = lvl * 3;
+  const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0));
+  const depth = clamp(Math.min(G.meta.bestDepth, depthCap) + cityTier * 3, 1, 99);
+  const boost = lvl * 3 + cityTier * 5;
   const items = [];
   const genSlots = (slots, count) => {
     for (let i = 0; i < count; i++) {
@@ -165,7 +297,7 @@ function genShopStock(vtype) {
         const cand = Items.gen(depth, boost, rarCap);
         if (slots.includes(cand.slot)) { it = cand; break; }
       }
-      if (it) items.push({ item: it, price: shopItemPrice(it) });
+      if (it) items.push({ item: it, price: Math.round(shopItemPrice(it) * priceMult) });
     }
   };
   if (vtype === 'potion') {
