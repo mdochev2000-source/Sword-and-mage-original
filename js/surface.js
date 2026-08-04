@@ -163,13 +163,15 @@ const Surface = {
     props.push({ kind: 'gate', x: gateX + 0.5, y: gY + 0.5, r: 0.1, solid: false });  // главната порта (юг)
     props.push({ kind: 'gate', x: gateX + 0.5, y: gNY + 0.5, r: 0.1, solid: false }); // задната порта (север)
 
+    // СТРУКТУРАТА: ПЛОЩАД в центъра (кулата, огънят и магазините около него),
+    // къщите — в пръстен покрай стената, свързани с околовръстна улица
     const spots = {
       tower: { x: cx, y: cy - 1 },
-      weapon: { x: cx - 8, y: cy - 2 },   // ковачницата — запад
-      armor: { x: cx + 8, y: cy - 2 },    // бронетворецът — изток
-      potion: { x: cx - 6, y: cy + 6 },   // алхимикът — югозапад
-      jewel: { x: cx + 6, y: cy - 7 },    // Майстор Захари — североизток
-      exchange: { x: cx + 6, y: cy + 6 }, // сарафинът — югоизток
+      jewel: { x: cx - 1, y: cy - 7 },    // Мистикът — северния ръб на площада
+      weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
+      armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
+      potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
+      exchange: { x: cx + 4, y: cy + 5 }, // сарафинът — югоизточния
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
@@ -183,12 +185,22 @@ const Surface = {
     };
     carve(gateX, gY - 1, cx, cy + 1);  // южната порта -> центъра
     carve(gateX, gNY + 1, cx, cy - 1); // задната порта -> центъра
+    // ПЛОЩАДЪТ: широка отъпкана зона в сърцето на града
+    for (let j = cy - 5; j <= cy + 5; j++) for (let i = cx - 5; i <= cx + 6; i++) {
+      if (Math.hypot(i - cx - 0.5, (j - cy) * 1.1) < 4.9) path[j * w + i] = 1;
+    }
+    // пътеки от площада до всеки магазин
     for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
-    // ОКОЛОВРЪСТНА улица — гръбнакът на селището; къщите се редят покрай нея
-    for (let a = 0; a < 72; a++) {
-      const ang = a / 72 * Math.PI * 2;
-      const x = Math.round(cx + Math.cos(ang) * 8.5), y = Math.round(cy + Math.sin(ang) * 8.5 / 1.1);
+    // ОКОЛОВРЪСТНА улица при стените — къщите се редят покрай нея
+    for (let a = 0; a < 84; a++) {
+      const ang = a / 84 * Math.PI * 2;
+      const x = Math.round(cx + Math.cos(ang) * 11), y = Math.round(cy + Math.sin(ang) * 11 / 1.1);
       path[y * w + x] = 1; path[y * w + x + 1] = 1;
+    }
+    // лъчи от площада към околовръстната (диагоналите)
+    for (const ang of [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75]) {
+      const rx2 = Math.round(cx + Math.cos(ang) * 11), ry2 = Math.round(cy + Math.sin(ang) * 11 / 1.1);
+      carve(rx2, ry2, cx + Math.round(Math.cos(ang) * 4), cy + Math.round(Math.sin(ang) * 3.6));
     }
     // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток) + път на север от задната порта
     const crossY = Math.min(h - B - 2, gY + 4);
@@ -230,12 +242,12 @@ const Surface = {
       props.push({ kind: 'menhir', v: k % 3, x: spots.travel.x + 0.5 + Math.cos(a) * 1.8, y: spots.travel.y + 0.5 + Math.sin(a) * 1.8, r: 0.26, solid: true });
     }
 
-    // ЖИЛИЩНИ КЪЩИ: покрай улиците, с врата към пътя — подредено селище, не разпилени
-    // всяка къща блокира 2x2 клетки (48px = ширината на стените ѝ) — БЕЗ невидими зони
+    // ЖИЛИЩНИ КЪЩИ: в ПРЪСТЕНА при стените, с врата към околовръстната улица;
+    // центърът остава открит площад. Всяка къща блокира 2x2 клетки (48px = стените ѝ).
     const candidates = [];
     for (let y = cy - RAD + 3; y <= cy + RAD - 4; y++) for (let x = cx - RAD + 3; x <= cx + RAD - 3; x++) {
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
-      if (d > RAD - 2.5) continue;
+      if (d < 8.2 || d > RAD - 2.5) continue; // само пояса покрай стената — не на площада
       // улица на юг пред вратата (1-2 реда) — къщата гледа към пътя
       let street = false;
       for (let di = 0; di <= 1 && !street; di++) if (path[(y + 1) * w + (x + di)] || path[(y + 2) * w + (x + di)]) street = true;
@@ -248,7 +260,8 @@ const Surface = {
       let free = true;
       for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (c.y + dj) * w + (c.x + di);
-        if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
+        // улица ПРЕД вратата (dj=1) е добре дошла — пътят пречи само под самата къща
+        if (cells[idx] !== FLOOR || used.has(idx) || (dj <= 0 && path[idx])) { free = false; break; }
       }
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(c.x + di, c.y + dj);
@@ -257,16 +270,16 @@ const Surface = {
       props.push({ kind: 'house', v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
       placed++;
     }
-    // ако покрай улиците не се е побрало достатъчно — допълваме из двора
+    // ако покрай улиците не се е побрало достатъчно — допълваме пак в пояса при стените
     let tries = 0;
     while (placed < 12 && tries++ < 400) {
       const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
-      if (d > RAD - 2.5) continue;
+      if (d < 8.2 || d > RAD - 2.5) continue;
       let free = true;
       for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (y + dj) * w + (x + di);
-        if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
+        if (cells[idx] !== FLOOR || used.has(idx) || (dj <= 0 && path[idx])) { free = false; break; }
       }
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(x + di, y + dj);

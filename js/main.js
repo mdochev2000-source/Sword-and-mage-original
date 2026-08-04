@@ -917,10 +917,11 @@ function renderWorld() {
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
-    // високите сгради на Мирхолд стават полупрозрачни, когато скриват героя
+    // високите сгради стават полупрозрачни САМО когато героят реално е СКРИТ зад тях
+    // (тясна зона: краката му са в тялото на спрайта и е с по-малка дълбочина)
     let alpha = 0;
-    if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'gate') && pr.x + pr.y > pD + 0.2) {
-      const hw = spr.width * S / 2 + 8 * S, hTop = sy - spr.height * S, hBot = sy + 8 * S;
+    if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'gate') && pr.x + pr.y > pD + 0.6) {
+      const hw = spr.width * S / 2 - 2 * S, hTop = sy - spr.height * S + 6 * S, hBot = sy - 6 * S;
       if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) alpha = 0.45;
     }
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : 0)); o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
