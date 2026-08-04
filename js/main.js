@@ -56,6 +56,9 @@ function setupInput() {
         if (e.code === 'Escape' || e.code === kbBind('interact')) closeShop();
         break;
       case 'play': {
+        // ГРАДСКИЯТ ЕДИТОР: само с ?editor=1 в адреса (dev), F2 в Мирхолд
+        if (e.code === 'F2' && G.editorOn && G.onSurface && G.city === 'mirhold') { cityEditToggle(); break; }
+        if (e.code === 'Escape' && G.cityEdit) { cityEditToggle(); break; }
         if (e.code === 'Escape') { G.state = 'pause'; document.body.classList.add('menu'); break; }
         if (e.code === 'Tab') { G.state = 'inventory'; document.body.classList.add('menu'); break; }
         const act = actionForKey(e.code);
@@ -99,11 +102,6 @@ function setupInput() {
         else if (e.code === 'ArrowLeft' || e.code === kbBind('left')) G.perkSel = clamp((G.perkSel || 0) - 1, 0, 2);
         else if (e.code === 'ArrowRight' || e.code === kbBind('right')) G.perkSel = clamp((G.perkSel || 0) + 1, 0, 2);
         else if (e.code === 'Enter' || e.code === 'Space') applyPerk(G.perkSel || 0);
-        break;
-      case 'play':
-        // ГРАДСКИЯТ ЕДИТОР: само с ?editor=1 в адреса (dev), F2 в Мирхолд
-        if (e.code === 'F2' && G.editorOn && G.onSurface && G.city === 'mirhold') cityEditToggle();
-        else if (e.code === 'Escape' && G.cityEdit) cityEditToggle();
         break;
       case 'settings':
         if (e.code === 'Escape') closeSettings();
