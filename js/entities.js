@@ -847,8 +847,8 @@ function breakProp(pr) {
   pr.solid = false;
   burst(pr.x, pr.y, ['#6e4a2f', '#7d5636', '#42331f'], 12, 3.5, 0.5);
   Sfx.play('hit');
-  if (chance(0.35)) spawnDrop(pr.x, pr.y, { gold: rndi(1, 2 + (G.depth >> 2)) });    // шепа сребърни монети
-  if (chance(0.05)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // рядко: сечено сребро
+  if (chance(0.15)) spawnDrop(pr.x, pr.y, { gold: rndi(1, 2) });                      // рядко: 1-2 монети
+  if (chance(0.03)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // много рядко: сечено сребро
 }
 // ---------- активни магии: 3 слота, споделена мана, томовете се намират ----------
 function spellDmg(mult) {
@@ -1153,7 +1153,7 @@ function updateInteract() {
   if (best.kind === 'stairs') G.interactHint = { pr: best, txt: best.sealed ? 'Sealed — defeat the Guardian!' : 'E — go down' };
   else if (best.kind === 'fountain') {
     // многократен, но всяка глътка поскъпва — реален смисъл за златото
-    const price = Math.round((12 + 6 * G.depth) * Math.pow(1.6, best.uses || 0));
+    const price = Math.round((6 + 3 * G.depth) * Math.pow(1.6, best.uses || 0));
     G.interactHint = { pr: best, txt: 'E — drink (' + price + ' silver, full heal)', price };
   }
   else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
@@ -1193,9 +1193,9 @@ function doInteract() {
     pr.solid = false;
     Sfx.play('open');
     const boost = pr.arenaReward ? 30 : 10; // наградата от арената е с повишена рядкост
-    spawnDrop(pr.x, pr.y, { gold: rndi(2, 5) + (G.depth >> 1) });     // монети — малко
+    spawnDrop(pr.x, pr.y, { gold: rndi(1, 3) + (G.depth >> 2) });     // монети — малко
     spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // съкровището е в сечено сребро
-    if (chance(0.5)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });
+    if (chance(0.3)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });
     spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) });
     if (pr.arenaReward) { spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) }); spawnDrop(pr.x, pr.y, { shard: rndi(3, 6) }); }
     else if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
@@ -1361,7 +1361,7 @@ function vendorUpgradesSlot(vtype, slot) {
   if (vtype === 'potion') return slot === 'ring' || slot === 'amulet'; // Алхимичката Яна
   return false;
 }
-function itemUpgradeCost(it) { return Math.round(25 * ((it.lvl || 1) + 1) * (1 + (it.rarity || 0) * 0.3)); }
+function itemUpgradeCost(it) { return Math.round(10 * ((it.lvl || 1) + 1) * (1 + (it.rarity || 0) * 0.3)); }
 // ОБМЯНАТА при сарафина: цялото сечено сребро -> монети по дневния курс
 function exchangeSilver() {
   const p = G.player;

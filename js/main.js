@@ -103,6 +103,9 @@ function setupInput() {
       case 'settings':
         if (e.code === 'Escape') closeSettings();
         break;
+      case 'savetransfer':
+        if (e.code === 'Escape') { closeTransferOverlay(); G.state = 'settings'; }
+        break;
       case 'inputmode':
         if (e.code === 'Escape') G.state = 'settings';
         break;
@@ -198,6 +201,7 @@ function handlePress(mx, my, button) {
       case 'levelup': levelupClick(mx, my); break;
       case 'pause': G.state = 'play'; document.body.classList.remove('menu'); break;
       case 'settings': settingsPress(mx, my); break;
+      case 'savetransfer': settingsPress(mx, my); break;
       case 'ctrledit': ctrlEditPress(mx, my); break;
     }
   } else if (button === 2) {
@@ -884,7 +888,7 @@ function renderWorld() {
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал
-        spr = pr.dungeon === 'mirhold' ? Spr.surf.caveMir : Spr.surf.caveAbyss;
+        spr = Spr.surf.cave;
       } else {
         spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
         portalFx(pr, vis);
@@ -929,7 +933,7 @@ function renderWorld() {
     const idx = j * m.w + i;
     if (idx < 0 || !G.explored[idx] || !G.visible[idx]) continue;
     const sx = isoX(gitem.x, gitem.y) + camX, sy = isoY(gitem.x, gitem.y) + camY;
-    const icon = gitem.gold ? 'gold' : gitem.silver ? SILVER_ITEMS[gitem.silver.k].icon : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
+    const icon = gitem.gold ? 'gold_small' : gitem.silver ? SILVER_ITEMS[gitem.silver.k].icon : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
     const bobz = (gitem.item || gitem.seal || gitem.shard || gitem.silver) ? Math.sin(G.time * 3 + gitem.x * 7) * 1.5 + 2 : 0;
     const o = pushDraw(gitem.x + gitem.y); o.kind = 'ground'; o.icon = icon; o.sx = sx; o.sy = sy; o.gitem = gitem; o.bobz = bobz;
   }
@@ -989,8 +993,8 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 13 : -17) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 39 : 46) * S;
+      const chx = sx + (pr.kind === 'house' ? 18 : -21) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 41 : 47) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
@@ -1250,6 +1254,7 @@ function render() {
   else if (G.state === 'dead') drawDead();
   else if (G.state === 'transition') drawTransition();
   else if (G.state === 'settings') drawSettings();
+  else if (G.state === 'savetransfer') drawSaveTransfer();
   else if (G.state === 'ctrledit') drawCtrlEdit();
   else if (G.state === 'spellbook') drawSpellbook();
   else if (G.state === 'skilltree') drawSkillTree();

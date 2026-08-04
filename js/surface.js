@@ -8,7 +8,7 @@ const VENDOR_DEFS = {
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
   exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
-const VENDOR_UP_COST = [0, 150, 450, 1350, 4000]; // цена в СРЕБРО за ниво 2..5 (индекс = текущо ниво)
+const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
 const STALL_NAMES = ['cart', 'small tent', 'tent', 'large tent', 'pavilion'];
 
 const Surface = {
@@ -211,8 +211,9 @@ const Surface = {
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
-    // КУЛАТА на гарнизона (центъра, с фенер)
-    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+    // КУЛАТА на гарнизона (центъра, с фенер) — тялото ѝ е широко точно 1 клетка,
+    // затова блокираме само централната колона (без невидими зони отстрани)
+    block(spots.tower.x, spots.tower.y); block(spots.tower.x, spots.tower.y - 1);
     props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
     // огън за почивка до кулата
     props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
@@ -302,14 +303,15 @@ const Surface = {
 
 // ---------- магазини ----------
 function shopItemPrice(it) {
-  if (it.slot === 'spell') return 30 + (it.lvl || 1) * 3; // томовете имат добра цена
+  if (it.slot === 'spell') return 20 + (it.lvl || 1) * 2; // томовете имат добра цена
   let base = it.dmg ? it.dmg * 1.5 : it.armor ? it.armor * 3.5 : 15;
   const wgt = {
     dmg: 3, hp: 0.9, mp: 0.9, armor: 5, spd: 2.5, aspd: 2.2, crit: 3, critd: 1.1, vamp: 9, gold: 1.2,
     spellDmg: 2.5, range: 2, thorns: 4, spellCd: 2.5, spellCost: 2.5, dashCd: 2, hpRegen: 8, mpRegen: 6, xp: 1.5, potionPow: 2,
   };
-  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1) * 0.5; // сребърната икономика: цените са наполовина
-  return Math.max(8, Math.round(base * (1 + it.rarity * 0.45)));
+  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1) * 0.5;
+  // сребърната икономика: екипировката струва 5-50 сребро според качеството
+  return clamp(Math.round(base * (1 + it.rarity * 0.45) * 0.18), 5, 50);
 }
 function shopSellPrice(it) { return Math.max(3, Math.round(shopItemPrice(it) * 0.35)); }
 function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } // еднократна цена за отключване
@@ -376,7 +378,7 @@ function genShopStock(vtype) {
     // + пръстени и амулети (те се и вдигат на ниво тук)
     if (lvl >= 2) genSlots(['ring', 'amulet'], lvl - 1);
     // Камък на душата: само на макс ниво (5) на сергията на Яна — еднократно съживяване
-    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 1500, soulstone: true });
+    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 600, soulstone: true });
   } else {
     genSlots(def.slots, 2 + lvl);
   }

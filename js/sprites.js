@@ -906,37 +906,74 @@ function genItemIcon(kind, rarity) {
       rc(g, 5, 4, 2, 4, '#8a94a5'); rc(g, 4, 5, 4, 2, '#8a94a5');     // печатът-кръст
       px(g, 5, 5, '#6a7485'); px(g, 6, 6, '#6a7485');
       break;
-    case 'sv_hack': // насечени сребърни парчета
-      rc(g, 2, 7, 3, 2, '#c6d0dc'); px(g, 2, 7, '#f2f6fc');
-      rc(g, 6, 5, 2, 3, '#aab6c8'); px(g, 6, 5, '#e2e8f0');
-      rc(g, 8, 8, 3, 2, '#c6d0dc'); px(g, 10, 8, '#8a94a5');
-      px(g, 5, 9, '#8a94a5'); px(g, 4, 3, '#aab6c8'); px(g, 5, 3, '#e2e8f0');
+    case 'gold_small': // дребна монета на земята (щом се дропне)
+      rc(g, 4, 5, 4, 3, '#d8dee8'); rc(g, 5, 4, 2, 1, '#c6d0dc'); rc(g, 5, 8, 2, 1, '#8a94a5');
+      px(g, 4, 5, '#f2f6fc'); px(g, 7, 6, '#6a7485'); px(g, 6, 6, '#aab6c8');
       break;
-    case 'sv_ring': // сребърен пръстен
-      rc(g, 4, 4, 4, 1, '#d8dee8'); rc(g, 4, 8, 4, 1, '#aab6c8');
-      rc(g, 3, 5, 1, 3, '#d8dee8'); rc(g, 8, 5, 1, 3, '#8a94a5');
-      px(g, 4, 4, '#f2f6fc');
+    case 'sv_hack': { // насечени сребърни парчета с тъмен кант и грапави ръбове
+      const OL = '#2b303a';
+      rc(g, 1, 6, 4, 3, '#c6d0dc'); px(g, 1, 6, '#f2f6fc'); px(g, 4, 8, '#8a94a5');
+      px(g, 0, 7, OL); px(g, 2, 5, OL); px(g, 5, 7, OL); px(g, 2, 9, OL);
+      rc(g, 6, 3, 3, 2, '#e2e8f0'); px(g, 8, 4, '#aab6c8'); px(g, 6, 2, OL); px(g, 9, 3, OL); px(g, 7, 5, OL);
+      rc(g, 7, 8, 4, 2, '#c6d0dc'); px(g, 10, 9, '#8a94a5'); px(g, 7, 7, OL); px(g, 11, 8, OL); px(g, 8, 10, OL);
+      px(g, 3, 2, '#d8dee8'); px(g, 4, 2, '#8a94a5'); px(g, 3, 1, OL);
       break;
-    case 'sv_armring': // гривна-спирала
-      rc(g, 3, 3, 6, 1, '#d8dee8'); rc(g, 2, 4, 1, 4, '#c6d0dc'); rc(g, 9, 4, 1, 4, '#8a94a5');
-      rc(g, 3, 8, 6, 1, '#aab6c8'); px(g, 8, 9, '#8a94a5'); px(g, 9, 8, '#6a7485');
-      px(g, 3, 3, '#f2f6fc'); px(g, 4, 9, '#c6d0dc');
+    }
+    case 'sv_ring': { // масивен пръстен с камък
+      const OL = '#2b303a';
+      rc(g, 3, 4, 6, 1, '#e2e8f0'); rc(g, 3, 9, 6, 1, '#8a94a5');
+      rc(g, 2, 5, 1, 4, '#d8dee8'); rc(g, 9, 5, 1, 4, '#6a7485');
+      rc(g, 3, 5, 1, 1, '#f2f6fc');
+      rc(g, 4, 5, 4, 3, OL); rc(g, 5, 5, 2, 2, '#5cd6c4'); px(g, 5, 5, '#a8fff2'); // камъкът
+      px(g, 2, 4, OL); px(g, 9, 4, OL); px(g, 2, 9, OL); px(g, 9, 9, OL);
       break;
-    case 'sv_torc': // огърлица-обръч с топчета
-      rc(g, 3, 3, 6, 1, '#c6d0dc'); rc(g, 2, 4, 1, 3, '#d8dee8'); rc(g, 9, 4, 1, 3, '#8a94a5');
-      px(g, 3, 7, '#c6d0dc'); px(g, 8, 7, '#aab6c8');
-      rc(g, 3, 8, 2, 2, '#e2e8f0'); rc(g, 7, 8, 2, 2, '#aab6c8');
-      px(g, 3, 3, '#f2f6fc');
+    }
+    case 'sv_armring': { // усукана гривна с отворени краища
+      const OL = '#2b303a';
+      rc(g, 3, 2, 6, 1, '#e2e8f0'); px(g, 3, 2, '#f2f6fc');
+      rc(g, 2, 3, 1, 5, '#d8dee8'); rc(g, 9, 3, 1, 5, '#8a94a5');
+      px(g, 3, 8, '#c6d0dc'); px(g, 8, 8, '#8a94a5');
+      rc(g, 3, 9, 2, 1, '#d8dee8'); rc(g, 7, 9, 2, 1, '#6a7485'); // отворените краища
+      px(g, 4, 3, '#8a94a5'); px(g, 6, 2, '#aab6c8'); px(g, 3, 5, '#f2f6fc'); // усукване
+      px(g, 2, 2, OL); px(g, 9, 2, OL); px(g, 1, 5, OL); px(g, 10, 5, OL); px(g, 5, 10, OL); px(g, 6, 9, OL);
       break;
-    case 'sv_goblet': // сребърен бокал
-      rc(g, 4, 2, 4, 1, '#e2e8f0'); rc(g, 4, 3, 4, 3, '#c6d0dc'); px(g, 7, 4, '#8a94a5');
-      rc(g, 5, 6, 2, 3, '#aab6c8');
-      rc(g, 4, 9, 4, 1, '#c6d0dc'); px(g, 4, 3, '#f2f6fc');
+    }
+    case 'sv_torc': { // тежък обръч-огърлица с топчести краища
+      const OL = '#2b303a';
+      rc(g, 4, 2, 4, 1, '#e2e8f0'); px(g, 4, 2, '#f2f6fc');
+      px(g, 3, 3, '#d8dee8'); px(g, 8, 3, '#aab6c8');
+      rc(g, 2, 4, 1, 4, '#d8dee8'); rc(g, 9, 4, 1, 4, '#8a94a5');
+      rc(g, 2, 8, 3, 3, OL); rc(g, 3, 8, 2, 2, '#f2f6fc'); px(g, 3, 9, '#aab6c8'); // топче ляво
+      rc(g, 7, 8, 3, 3, OL); rc(g, 8, 8, 2, 2, '#c6d0dc'); px(g, 9, 9, '#6a7485'); // топче дясно
+      px(g, 3, 2, OL); px(g, 8, 2, OL); px(g, 1, 5, OL); px(g, 10, 5, OL);
       break;
-    case 'sv_ingot': // сребърен слитък
-      rc(g, 2, 6, 8, 3, '#c6d0dc'); rc(g, 3, 5, 6, 1, '#e2e8f0');
-      rc(g, 2, 8, 8, 1, '#8a94a5'); px(g, 3, 6, '#f2f6fc'); px(g, 4, 6, '#f2f6fc');
-      px(g, 8, 7, '#aab6c8');
+    }
+    case 'sv_goblet': { // бокал с гравюра и столче
+      const OL = '#2b303a';
+      rc(g, 3, 1, 6, 1, '#f2f6fc'); rc(g, 3, 2, 6, 3, '#c6d0dc');
+      px(g, 3, 2, '#e2e8f0'); px(g, 8, 3, '#6a7485');
+      px(g, 5, 3, '#8a94a5'); px(g, 6, 3, '#8a94a5'); // гравюрата
+      rc(g, 4, 5, 4, 1, '#8a94a5');
+      rc(g, 5, 6, 2, 3, '#aab6c8'); px(g, 5, 6, '#d8dee8');
+      rc(g, 3, 9, 6, 1, '#c6d0dc'); rc(g, 3, 10, 6, 1, '#6a7485');
+      px(g, 2, 2, OL); px(g, 9, 2, OL); px(g, 4, 6, OL); px(g, 7, 6, OL); px(g, 2, 9, OL); px(g, 9, 9, OL);
+      break;
+    }
+    case 'sv_ingot': { // отлят слитък с печат
+      const OL = '#2b303a';
+      rc(g, 1, 5, 10, 4, '#c6d0dc');
+      rc(g, 2, 4, 8, 1, '#f2f6fc');
+      rc(g, 1, 8, 10, 1, '#6a7485'); rc(g, 2, 9, 8, 1, '#4e5560');
+      px(g, 2, 5, '#e2e8f0'); px(g, 3, 5, '#e2e8f0');
+      rc(g, 5, 6, 3, 2, '#8a94a5'); px(g, 6, 6, '#6a7485'); // отсеченият печат
+      px(g, 0, 6, OL); px(g, 11, 6, OL); px(g, 1, 4, OL); px(g, 10, 4, OL); px(g, 1, 9, OL); px(g, 10, 9, OL);
+      break;
+    }
+    case 'sv_bag': // кесията със сечено сребро (за HUD)
+      rc(g, 3, 5, 6, 5, '#6e5a3e'); rc(g, 4, 4, 4, 1, '#8a7350'); rc(g, 4, 10, 4, 1, '#54452f');
+      px(g, 3, 5, '#8a7350'); px(g, 8, 9, '#54452f');
+      rc(g, 5, 5, 2, 1, '#42351f');                                  // връвта
+      px(g, 4, 2, '#d8dee8'); px(g, 5, 3, '#c6d0dc'); px(g, 7, 2, '#8a94a5'); px(g, 6, 1, '#e2e8f0'); // подаващо се сребро
       break;
     case 'tome':
       // том с магия: книга с runa
@@ -1202,8 +1239,8 @@ function initSprites(themeIdx) {
     };
 
     Spr.icons = {};
-    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome', 'soulstone',
-      'sv_hack', 'sv_ring', 'sv_armring', 'sv_torc', 'sv_goblet', 'sv_ingot'])
+    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'gold_small', 'seal', 'shard', 'tome', 'soulstone',
+      'sv_hack', 'sv_ring', 'sv_armring', 'sv_torc', 'sv_goblet', 'sv_ingot', 'sv_bag'])
       Spr.icons[k] = genItemIcon(k, 0);
 
     Spr.slash = genSlash();
@@ -1534,49 +1571,50 @@ function genPortal() {
 // ---------- МИРХОЛД: сгради, стена, кула, порта ----------
 // палитра: сив камък, кафява кал/дърво, тъмни покриви, едно топло оранжево (фенери/прозорци)
 
-// фахверкова къща 50x46 — камена основа, мазилка с греди, детайлен покрив
+// фахверкова къща 64x48 — ШИРОКА колкото трите блокирани клетки (без невидими зони)
 // v0: тъмни плочи (сиво-сини), v1: потъмняла слама
 function genMirHouse(R, v) {
-  const g = mk(50, 46);
+  const g = mk(64, 48);
   const plas = '#6b6252', plasD = '#5d5546', beam = '#382d20', beamL = '#4a3c2c';
   const stone = '#565a62', stoneD = '#44484f';
   const rA = v ? '#584426' : '#39404a', rB = v ? '#463619' : '#2d333c', rC = v ? '#6a5430' : '#454e5a';
   // стени (мазилка) + шум
-  rc(g, 5, 22, 40, 18, plas);
-  for (let i = 0; i < 34; i++) { const x = 6 + ((R() * 38) | 0), y = 24 + ((R() * 15) | 0); px(g, x, y, plasD); }
+  rc(g, 2, 24, 60, 18, plas);
+  for (let i = 0; i < 44; i++) { const x = 3 + ((R() * 58) | 0), y = 26 + ((R() * 15) | 0); px(g, x, y, plasD); }
   // греди: ъглови стълбове, пояси, стойки, диагонални скоси
-  rc(g, 5, 22, 2, 21, beam); rc(g, 43, 22, 2, 21, beam);
-  rc(g, 5, 22, 40, 1, beam); rc(g, 5, 32, 40, 1, beam);
-  rc(g, 15, 23, 1, 9, beam); rc(g, 34, 23, 1, 9, beam);
-  px(g, 8, 38, beam); px(g, 9, 37, beam); px(g, 10, 36, beam); px(g, 11, 35, beam); px(g, 12, 34, beam);   // скос вляво
-  px(g, 41, 38, beam); px(g, 40, 37, beam); px(g, 39, 36, beam); px(g, 38, 35, beam); px(g, 37, 34, beam); // скос вдясно
+  rc(g, 2, 24, 2, 21, beam); rc(g, 60, 24, 2, 21, beam);
+  rc(g, 2, 24, 60, 1, beam); rc(g, 2, 34, 60, 1, beam);
+  rc(g, 17, 25, 1, 9, beam); rc(g, 46, 25, 1, 9, beam);
+  px(g, 6, 40, beam); px(g, 7, 39, beam); px(g, 8, 38, beam); px(g, 9, 37, beam); px(g, 10, 36, beam);      // скос вляво
+  px(g, 57, 40, beam); px(g, 56, 39, beam); px(g, 55, 38, beam); px(g, 54, 37, beam); px(g, 53, 36, beam);  // скос вдясно
   // каменна основа
-  rc(g, 5, 40, 40, 3, stone);
-  for (let x = 6; x < 44; x += 4) px(g, x, 41, stoneD);
-  rc(g, 5, 42, 40, 1, stoneD);
+  rc(g, 2, 42, 60, 3, stone);
+  for (let x = 3; x < 61; x += 4) px(g, x, 43, stoneD);
+  rc(g, 2, 44, 60, 1, stoneD);
   // врата (дъски, панти, дръжка) + каменен праг
-  rc(g, 21, 30, 8, 13, '#2a2118'); rc(g, 22, 31, 6, 12, '#1a140e');
-  px(g, 24, 32, '#241c12'); px(g, 24, 37, '#241c12'); px(g, 26, 35, '#241c12');
-  px(g, 22, 32, '#6a6d75'); px(g, 22, 40, '#6a6d75'); px(g, 27, 36, '#9a9da5');
-  rc(g, 20, 43, 10, 1, stone);
+  rc(g, 28, 32, 8, 13, '#2a2118'); rc(g, 29, 33, 6, 12, '#1a140e');
+  px(g, 31, 34, '#241c12'); px(g, 31, 39, '#241c12'); px(g, 33, 37, '#241c12');
+  px(g, 29, 34, '#6a6d75'); px(g, 29, 42, '#6a6d75'); px(g, 34, 38, '#9a9da5');
+  rc(g, 27, 45, 10, 1, stone);
   // прозорци с капаци и топла светлина
-  rc(g, 7, 25, 1, 6, beamL); rc(g, 14, 25, 1, 6, beamL);
-  rc(g, 8, 25, 6, 6, '#171310'); px(g, 9, 27, '#e8a84d'); px(g, 10, 28, '#c98a3b'); px(g, 11, 26, '#c98a3b');
-  rc(g, 8, 31, 6, 1, beamL);
-  rc(g, 35, 25, 1, 6, beamL); rc(g, 42, 25, 1, 6, beamL);
-  rc(g, 36, 25, 6, 6, '#171310'); px(g, 38, 27, '#c98a3b'); px(g, 39, 28, '#8a6420');
-  rc(g, 36, 31, 6, 1, beamL);
+  rc(g, 6, 27, 1, 6, beamL); rc(g, 14, 27, 1, 6, beamL);
+  rc(g, 7, 27, 7, 6, '#171310'); px(g, 8, 29, '#e8a84d'); px(g, 10, 30, '#c98a3b'); px(g, 11, 28, '#c98a3b');
+  rc(g, 7, 33, 7, 1, beamL);
+  rc(g, 49, 27, 1, 6, beamL); rc(g, 57, 27, 1, 6, beamL);
+  rc(g, 50, 27, 7, 6, '#171310'); px(g, 52, 29, '#c98a3b'); px(g, 54, 30, '#8a6420');
+  rc(g, 50, 33, 7, 1, beamL);
   // стръмен двускатен покрив със стрехи + текстура
-  for (let i = 0; i < 10; i++) {
-    const y = 20 - i * 2, x = 3 + i * 2, w = 44 - i * 4;
+  for (let i = 0; i < 11; i++) {
+    const y = 22 - i * 2, x = 1 + i * 3, w = 62 - i * 6;
+    if (w < 2) break;
     rc(g, x, y, w, 2, i % 2 ? rA : rB);
     for (let k = 0; k < 4; k++) { const tx = x + 1 + ((R() * (w - 2)) | 0); px(g, tx, y + (i % 2), rC); }
   }
-  rc(g, 22, 0, 6, 1, beam); rc(g, 21, 1, 8, 1, rB); // било
-  if (v) for (let x = 4; x < 46; x += 3) px(g, x, 22, rB); // рошав край на сламата
+  rc(g, 29, 0, 6, 2, beam); rc(g, 28, 2, 8, 1, rB); // било
+  if (v) for (let x = 3; x < 61; x += 3) px(g, x, 24, rB); // рошав край на сламата
   // комин с капак (върху ската)
-  rc(g, 36, 3, 5, 8, stone); rc(g, 35, 2, 7, 2, stoneD); rc(g, 37, 1, 3, 1, '#171310');
-  px(g, 37, 5, stoneD); px(g, 39, 8, stoneD);
+  rc(g, 48, 5, 5, 9, stone); rc(g, 47, 4, 7, 2, stoneD); rc(g, 49, 3, 3, 1, '#171310');
+  px(g, 49, 8, stoneD); px(g, 51, 11, stoneD);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -1610,47 +1648,48 @@ function genShopSign(vtype) {
   return g.canvas;
 }
 
-// магазин-сграда 56x52 — навес, ГОЛЯМА закачена табела на конзола, фенер, бъчва
+// магазин-сграда 66x56 — ШИРОКА колкото блокираните клетки; навес, табела, фенер, бъчва
 function genMirShopHouse(vtype, R) {
-  const g = mk(56, 52);
+  const g = mk(66, 56);
   const plas = '#665e4e', plasD = '#585042', beam = '#382d20', beamL = '#4a3c2c';
   const stone = '#565a62', stoneD = '#44484f';
   const rA = '#39404a', rB = '#2d333c', rC = '#454e5a';
   // стени + шум
-  rc(g, 5, 24, 46, 20, plas);
-  for (let i = 0; i < 38; i++) { const x = 6 + ((R() * 44) | 0), y = 26 + ((R() * 17) | 0); px(g, x, y, plasD); }
-  rc(g, 5, 24, 2, 23, beam); rc(g, 49, 24, 2, 23, beam);
-  rc(g, 5, 24, 46, 1, beam); rc(g, 5, 36, 46, 1, beam);
-  rc(g, 16, 25, 1, 11, beam); rc(g, 38, 25, 1, 11, beam);
+  rc(g, 2, 26, 62, 22, plas);
+  for (let i = 0; i < 48; i++) { const x = 3 + ((R() * 60) | 0), y = 28 + ((R() * 19) | 0); px(g, x, y, plasD); }
+  rc(g, 2, 26, 2, 25, beam); rc(g, 62, 26, 2, 25, beam);
+  rc(g, 2, 26, 62, 1, beam); rc(g, 2, 38, 62, 1, beam);
+  rc(g, 18, 27, 1, 11, beam); rc(g, 46, 27, 1, 11, beam);
   // основа
-  rc(g, 5, 44, 46, 3, stone);
-  for (let x = 6; x < 50; x += 4) px(g, x, 45, stoneD);
-  rc(g, 5, 46, 46, 1, stoneD);
+  rc(g, 2, 48, 62, 3, stone);
+  for (let x = 3; x < 63; x += 4) px(g, x, 49, stoneD);
+  rc(g, 2, 50, 62, 1, stoneD);
   // широка врата + дървен навес на подпори
-  rc(g, 23, 33, 10, 14, '#2a2118'); rc(g, 24, 34, 8, 13, '#1a140e');
-  px(g, 27, 36, '#241c12'); px(g, 29, 39, '#241c12'); px(g, 30, 41, '#9a9da5');
-  rc(g, 21, 29, 14, 1, beam); rc(g, 20, 30, 16, 1, beamL); rc(g, 19, 31, 18, 1, beam); // навес
-  rc(g, 20, 32, 1, 5, beam); rc(g, 35, 32, 1, 5, beam);                                // подпори
+  rc(g, 27, 37, 10, 14, '#2a2118'); rc(g, 28, 38, 8, 13, '#1a140e');
+  px(g, 31, 40, '#241c12'); px(g, 33, 43, '#241c12'); px(g, 34, 45, '#9a9da5');
+  rc(g, 25, 33, 14, 1, beam); rc(g, 24, 34, 16, 1, beamL); rc(g, 23, 35, 18, 1, beam); // навес
+  rc(g, 24, 36, 1, 5, beam); rc(g, 39, 36, 1, 5, beam);                                // подпори
   // прозорец със светлина + капаци
-  rc(g, 7, 27, 1, 7, beamL); rc(g, 15, 27, 1, 7, beamL);
-  rc(g, 8, 27, 7, 7, '#171310'); px(g, 9, 29, '#e8a84d'); px(g, 10, 30, '#c98a3b'); px(g, 12, 28, '#c98a3b');
-  rc(g, 8, 34, 7, 1, beamL);
+  rc(g, 6, 29, 1, 7, beamL); rc(g, 15, 29, 1, 7, beamL);
+  rc(g, 7, 29, 8, 7, '#171310'); px(g, 8, 31, '#e8a84d'); px(g, 10, 32, '#c98a3b'); px(g, 12, 30, '#c98a3b');
+  rc(g, 7, 36, 8, 1, beamL);
   // фенер до вратата (топлият акцент)
-  rc(g, 36, 32, 1, 4, '#241f1a'); px(g, 36, 36, '#ffb84d'); px(g, 36, 37, '#c98a3b');
+  rc(g, 41, 36, 1, 4, '#241f1a'); px(g, 41, 40, '#ffb84d'); px(g, 41, 41, '#c98a3b');
   // бъчва до стената
-  rc(g, 41, 38, 6, 8, '#5a4632'); rc(g, 41, 40, 6, 1, '#3c2f20'); rc(g, 41, 44, 6, 1, '#3c2f20'); px(g, 42, 38, '#6c5640');
+  rc(g, 50, 41, 7, 9, '#5a4632'); rc(g, 50, 43, 7, 1, '#3c2f20'); rc(g, 50, 48, 7, 1, '#3c2f20'); px(g, 51, 41, '#6c5640');
   // покрив
-  for (let i = 0; i < 10; i++) {
-    const y = 22 - i * 2, x = 3 + i * 2, w = 50 - i * 4;
+  for (let i = 0; i < 11; i++) {
+    const y = 24 - i * 2, x = 1 + i * 3, w = 64 - i * 6;
+    if (w < 2) break;
     rc(g, x, y, w, 2, i % 2 ? rA : rB);
     for (let k = 0; k < 4; k++) { const tx = x + 1 + ((R() * (w - 2)) | 0); px(g, tx, y + (i % 2), rC); }
   }
-  rc(g, 25, 0, 6, 1, beam); rc(g, 24, 1, 8, 1, rB);
-  rc(g, 9, 4, 5, 8, stone); rc(g, 8, 3, 7, 2, stoneD); rc(g, 10, 2, 3, 1, '#171310'); // комин
+  rc(g, 30, 0, 6, 2, beam); rc(g, 29, 2, 8, 1, rB);
+  rc(g, 10, 6, 5, 9, stone); rc(g, 9, 5, 7, 2, stoneD); rc(g, 11, 4, 3, 1, '#171310'); // комин
   // ГОЛЯМАТА ТАБЕЛА: конзола от стената + окачена на две въженца
-  rc(g, 39, 25, 11, 1, beam); px(g, 49, 26, beam);
-  px(g, 41, 26, '#241f1a'); px(g, 48, 26, '#241f1a');
-  g.drawImage(genShopSign(vtype), 39, 27);
+  rc(g, 48, 27, 12, 1, beam); px(g, 59, 28, beam);
+  px(g, 50, 28, '#241f1a'); px(g, 58, 28, '#241f1a');
+  g.drawImage(genShopSign(vtype), 48, 29);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -1794,8 +1833,8 @@ function genMirGate(R) {
   return g.canvas;
 }
 
-// ПЕЩЕРА-ВХОД към подземието (заменя портала на повърхността); glow — цветът, светещ отвътре
-function genCaveMouth(R, glow) {
+// ПЕЩЕРА-ВХОД към подземието (заменя портала на повърхността); отворът е чист мрак
+function genCaveMouth(R) {
   const g = mk(48, 36);
   const rk = '#4e5258', rkD = '#3c4046', rkL = '#61666e', dirt = '#453a2d';
   // скалният хълм — грамада от заоблени камъни
@@ -1811,13 +1850,10 @@ function genCaveMouth(R, glow) {
   // пукнатини
   px(g, 14, 18, rkD); px(g, 15, 19, rkD); px(g, 16, 20, rkD);
   px(g, 33, 20, rkD); px(g, 34, 21, rkD);
-  // ОТВОРЪТ — черна паст с арка
+  // ОТВОРЪТ — черна паст с арка (само мрак, нищо не наднича отвътре)
   rc(g, 18, 16, 12, 16, '#0a0c10');
   rc(g, 16, 20, 16, 12, '#0a0c10');
   px(g, 17, 18, '#0a0c10'); px(g, 30, 18, '#0a0c10');
-  // мъждукане отвътре (цветът на тъмницата)
-  px(g, 20, 29, glow); px(g, 26, 27, glow); px(g, 23, 31, glow);
-  px(g, 24, 24, shade(glow, 0.6)); px(g, 21, 25, shade(glow, 0.6));
   // ръбът на отвора — светъл кант
   px(g, 17, 17, rkL); px(g, 18, 15, rkL); px(g, 29, 15, rkD); px(g, 31, 19, rkD);
   // мъх и камъчета при входа
@@ -1826,11 +1862,6 @@ function genCaveMouth(R, glow) {
   rc(g, 14, 33, 20, 2, dirt); // отъпкана пръст пред входа
   outlineSprite(g, '#10131c');
   return g.canvas;
-}
-function shade(hex, f) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.round(((n >> 16) & 255) * f), gg = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
-  return 'rgb(' + r + ',' + gg + ',' + b + ')';
 }
 
 // малки менхири за кръга около хенчстоуна (3 варианта)
@@ -1940,8 +1971,7 @@ function initSurfaceSprites() {
       exchange: genMirShopHouse('exchange', R),
     },
     exchange: genExchangeStand(),
-    caveAbyss: genCaveMouth(R, '#8a5fd0'),   // Бездната — лилаво мъждукане
-    caveMir: genCaveMouth(R, '#4fae9e'),     // Гарнизонната тъмница — зеленикава вода
+    cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),
     gate: genMirGate(R),

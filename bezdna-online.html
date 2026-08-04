@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-04 17:04 UTC";
+window.__BUILD__ = "2026-08-04 17:28 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -158,7 +158,7 @@ const ACTION_MAP = {};
 for (const a of ACTIONS) ACTION_MAP[a.id] = a;
 
 // менюта, в които контролерът движи маркер по елементите (пространствена навигация)
-const menuNavStates = { title: 1, charselect: 1, settings: 1, spellbook: 1, skilltree: 1, stats: 1, inventory: 1, shop: 1, binds: 1, inputmode: 1, potionsel: 1 };
+const menuNavStates = { title: 1, charselect: 1, settings: 1, savetransfer: 1, spellbook: 1, skilltree: 1, stats: 1, inventory: 1, shop: 1, binds: 1, inputmode: 1, potionsel: 1 };
 function kbBind(id) {
   const o = G.meta && G.meta.kbBinds;
   return (o && id in o) ? o[id] : ACTION_MAP[id].kb;
@@ -1155,37 +1155,74 @@ function genItemIcon(kind, rarity) {
       rc(g, 5, 4, 2, 4, '#8a94a5'); rc(g, 4, 5, 4, 2, '#8a94a5');     // печатът-кръст
       px(g, 5, 5, '#6a7485'); px(g, 6, 6, '#6a7485');
       break;
-    case 'sv_hack': // насечени сребърни парчета
-      rc(g, 2, 7, 3, 2, '#c6d0dc'); px(g, 2, 7, '#f2f6fc');
-      rc(g, 6, 5, 2, 3, '#aab6c8'); px(g, 6, 5, '#e2e8f0');
-      rc(g, 8, 8, 3, 2, '#c6d0dc'); px(g, 10, 8, '#8a94a5');
-      px(g, 5, 9, '#8a94a5'); px(g, 4, 3, '#aab6c8'); px(g, 5, 3, '#e2e8f0');
+    case 'gold_small': // дребна монета на земята (щом се дропне)
+      rc(g, 4, 5, 4, 3, '#d8dee8'); rc(g, 5, 4, 2, 1, '#c6d0dc'); rc(g, 5, 8, 2, 1, '#8a94a5');
+      px(g, 4, 5, '#f2f6fc'); px(g, 7, 6, '#6a7485'); px(g, 6, 6, '#aab6c8');
       break;
-    case 'sv_ring': // сребърен пръстен
-      rc(g, 4, 4, 4, 1, '#d8dee8'); rc(g, 4, 8, 4, 1, '#aab6c8');
-      rc(g, 3, 5, 1, 3, '#d8dee8'); rc(g, 8, 5, 1, 3, '#8a94a5');
-      px(g, 4, 4, '#f2f6fc');
+    case 'sv_hack': { // насечени сребърни парчета с тъмен кант и грапави ръбове
+      const OL = '#2b303a';
+      rc(g, 1, 6, 4, 3, '#c6d0dc'); px(g, 1, 6, '#f2f6fc'); px(g, 4, 8, '#8a94a5');
+      px(g, 0, 7, OL); px(g, 2, 5, OL); px(g, 5, 7, OL); px(g, 2, 9, OL);
+      rc(g, 6, 3, 3, 2, '#e2e8f0'); px(g, 8, 4, '#aab6c8'); px(g, 6, 2, OL); px(g, 9, 3, OL); px(g, 7, 5, OL);
+      rc(g, 7, 8, 4, 2, '#c6d0dc'); px(g, 10, 9, '#8a94a5'); px(g, 7, 7, OL); px(g, 11, 8, OL); px(g, 8, 10, OL);
+      px(g, 3, 2, '#d8dee8'); px(g, 4, 2, '#8a94a5'); px(g, 3, 1, OL);
       break;
-    case 'sv_armring': // гривна-спирала
-      rc(g, 3, 3, 6, 1, '#d8dee8'); rc(g, 2, 4, 1, 4, '#c6d0dc'); rc(g, 9, 4, 1, 4, '#8a94a5');
-      rc(g, 3, 8, 6, 1, '#aab6c8'); px(g, 8, 9, '#8a94a5'); px(g, 9, 8, '#6a7485');
-      px(g, 3, 3, '#f2f6fc'); px(g, 4, 9, '#c6d0dc');
+    }
+    case 'sv_ring': { // масивен пръстен с камък
+      const OL = '#2b303a';
+      rc(g, 3, 4, 6, 1, '#e2e8f0'); rc(g, 3, 9, 6, 1, '#8a94a5');
+      rc(g, 2, 5, 1, 4, '#d8dee8'); rc(g, 9, 5, 1, 4, '#6a7485');
+      rc(g, 3, 5, 1, 1, '#f2f6fc');
+      rc(g, 4, 5, 4, 3, OL); rc(g, 5, 5, 2, 2, '#5cd6c4'); px(g, 5, 5, '#a8fff2'); // камъкът
+      px(g, 2, 4, OL); px(g, 9, 4, OL); px(g, 2, 9, OL); px(g, 9, 9, OL);
       break;
-    case 'sv_torc': // огърлица-обръч с топчета
-      rc(g, 3, 3, 6, 1, '#c6d0dc'); rc(g, 2, 4, 1, 3, '#d8dee8'); rc(g, 9, 4, 1, 3, '#8a94a5');
-      px(g, 3, 7, '#c6d0dc'); px(g, 8, 7, '#aab6c8');
-      rc(g, 3, 8, 2, 2, '#e2e8f0'); rc(g, 7, 8, 2, 2, '#aab6c8');
-      px(g, 3, 3, '#f2f6fc');
+    }
+    case 'sv_armring': { // усукана гривна с отворени краища
+      const OL = '#2b303a';
+      rc(g, 3, 2, 6, 1, '#e2e8f0'); px(g, 3, 2, '#f2f6fc');
+      rc(g, 2, 3, 1, 5, '#d8dee8'); rc(g, 9, 3, 1, 5, '#8a94a5');
+      px(g, 3, 8, '#c6d0dc'); px(g, 8, 8, '#8a94a5');
+      rc(g, 3, 9, 2, 1, '#d8dee8'); rc(g, 7, 9, 2, 1, '#6a7485'); // отворените краища
+      px(g, 4, 3, '#8a94a5'); px(g, 6, 2, '#aab6c8'); px(g, 3, 5, '#f2f6fc'); // усукване
+      px(g, 2, 2, OL); px(g, 9, 2, OL); px(g, 1, 5, OL); px(g, 10, 5, OL); px(g, 5, 10, OL); px(g, 6, 9, OL);
       break;
-    case 'sv_goblet': // сребърен бокал
-      rc(g, 4, 2, 4, 1, '#e2e8f0'); rc(g, 4, 3, 4, 3, '#c6d0dc'); px(g, 7, 4, '#8a94a5');
-      rc(g, 5, 6, 2, 3, '#aab6c8');
-      rc(g, 4, 9, 4, 1, '#c6d0dc'); px(g, 4, 3, '#f2f6fc');
+    }
+    case 'sv_torc': { // тежък обръч-огърлица с топчести краища
+      const OL = '#2b303a';
+      rc(g, 4, 2, 4, 1, '#e2e8f0'); px(g, 4, 2, '#f2f6fc');
+      px(g, 3, 3, '#d8dee8'); px(g, 8, 3, '#aab6c8');
+      rc(g, 2, 4, 1, 4, '#d8dee8'); rc(g, 9, 4, 1, 4, '#8a94a5');
+      rc(g, 2, 8, 3, 3, OL); rc(g, 3, 8, 2, 2, '#f2f6fc'); px(g, 3, 9, '#aab6c8'); // топче ляво
+      rc(g, 7, 8, 3, 3, OL); rc(g, 8, 8, 2, 2, '#c6d0dc'); px(g, 9, 9, '#6a7485'); // топче дясно
+      px(g, 3, 2, OL); px(g, 8, 2, OL); px(g, 1, 5, OL); px(g, 10, 5, OL);
       break;
-    case 'sv_ingot': // сребърен слитък
-      rc(g, 2, 6, 8, 3, '#c6d0dc'); rc(g, 3, 5, 6, 1, '#e2e8f0');
-      rc(g, 2, 8, 8, 1, '#8a94a5'); px(g, 3, 6, '#f2f6fc'); px(g, 4, 6, '#f2f6fc');
-      px(g, 8, 7, '#aab6c8');
+    }
+    case 'sv_goblet': { // бокал с гравюра и столче
+      const OL = '#2b303a';
+      rc(g, 3, 1, 6, 1, '#f2f6fc'); rc(g, 3, 2, 6, 3, '#c6d0dc');
+      px(g, 3, 2, '#e2e8f0'); px(g, 8, 3, '#6a7485');
+      px(g, 5, 3, '#8a94a5'); px(g, 6, 3, '#8a94a5'); // гравюрата
+      rc(g, 4, 5, 4, 1, '#8a94a5');
+      rc(g, 5, 6, 2, 3, '#aab6c8'); px(g, 5, 6, '#d8dee8');
+      rc(g, 3, 9, 6, 1, '#c6d0dc'); rc(g, 3, 10, 6, 1, '#6a7485');
+      px(g, 2, 2, OL); px(g, 9, 2, OL); px(g, 4, 6, OL); px(g, 7, 6, OL); px(g, 2, 9, OL); px(g, 9, 9, OL);
+      break;
+    }
+    case 'sv_ingot': { // отлят слитък с печат
+      const OL = '#2b303a';
+      rc(g, 1, 5, 10, 4, '#c6d0dc');
+      rc(g, 2, 4, 8, 1, '#f2f6fc');
+      rc(g, 1, 8, 10, 1, '#6a7485'); rc(g, 2, 9, 8, 1, '#4e5560');
+      px(g, 2, 5, '#e2e8f0'); px(g, 3, 5, '#e2e8f0');
+      rc(g, 5, 6, 3, 2, '#8a94a5'); px(g, 6, 6, '#6a7485'); // отсеченият печат
+      px(g, 0, 6, OL); px(g, 11, 6, OL); px(g, 1, 4, OL); px(g, 10, 4, OL); px(g, 1, 9, OL); px(g, 10, 9, OL);
+      break;
+    }
+    case 'sv_bag': // кесията със сечено сребро (за HUD)
+      rc(g, 3, 5, 6, 5, '#6e5a3e'); rc(g, 4, 4, 4, 1, '#8a7350'); rc(g, 4, 10, 4, 1, '#54452f');
+      px(g, 3, 5, '#8a7350'); px(g, 8, 9, '#54452f');
+      rc(g, 5, 5, 2, 1, '#42351f');                                  // връвта
+      px(g, 4, 2, '#d8dee8'); px(g, 5, 3, '#c6d0dc'); px(g, 7, 2, '#8a94a5'); px(g, 6, 1, '#e2e8f0'); // подаващо се сребро
       break;
     case 'tome':
       // том с магия: книга с runa
@@ -1451,8 +1488,8 @@ function initSprites(themeIdx) {
     };
 
     Spr.icons = {};
-    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome', 'soulstone',
-      'sv_hack', 'sv_ring', 'sv_armring', 'sv_torc', 'sv_goblet', 'sv_ingot'])
+    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'gold_small', 'seal', 'shard', 'tome', 'soulstone',
+      'sv_hack', 'sv_ring', 'sv_armring', 'sv_torc', 'sv_goblet', 'sv_ingot', 'sv_bag'])
       Spr.icons[k] = genItemIcon(k, 0);
 
     Spr.slash = genSlash();
@@ -1783,49 +1820,50 @@ function genPortal() {
 // ---------- МИРХОЛД: сгради, стена, кула, порта ----------
 // палитра: сив камък, кафява кал/дърво, тъмни покриви, едно топло оранжево (фенери/прозорци)
 
-// фахверкова къща 50x46 — камена основа, мазилка с греди, детайлен покрив
+// фахверкова къща 64x48 — ШИРОКА колкото трите блокирани клетки (без невидими зони)
 // v0: тъмни плочи (сиво-сини), v1: потъмняла слама
 function genMirHouse(R, v) {
-  const g = mk(50, 46);
+  const g = mk(64, 48);
   const plas = '#6b6252', plasD = '#5d5546', beam = '#382d20', beamL = '#4a3c2c';
   const stone = '#565a62', stoneD = '#44484f';
   const rA = v ? '#584426' : '#39404a', rB = v ? '#463619' : '#2d333c', rC = v ? '#6a5430' : '#454e5a';
   // стени (мазилка) + шум
-  rc(g, 5, 22, 40, 18, plas);
-  for (let i = 0; i < 34; i++) { const x = 6 + ((R() * 38) | 0), y = 24 + ((R() * 15) | 0); px(g, x, y, plasD); }
+  rc(g, 2, 24, 60, 18, plas);
+  for (let i = 0; i < 44; i++) { const x = 3 + ((R() * 58) | 0), y = 26 + ((R() * 15) | 0); px(g, x, y, plasD); }
   // греди: ъглови стълбове, пояси, стойки, диагонални скоси
-  rc(g, 5, 22, 2, 21, beam); rc(g, 43, 22, 2, 21, beam);
-  rc(g, 5, 22, 40, 1, beam); rc(g, 5, 32, 40, 1, beam);
-  rc(g, 15, 23, 1, 9, beam); rc(g, 34, 23, 1, 9, beam);
-  px(g, 8, 38, beam); px(g, 9, 37, beam); px(g, 10, 36, beam); px(g, 11, 35, beam); px(g, 12, 34, beam);   // скос вляво
-  px(g, 41, 38, beam); px(g, 40, 37, beam); px(g, 39, 36, beam); px(g, 38, 35, beam); px(g, 37, 34, beam); // скос вдясно
+  rc(g, 2, 24, 2, 21, beam); rc(g, 60, 24, 2, 21, beam);
+  rc(g, 2, 24, 60, 1, beam); rc(g, 2, 34, 60, 1, beam);
+  rc(g, 17, 25, 1, 9, beam); rc(g, 46, 25, 1, 9, beam);
+  px(g, 6, 40, beam); px(g, 7, 39, beam); px(g, 8, 38, beam); px(g, 9, 37, beam); px(g, 10, 36, beam);      // скос вляво
+  px(g, 57, 40, beam); px(g, 56, 39, beam); px(g, 55, 38, beam); px(g, 54, 37, beam); px(g, 53, 36, beam);  // скос вдясно
   // каменна основа
-  rc(g, 5, 40, 40, 3, stone);
-  for (let x = 6; x < 44; x += 4) px(g, x, 41, stoneD);
-  rc(g, 5, 42, 40, 1, stoneD);
+  rc(g, 2, 42, 60, 3, stone);
+  for (let x = 3; x < 61; x += 4) px(g, x, 43, stoneD);
+  rc(g, 2, 44, 60, 1, stoneD);
   // врата (дъски, панти, дръжка) + каменен праг
-  rc(g, 21, 30, 8, 13, '#2a2118'); rc(g, 22, 31, 6, 12, '#1a140e');
-  px(g, 24, 32, '#241c12'); px(g, 24, 37, '#241c12'); px(g, 26, 35, '#241c12');
-  px(g, 22, 32, '#6a6d75'); px(g, 22, 40, '#6a6d75'); px(g, 27, 36, '#9a9da5');
-  rc(g, 20, 43, 10, 1, stone);
+  rc(g, 28, 32, 8, 13, '#2a2118'); rc(g, 29, 33, 6, 12, '#1a140e');
+  px(g, 31, 34, '#241c12'); px(g, 31, 39, '#241c12'); px(g, 33, 37, '#241c12');
+  px(g, 29, 34, '#6a6d75'); px(g, 29, 42, '#6a6d75'); px(g, 34, 38, '#9a9da5');
+  rc(g, 27, 45, 10, 1, stone);
   // прозорци с капаци и топла светлина
-  rc(g, 7, 25, 1, 6, beamL); rc(g, 14, 25, 1, 6, beamL);
-  rc(g, 8, 25, 6, 6, '#171310'); px(g, 9, 27, '#e8a84d'); px(g, 10, 28, '#c98a3b'); px(g, 11, 26, '#c98a3b');
-  rc(g, 8, 31, 6, 1, beamL);
-  rc(g, 35, 25, 1, 6, beamL); rc(g, 42, 25, 1, 6, beamL);
-  rc(g, 36, 25, 6, 6, '#171310'); px(g, 38, 27, '#c98a3b'); px(g, 39, 28, '#8a6420');
-  rc(g, 36, 31, 6, 1, beamL);
+  rc(g, 6, 27, 1, 6, beamL); rc(g, 14, 27, 1, 6, beamL);
+  rc(g, 7, 27, 7, 6, '#171310'); px(g, 8, 29, '#e8a84d'); px(g, 10, 30, '#c98a3b'); px(g, 11, 28, '#c98a3b');
+  rc(g, 7, 33, 7, 1, beamL);
+  rc(g, 49, 27, 1, 6, beamL); rc(g, 57, 27, 1, 6, beamL);
+  rc(g, 50, 27, 7, 6, '#171310'); px(g, 52, 29, '#c98a3b'); px(g, 54, 30, '#8a6420');
+  rc(g, 50, 33, 7, 1, beamL);
   // стръмен двускатен покрив със стрехи + текстура
-  for (let i = 0; i < 10; i++) {
-    const y = 20 - i * 2, x = 3 + i * 2, w = 44 - i * 4;
+  for (let i = 0; i < 11; i++) {
+    const y = 22 - i * 2, x = 1 + i * 3, w = 62 - i * 6;
+    if (w < 2) break;
     rc(g, x, y, w, 2, i % 2 ? rA : rB);
     for (let k = 0; k < 4; k++) { const tx = x + 1 + ((R() * (w - 2)) | 0); px(g, tx, y + (i % 2), rC); }
   }
-  rc(g, 22, 0, 6, 1, beam); rc(g, 21, 1, 8, 1, rB); // било
-  if (v) for (let x = 4; x < 46; x += 3) px(g, x, 22, rB); // рошав край на сламата
+  rc(g, 29, 0, 6, 2, beam); rc(g, 28, 2, 8, 1, rB); // било
+  if (v) for (let x = 3; x < 61; x += 3) px(g, x, 24, rB); // рошав край на сламата
   // комин с капак (върху ската)
-  rc(g, 36, 3, 5, 8, stone); rc(g, 35, 2, 7, 2, stoneD); rc(g, 37, 1, 3, 1, '#171310');
-  px(g, 37, 5, stoneD); px(g, 39, 8, stoneD);
+  rc(g, 48, 5, 5, 9, stone); rc(g, 47, 4, 7, 2, stoneD); rc(g, 49, 3, 3, 1, '#171310');
+  px(g, 49, 8, stoneD); px(g, 51, 11, stoneD);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -1859,47 +1897,48 @@ function genShopSign(vtype) {
   return g.canvas;
 }
 
-// магазин-сграда 56x52 — навес, ГОЛЯМА закачена табела на конзола, фенер, бъчва
+// магазин-сграда 66x56 — ШИРОКА колкото блокираните клетки; навес, табела, фенер, бъчва
 function genMirShopHouse(vtype, R) {
-  const g = mk(56, 52);
+  const g = mk(66, 56);
   const plas = '#665e4e', plasD = '#585042', beam = '#382d20', beamL = '#4a3c2c';
   const stone = '#565a62', stoneD = '#44484f';
   const rA = '#39404a', rB = '#2d333c', rC = '#454e5a';
   // стени + шум
-  rc(g, 5, 24, 46, 20, plas);
-  for (let i = 0; i < 38; i++) { const x = 6 + ((R() * 44) | 0), y = 26 + ((R() * 17) | 0); px(g, x, y, plasD); }
-  rc(g, 5, 24, 2, 23, beam); rc(g, 49, 24, 2, 23, beam);
-  rc(g, 5, 24, 46, 1, beam); rc(g, 5, 36, 46, 1, beam);
-  rc(g, 16, 25, 1, 11, beam); rc(g, 38, 25, 1, 11, beam);
+  rc(g, 2, 26, 62, 22, plas);
+  for (let i = 0; i < 48; i++) { const x = 3 + ((R() * 60) | 0), y = 28 + ((R() * 19) | 0); px(g, x, y, plasD); }
+  rc(g, 2, 26, 2, 25, beam); rc(g, 62, 26, 2, 25, beam);
+  rc(g, 2, 26, 62, 1, beam); rc(g, 2, 38, 62, 1, beam);
+  rc(g, 18, 27, 1, 11, beam); rc(g, 46, 27, 1, 11, beam);
   // основа
-  rc(g, 5, 44, 46, 3, stone);
-  for (let x = 6; x < 50; x += 4) px(g, x, 45, stoneD);
-  rc(g, 5, 46, 46, 1, stoneD);
+  rc(g, 2, 48, 62, 3, stone);
+  for (let x = 3; x < 63; x += 4) px(g, x, 49, stoneD);
+  rc(g, 2, 50, 62, 1, stoneD);
   // широка врата + дървен навес на подпори
-  rc(g, 23, 33, 10, 14, '#2a2118'); rc(g, 24, 34, 8, 13, '#1a140e');
-  px(g, 27, 36, '#241c12'); px(g, 29, 39, '#241c12'); px(g, 30, 41, '#9a9da5');
-  rc(g, 21, 29, 14, 1, beam); rc(g, 20, 30, 16, 1, beamL); rc(g, 19, 31, 18, 1, beam); // навес
-  rc(g, 20, 32, 1, 5, beam); rc(g, 35, 32, 1, 5, beam);                                // подпори
+  rc(g, 27, 37, 10, 14, '#2a2118'); rc(g, 28, 38, 8, 13, '#1a140e');
+  px(g, 31, 40, '#241c12'); px(g, 33, 43, '#241c12'); px(g, 34, 45, '#9a9da5');
+  rc(g, 25, 33, 14, 1, beam); rc(g, 24, 34, 16, 1, beamL); rc(g, 23, 35, 18, 1, beam); // навес
+  rc(g, 24, 36, 1, 5, beam); rc(g, 39, 36, 1, 5, beam);                                // подпори
   // прозорец със светлина + капаци
-  rc(g, 7, 27, 1, 7, beamL); rc(g, 15, 27, 1, 7, beamL);
-  rc(g, 8, 27, 7, 7, '#171310'); px(g, 9, 29, '#e8a84d'); px(g, 10, 30, '#c98a3b'); px(g, 12, 28, '#c98a3b');
-  rc(g, 8, 34, 7, 1, beamL);
+  rc(g, 6, 29, 1, 7, beamL); rc(g, 15, 29, 1, 7, beamL);
+  rc(g, 7, 29, 8, 7, '#171310'); px(g, 8, 31, '#e8a84d'); px(g, 10, 32, '#c98a3b'); px(g, 12, 30, '#c98a3b');
+  rc(g, 7, 36, 8, 1, beamL);
   // фенер до вратата (топлият акцент)
-  rc(g, 36, 32, 1, 4, '#241f1a'); px(g, 36, 36, '#ffb84d'); px(g, 36, 37, '#c98a3b');
+  rc(g, 41, 36, 1, 4, '#241f1a'); px(g, 41, 40, '#ffb84d'); px(g, 41, 41, '#c98a3b');
   // бъчва до стената
-  rc(g, 41, 38, 6, 8, '#5a4632'); rc(g, 41, 40, 6, 1, '#3c2f20'); rc(g, 41, 44, 6, 1, '#3c2f20'); px(g, 42, 38, '#6c5640');
+  rc(g, 50, 41, 7, 9, '#5a4632'); rc(g, 50, 43, 7, 1, '#3c2f20'); rc(g, 50, 48, 7, 1, '#3c2f20'); px(g, 51, 41, '#6c5640');
   // покрив
-  for (let i = 0; i < 10; i++) {
-    const y = 22 - i * 2, x = 3 + i * 2, w = 50 - i * 4;
+  for (let i = 0; i < 11; i++) {
+    const y = 24 - i * 2, x = 1 + i * 3, w = 64 - i * 6;
+    if (w < 2) break;
     rc(g, x, y, w, 2, i % 2 ? rA : rB);
     for (let k = 0; k < 4; k++) { const tx = x + 1 + ((R() * (w - 2)) | 0); px(g, tx, y + (i % 2), rC); }
   }
-  rc(g, 25, 0, 6, 1, beam); rc(g, 24, 1, 8, 1, rB);
-  rc(g, 9, 4, 5, 8, stone); rc(g, 8, 3, 7, 2, stoneD); rc(g, 10, 2, 3, 1, '#171310'); // комин
+  rc(g, 30, 0, 6, 2, beam); rc(g, 29, 2, 8, 1, rB);
+  rc(g, 10, 6, 5, 9, stone); rc(g, 9, 5, 7, 2, stoneD); rc(g, 11, 4, 3, 1, '#171310'); // комин
   // ГОЛЯМАТА ТАБЕЛА: конзола от стената + окачена на две въженца
-  rc(g, 39, 25, 11, 1, beam); px(g, 49, 26, beam);
-  px(g, 41, 26, '#241f1a'); px(g, 48, 26, '#241f1a');
-  g.drawImage(genShopSign(vtype), 39, 27);
+  rc(g, 48, 27, 12, 1, beam); px(g, 59, 28, beam);
+  px(g, 50, 28, '#241f1a'); px(g, 58, 28, '#241f1a');
+  g.drawImage(genShopSign(vtype), 48, 29);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -2043,8 +2082,8 @@ function genMirGate(R) {
   return g.canvas;
 }
 
-// ПЕЩЕРА-ВХОД към подземието (заменя портала на повърхността); glow — цветът, светещ отвътре
-function genCaveMouth(R, glow) {
+// ПЕЩЕРА-ВХОД към подземието (заменя портала на повърхността); отворът е чист мрак
+function genCaveMouth(R) {
   const g = mk(48, 36);
   const rk = '#4e5258', rkD = '#3c4046', rkL = '#61666e', dirt = '#453a2d';
   // скалният хълм — грамада от заоблени камъни
@@ -2060,13 +2099,10 @@ function genCaveMouth(R, glow) {
   // пукнатини
   px(g, 14, 18, rkD); px(g, 15, 19, rkD); px(g, 16, 20, rkD);
   px(g, 33, 20, rkD); px(g, 34, 21, rkD);
-  // ОТВОРЪТ — черна паст с арка
+  // ОТВОРЪТ — черна паст с арка (само мрак, нищо не наднича отвътре)
   rc(g, 18, 16, 12, 16, '#0a0c10');
   rc(g, 16, 20, 16, 12, '#0a0c10');
   px(g, 17, 18, '#0a0c10'); px(g, 30, 18, '#0a0c10');
-  // мъждукане отвътре (цветът на тъмницата)
-  px(g, 20, 29, glow); px(g, 26, 27, glow); px(g, 23, 31, glow);
-  px(g, 24, 24, shade(glow, 0.6)); px(g, 21, 25, shade(glow, 0.6));
   // ръбът на отвора — светъл кант
   px(g, 17, 17, rkL); px(g, 18, 15, rkL); px(g, 29, 15, rkD); px(g, 31, 19, rkD);
   // мъх и камъчета при входа
@@ -2075,11 +2111,6 @@ function genCaveMouth(R, glow) {
   rc(g, 14, 33, 20, 2, dirt); // отъпкана пръст пред входа
   outlineSprite(g, '#10131c');
   return g.canvas;
-}
-function shade(hex, f) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.round(((n >> 16) & 255) * f), gg = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
-  return 'rgb(' + r + ',' + gg + ',' + b + ')';
 }
 
 // малки менхири за кръга около хенчстоуна (3 варианта)
@@ -2189,8 +2220,7 @@ function initSurfaceSprites() {
       exchange: genMirShopHouse('exchange', R),
     },
     exchange: genExchangeStand(),
-    caveAbyss: genCaveMouth(R, '#8a5fd0'),   // Бездната — лилаво мъждукане
-    caveMir: genCaveMouth(R, '#4fae9e'),     // Гарнизонната тъмница — зеленикава вода
+    cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),
     gate: genMirGate(R),
@@ -2580,12 +2610,12 @@ function makeSoulStone() {
 // price = еднократна цена в злато за отключване. cd = презареждане (сек), dur = траене на бъфа (сек).
 // ---------- СЕЧЕНО СРЕБРО (X век): плячка с ТЕГЛО, обменя се при сарафина ----------
 const SILVER_ITEMS = {
-  hack:    { n: 'Hacksilver',     w: 1, base: 4,  icon: 'sv_hack' },    // насечени парчета
-  ring:    { n: 'Silver Ring',    w: 1, base: 7,  icon: 'sv_ring' },
-  armring: { n: 'Silver Armring', w: 2, base: 12, icon: 'sv_armring' },
-  torc:    { n: 'Silver Torc',    w: 2, base: 18, icon: 'sv_torc' },    // огърлица-обръч
-  goblet:  { n: 'Silver Goblet',  w: 3, base: 23, icon: 'sv_goblet' },
-  ingot:   { n: 'Silver Ingot',   w: 4, base: 33, icon: 'sv_ingot' },
+  hack:    { n: 'Hacksilver',     w: 1, base: 3,  icon: 'sv_hack' },    // насечени парчета
+  ring:    { n: 'Silver Ring',    w: 1, base: 5,  icon: 'sv_ring' },
+  armring: { n: 'Silver Armring', w: 2, base: 8,  icon: 'sv_armring' },
+  torc:    { n: 'Silver Torc',    w: 2, base: 12, icon: 'sv_torc' },    // огърлица-обръч
+  goblet:  { n: 'Silver Goblet',  w: 3, base: 15, icon: 'sv_goblet' },
+  ingot:   { n: 'Silver Ingot',   w: 4, base: 22, icon: 'sv_ingot' },
 };
 const SILVER_CAP = 20; // максимално тегло, което героят носи
 function rollSilver(depth) {
@@ -2595,19 +2625,19 @@ function rollSilver(depth) {
   const t = Math.min(0.999, Math.max(0, rnd(0, 1) * (1 - bias) + rnd(0, 1) * bias));
   const k = keys[Math.floor(t * keys.length)];
   const d = SILVER_ITEMS[k];
-  const val = Math.max(2, Math.round(d.base * (0.8 + rnd(0, 0.5)) * (1 + depth * 0.05)));
+  const val = Math.max(2, Math.round(d.base * (0.8 + rnd(0, 0.5)) * (1 + depth * 0.03)));
   return { k, w: d.w, val };
 }
 
 const POTIONS = {
   hp:    { n: 'Potion of Life', kind: 'restore', cd: 25, col: '#ff4757', unlock: 1, price: 0,    d: '+45% max life',            restore: { hp: 0.45 } },
   mp:    { n: 'Potion of Mana',   kind: 'restore', cd: 25, col: '#3b82f6', unlock: 1, price: 0,    d: '+60% max mana',             restore: { mp: 0.60 } },
-  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 150,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
-  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 200,  d: '+25% damage for 10s',            buff: 'rage' },
-  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 250,  d: '+20% movement and attack for 10s', buff: 'swift' },
-  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 400,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
-  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 500, d: 'spells cost no mana for 10s',     buff: 'focus' },
-  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 750, d: '+3% max life/sec for 10s',  buff: 'regen' },
+  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 75,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
+  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 100,  d: '+25% damage for 10s',            buff: 'rage' },
+  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 125,  d: '+20% movement and attack for 10s', buff: 'swift' },
+  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 200,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
+  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 250, d: 'spells cost no mana for 10s',     buff: 'focus' },
+  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 375, d: '+3% max life/sec for 10s',  buff: 'regen' },
 };
 const POTION_KEYS = Object.keys(POTIONS);
 
@@ -2660,10 +2690,11 @@ const Items = {
     const out = [];
     const m = mult || 1;
     const sf = 1 + (silverFind || 0) / 100;
-    if (chance(0.55 * Math.min(1, m))) {
-      out.push({ gold: Math.max(1, Math.round((1 + rnd(0, 2) + depth * 0.28) * m * sf)) }); // 1-5 сребърни монети
+    // ТВЪРДА икономика: НЕ всяко чудовище носи сребро, и то е шепа монети
+    if (chance(0.22 * Math.min(1, m) * sf)) {
+      out.push({ gold: Math.max(1, Math.min(4, Math.round((1 + rnd(0, 1.4) + depth * 0.12) * m))) }); // 1-3 монети
     }
-    if (chance(0.10 * m * sf)) out.push({ silver: rollSilver(depth) });         // сечено сребро
+    if (chance(0.045 * m * sf)) out.push({ silver: rollSilver(depth) });        // сечено сребро — рядко
     if (chance(0.04 * m)) out.push({ item: this.gen(depth, m > 1 ? 12 : 0) });
     if (chance(0.012 * m)) out.push({ item: genTome() });                       // томове с магии
     if (G.meta.legendPool && chance(m > 1 ? 0.025 : 0.004)) out.push({ item: genUnique(depth) }); // уникати — само с отключен пул
@@ -3076,7 +3107,7 @@ const VENDOR_DEFS = {
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
   exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
-const VENDOR_UP_COST = [0, 150, 450, 1350, 4000]; // цена в СРЕБРО за ниво 2..5 (индекс = текущо ниво)
+const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
 const STALL_NAMES = ['cart', 'small tent', 'tent', 'large tent', 'pavilion'];
 
 const Surface = {
@@ -3279,8 +3310,9 @@ const Surface = {
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
-    // КУЛАТА на гарнизона (центъра, с фенер)
-    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+    // КУЛАТА на гарнизона (центъра, с фенер) — тялото ѝ е широко точно 1 клетка,
+    // затова блокираме само централната колона (без невидими зони отстрани)
+    block(spots.tower.x, spots.tower.y); block(spots.tower.x, spots.tower.y - 1);
     props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
     // огън за почивка до кулата
     props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
@@ -3370,14 +3402,15 @@ const Surface = {
 
 // ---------- магазини ----------
 function shopItemPrice(it) {
-  if (it.slot === 'spell') return 30 + (it.lvl || 1) * 3; // томовете имат добра цена
+  if (it.slot === 'spell') return 20 + (it.lvl || 1) * 2; // томовете имат добра цена
   let base = it.dmg ? it.dmg * 1.5 : it.armor ? it.armor * 3.5 : 15;
   const wgt = {
     dmg: 3, hp: 0.9, mp: 0.9, armor: 5, spd: 2.5, aspd: 2.2, crit: 3, critd: 1.1, vamp: 9, gold: 1.2,
     spellDmg: 2.5, range: 2, thorns: 4, spellCd: 2.5, spellCost: 2.5, dashCd: 2, hpRegen: 8, mpRegen: 6, xp: 1.5, potionPow: 2,
   };
-  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1) * 0.5; // сребърната икономика: цените са наполовина
-  return Math.max(8, Math.round(base * (1 + it.rarity * 0.45)));
+  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1) * 0.5;
+  // сребърната икономика: екипировката струва 5-50 сребро според качеството
+  return clamp(Math.round(base * (1 + it.rarity * 0.45) * 0.18), 5, 50);
 }
 function shopSellPrice(it) { return Math.max(3, Math.round(shopItemPrice(it) * 0.35)); }
 function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } // еднократна цена за отключване
@@ -3444,7 +3477,7 @@ function genShopStock(vtype) {
     // + пръстени и амулети (те се и вдигат на ниво тук)
     if (lvl >= 2) genSlots(['ring', 'amulet'], lvl - 1);
     // Камък на душата: само на макс ниво (5) на сергията на Яна — еднократно съживяване
-    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 1500, soulstone: true });
+    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 600, soulstone: true });
   } else {
     genSlots(def.slots, 2 + lvl);
   }
@@ -4302,8 +4335,8 @@ function breakProp(pr) {
   pr.solid = false;
   burst(pr.x, pr.y, ['#6e4a2f', '#7d5636', '#42331f'], 12, 3.5, 0.5);
   Sfx.play('hit');
-  if (chance(0.35)) spawnDrop(pr.x, pr.y, { gold: rndi(1, 2 + (G.depth >> 2)) });    // шепа сребърни монети
-  if (chance(0.05)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // рядко: сечено сребро
+  if (chance(0.15)) spawnDrop(pr.x, pr.y, { gold: rndi(1, 2) });                      // рядко: 1-2 монети
+  if (chance(0.03)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // много рядко: сечено сребро
 }
 // ---------- активни магии: 3 слота, споделена мана, томовете се намират ----------
 function spellDmg(mult) {
@@ -4608,7 +4641,7 @@ function updateInteract() {
   if (best.kind === 'stairs') G.interactHint = { pr: best, txt: best.sealed ? 'Sealed — defeat the Guardian!' : 'E — go down' };
   else if (best.kind === 'fountain') {
     // многократен, но всяка глътка поскъпва — реален смисъл за златото
-    const price = Math.round((12 + 6 * G.depth) * Math.pow(1.6, best.uses || 0));
+    const price = Math.round((6 + 3 * G.depth) * Math.pow(1.6, best.uses || 0));
     G.interactHint = { pr: best, txt: 'E — drink (' + price + ' silver, full heal)', price };
   }
   else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
@@ -4648,9 +4681,9 @@ function doInteract() {
     pr.solid = false;
     Sfx.play('open');
     const boost = pr.arenaReward ? 30 : 10; // наградата от арената е с повишена рядкост
-    spawnDrop(pr.x, pr.y, { gold: rndi(2, 5) + (G.depth >> 1) });     // монети — малко
+    spawnDrop(pr.x, pr.y, { gold: rndi(1, 3) + (G.depth >> 2) });     // монети — малко
     spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });           // съкровището е в сечено сребро
-    if (chance(0.5)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });
+    if (chance(0.3)) spawnDrop(pr.x, pr.y, { silver: rollSilver(G.depth) });
     spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) });
     if (pr.arenaReward) { spawnDrop(pr.x, pr.y, { item: Items.gen(G.depth, boost) }); spawnDrop(pr.x, pr.y, { shard: rndi(3, 6) }); }
     else if (chance(0.4)) spawnDrop(pr.x, pr.y, { shard: rndi(1, 3) }); // отварите вече не падат — осколки вместо тях
@@ -4816,7 +4849,7 @@ function vendorUpgradesSlot(vtype, slot) {
   if (vtype === 'potion') return slot === 'ring' || slot === 'amulet'; // Алхимичката Яна
   return false;
 }
-function itemUpgradeCost(it) { return Math.round(25 * ((it.lvl || 1) + 1) * (1 + (it.rarity || 0) * 0.3)); }
+function itemUpgradeCost(it) { return Math.round(10 * ((it.lvl || 1) + 1) * (1 + (it.rarity || 0) * 0.3)); }
 // ОБМЯНАТА при сарафина: цялото сечено сребро -> монети по дневния курс
 function exchangeSilver() {
   const p = G.player;
@@ -6377,27 +6410,25 @@ function drawHUD() {
   blit(ctx, Spr.icons.gold, 10 * S, 25 * S);
   ctx.fillStyle = '#d8dee8';
   ctx.font = fontBold(7);
-  const goldTxtW = ctx.measureText(String(p.gold)).width;
   ctx.fillText(String(p.gold), 24 * S, 33 * S);
-  // тежестта на кесията със сечено сребро — показва се само ако носиш нещо
-  if (p.silverBag && p.silverBag.length) {
-    ctx.fillStyle = silverWeight(p) >= SILVER_CAP ? '#ff6b7a' : '#8a94a5';
-    ctx.font = fontPx(6);
-    ctx.fillText('+' + p.silverBag.length + ' (' + silverWeight(p) + '/' + SILVER_CAP + ')', 24 * S + goldTxtW + 6 * S, 33 * S);
-  }
+  // кесията със сечено сребро — ПОД монетата, със собствена иконка
+  blit(ctx, Spr.icons.sv_bag, 10 * S, 39 * S);
+  ctx.fillStyle = silverWeight(p) >= SILVER_CAP ? '#ff6b7a' : '#8a94a5';
+  ctx.font = fontPx(6);
+  ctx.fillText(silverWeight(p) + '/' + SILVER_CAP, 24 * S, 47 * S);
   const hasSeal = G.meta.seals > 0, hasShard = (G.meta.shards || 0) > 0;
   if (hasSeal || hasShard) {
     let cx = 10 * S;
     if (hasSeal) {
-      blit(ctx, Spr.icons.seal, cx, 36 * S);
+      blit(ctx, Spr.icons.seal, cx, 50 * S);
       ctx.fillStyle = '#c84fff';
-      ctx.fillText(String(G.meta.seals), cx + 14 * S, 44 * S);
+      ctx.fillText(String(G.meta.seals), cx + 14 * S, 58 * S);
       cx += 34 * S;
     }
     if (hasShard) {
-      blit(ctx, Spr.icons.shard, cx, 36 * S);
+      blit(ctx, Spr.icons.shard, cx, 50 * S);
       ctx.fillStyle = '#57e6c8';
-      ctx.fillText(String(G.meta.shards), cx + 14 * S, 44 * S);
+      ctx.fillText(String(G.meta.shards), cx + 14 * S, 58 * S);
     }
   }
   // (нивото на героя е преместено над XP лентата; индикаторът „SOUL STONE" е премахнат)
@@ -8828,7 +8859,7 @@ function drawSettings() {
   const S = SCALE;
   UI.btnRects = [];
   rcx(0, 0, CW, CH, 'rgba(4,6,11,0.72)');
-  const pw = 170 * S, ph = 182 * S;
+  const pw = 170 * S, ph = 204 * S;
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -8896,7 +8927,143 @@ function drawSettings() {
     ctx.fillText('You can only switch hero in camp', CW / 2, y0 + 146 * S);
     ctx.textAlign = 'left';
   }
-  row('Close', y0 + 158 * S, () => closeSettings());
+  row('Save transfer', y0 + 158 * S, () => { G.state = 'savetransfer'; });
+  row('Close', y0 + 180 * S, () => closeSettings());
+}
+
+// ---------- ТРАНСФЕР НА ПРОГРЕСА (без сървър): файл + код за копиране ----------
+function buildSaveCode() {
+  const data = { v: 1, game: 'sword-and-mage', date: new Date().toISOString().slice(0, 10), chars: {}, best: null };
+  for (let i = 0; i < 3; i++) {
+    try { data.chars[i] = localStorage.getItem('sm_char_' + i) || null; } catch (e) { data.chars[i] = null; }
+  }
+  try { data.best = localStorage.getItem('bezdna_best'); } catch (e) {}
+  return 'SMSAVE1.' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function parseSaveCode(code) {
+  code = (code || '').trim();
+  if (!code.startsWith('SMSAVE1.')) return null;
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.slice(8)))));
+    if (!data || data.game !== 'sword-and-mage' || !data.chars) return null;
+    return data;
+  } catch (e) { return null; }
+}
+function exportProgress() {
+  const code = buildSaveCode();
+  // 1) сваляне като файл
+  let fileOk = false;
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+    a.download = 'sword-and-mage-save.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    fileOk = true;
+  } catch (e) {}
+  // 2) в клипборда (за телефона — там файлът може да не тръгне)
+  try { navigator.clipboard && navigator.clipboard.writeText(code); } catch (e) {}
+  // 3) прозорче с кода за ръчно копиране
+  openTransferOverlay('export', code);
+  toast(fileOk ? 'Save downloaded + code copied.' : 'Save code copied — paste it on the other device.', '#7fd0a0');
+}
+function importProgress(code) {
+  const data = parseSaveCode(code);
+  if (!data) { toast('Invalid save code.', '#ff6b7a'); Sfx.play('deny'); return false; }
+  const names = [];
+  for (let i = 0; i < 3; i++) {
+    if (!data.chars[i]) continue;
+    try { const c = JSON.parse(data.chars[i]); names.push((c.name || 'Exile') + ' (slot ' + (i + 1) + ')'); } catch (e) {}
+  }
+  if (!names.length) { toast('The code contains no heroes.', '#ff6b7a'); Sfx.play('deny'); return false; }
+  if (!confirm('Import heroes: ' + names.join(', ') + '?\nThis REPLACES the heroes on this device!')) return false;
+  for (let i = 0; i < 3; i++) {
+    if (!data.chars[i]) continue;
+    try {
+      localStorage.setItem('sm_char_' + i, data.chars[i]);
+      localStorage.setItem('sm_char_' + i + '_bak', data.chars[i]);
+    } catch (e) {}
+  }
+  if (data.best) { try { localStorage.setItem('bezdna_best', data.best); } catch (e) {} }
+  toast('Progress imported! Reloading…', '#7fd0a0');
+  setTimeout(() => location.reload(), 900);
+  return true;
+}
+// DOM прозорче: показва кода (export) или приема код/файл (import)
+let transferEl = null;
+function closeTransferOverlay() { if (transferEl) { transferEl.remove(); transferEl = null; } }
+function openTransferOverlay(mode, code) {
+  closeTransferOverlay();
+  const d = document.createElement('div');
+  transferEl = d;
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(4,6,11,0.88);z-index:40;display:flex;align-items:center;justify-content:center;font-family:monospace;';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:#101623;border:2px solid #3a4456;padding:14px;max-width:min(92vw,560px);width:100%;color:#e8e4d0;';
+  const h = document.createElement('div');
+  h.textContent = mode === 'export' ? 'YOUR SAVE CODE — copy it or use the downloaded file' : 'PASTE the save code (or open the file and copy its contents)';
+  h.style.cssText = 'font-weight:bold;margin-bottom:8px;font-size:13px;color:' + (mode === 'export' ? '#7fd0a0' : '#8ab0ff');
+  const ta = document.createElement('textarea');
+  ta.style.cssText = 'width:100%;height:110px;background:#0a0e18;color:#a8b2c4;border:1px solid #3a4456;font-size:10px;word-break:break-all;';
+  if (mode === 'export') { ta.value = code; ta.readOnly = true; setTimeout(() => { ta.focus(); ta.select(); }, 50); }
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;';
+  const mkBtn = (label, col, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'background:#1a2233;color:' + col + ';border:1px solid #3a4456;padding:8px 14px;cursor:pointer;font-family:monospace;font-weight:bold;';
+    b.onclick = fn;
+    btns.appendChild(b);
+  };
+  if (mode === 'export') {
+    mkBtn('COPY', '#7fd0a0', () => { ta.select(); try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand('copy'); } toast('Copied.', '#7fd0a0'); });
+  } else {
+    // избор на файл със записа
+    const fi = document.createElement('input');
+    fi.type = 'file'; fi.accept = '.txt,text/plain'; fi.style.display = 'none';
+    fi.onchange = () => {
+      const f = fi.files && fi.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { ta.value = String(rd.result || '').trim(); };
+      rd.readAsText(f);
+    };
+    inner.appendChild(fi);
+    mkBtn('OPEN FILE', '#8ab0ff', () => fi.click());
+    mkBtn('IMPORT', '#7fd0a0', () => { if (importProgress(ta.value)) closeTransferOverlay(); });
+  }
+  mkBtn('CLOSE', '#ff6b7a', () => closeTransferOverlay());
+  inner.appendChild(h); inner.appendChild(ta); inner.appendChild(btns);
+  d.appendChild(inner);
+  document.body.appendChild(d);
+}
+function drawSaveTransfer() {
+  const S = SCALE;
+  UI.btnRects = [];
+  rcx(0, 0, CW, CH, 'rgba(4,6,11,0.72)');
+  const pw = 190 * S, ph = 150 * S;
+  const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
+  panel(x0, y0, pw, ph);
+  ctx.textAlign = 'left';
+  ctx.font = fontBold(9);
+  ctx.fillStyle = '#e8e4d0';
+  ctx.fillText('SAVE TRANSFER', x0 + 10 * S, y0 + 14 * S);
+  ctx.font = fontPx(6);
+  ctx.fillStyle = '#7d8899';
+  wrapText('Move your heroes to another device WITHOUT a server: export makes a file + code, import reads it on the new device.', x0 + 10 * S, y0 + 26 * S, pw - 20 * S, 9 * S);
+  const row = (label, y, col, act) => {
+    const rx = x0 + 10 * S, rw = pw - 20 * S, rh = 18 * S;
+    const hov = G.mouse.x >= rx && G.mouse.x < rx + rw && G.mouse.y >= y && G.mouse.y < y + rh;
+    panel(rx, y, rw, rh);
+    if (hov) strokeRect(rx, y, rw, rh, '#ffd23b', S);
+    ctx.font = fontBold(7);
+    ctx.fillStyle = hov ? '#ffd23b' : col;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x0 + pw / 2, y + 12 * S);
+    ctx.textAlign = 'left';
+    UI.btnRects.push({ x: rx, y, w: rw, h: rh, act });
+  };
+  row('EXPORT — download my progress', y0 + 56 * S, '#7fd0a0', () => { saveProfile(); exportProgress(); });
+  row('IMPORT — load progress here', y0 + 80 * S, '#8ab0ff', () => openTransferOverlay('import'));
+  row('Back', y0 + 122 * S, '#e8e4d0', () => { closeTransferOverlay(); G.state = 'settings'; });
 }
 
 // ---------- избор на управление ----------
@@ -9444,6 +9611,9 @@ function setupInput() {
       case 'settings':
         if (e.code === 'Escape') closeSettings();
         break;
+      case 'savetransfer':
+        if (e.code === 'Escape') { closeTransferOverlay(); G.state = 'settings'; }
+        break;
       case 'inputmode':
         if (e.code === 'Escape') G.state = 'settings';
         break;
@@ -9539,6 +9709,7 @@ function handlePress(mx, my, button) {
       case 'levelup': levelupClick(mx, my); break;
       case 'pause': G.state = 'play'; document.body.classList.remove('menu'); break;
       case 'settings': settingsPress(mx, my); break;
+      case 'savetransfer': settingsPress(mx, my); break;
       case 'ctrledit': ctrlEditPress(mx, my); break;
     }
   } else if (button === 2) {
@@ -10225,7 +10396,7 @@ function renderWorld() {
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал
-        spr = pr.dungeon === 'mirhold' ? Spr.surf.caveMir : Spr.surf.caveAbyss;
+        spr = Spr.surf.cave;
       } else {
         spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
         portalFx(pr, vis);
@@ -10270,7 +10441,7 @@ function renderWorld() {
     const idx = j * m.w + i;
     if (idx < 0 || !G.explored[idx] || !G.visible[idx]) continue;
     const sx = isoX(gitem.x, gitem.y) + camX, sy = isoY(gitem.x, gitem.y) + camY;
-    const icon = gitem.gold ? 'gold' : gitem.silver ? SILVER_ITEMS[gitem.silver.k].icon : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
+    const icon = gitem.gold ? 'gold_small' : gitem.silver ? SILVER_ITEMS[gitem.silver.k].icon : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
     const bobz = (gitem.item || gitem.seal || gitem.shard || gitem.silver) ? Math.sin(G.time * 3 + gitem.x * 7) * 1.5 + 2 : 0;
     const o = pushDraw(gitem.x + gitem.y); o.kind = 'ground'; o.icon = icon; o.sx = sx; o.sy = sy; o.gitem = gitem; o.bobz = bobz;
   }
@@ -10330,8 +10501,8 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 13 : -17) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 39 : 46) * S;
+      const chx = sx + (pr.kind === 'house' ? 18 : -21) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 41 : 47) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
@@ -10591,6 +10762,7 @@ function render() {
   else if (G.state === 'dead') drawDead();
   else if (G.state === 'transition') drawTransition();
   else if (G.state === 'settings') drawSettings();
+  else if (G.state === 'savetransfer') drawSaveTransfer();
   else if (G.state === 'ctrledit') drawCtrlEdit();
   else if (G.state === 'spellbook') drawSpellbook();
   else if (G.state === 'skilltree') drawSkillTree();

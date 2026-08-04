@@ -377,27 +377,25 @@ function drawHUD() {
   blit(ctx, Spr.icons.gold, 10 * S, 25 * S);
   ctx.fillStyle = '#d8dee8';
   ctx.font = fontBold(7);
-  const goldTxtW = ctx.measureText(String(p.gold)).width;
   ctx.fillText(String(p.gold), 24 * S, 33 * S);
-  // тежестта на кесията със сечено сребро — показва се само ако носиш нещо
-  if (p.silverBag && p.silverBag.length) {
-    ctx.fillStyle = silverWeight(p) >= SILVER_CAP ? '#ff6b7a' : '#8a94a5';
-    ctx.font = fontPx(6);
-    ctx.fillText('+' + p.silverBag.length + ' (' + silverWeight(p) + '/' + SILVER_CAP + ')', 24 * S + goldTxtW + 6 * S, 33 * S);
-  }
+  // кесията със сечено сребро — ПОД монетата, със собствена иконка
+  blit(ctx, Spr.icons.sv_bag, 10 * S, 39 * S);
+  ctx.fillStyle = silverWeight(p) >= SILVER_CAP ? '#ff6b7a' : '#8a94a5';
+  ctx.font = fontPx(6);
+  ctx.fillText(silverWeight(p) + '/' + SILVER_CAP, 24 * S, 47 * S);
   const hasSeal = G.meta.seals > 0, hasShard = (G.meta.shards || 0) > 0;
   if (hasSeal || hasShard) {
     let cx = 10 * S;
     if (hasSeal) {
-      blit(ctx, Spr.icons.seal, cx, 36 * S);
+      blit(ctx, Spr.icons.seal, cx, 50 * S);
       ctx.fillStyle = '#c84fff';
-      ctx.fillText(String(G.meta.seals), cx + 14 * S, 44 * S);
+      ctx.fillText(String(G.meta.seals), cx + 14 * S, 58 * S);
       cx += 34 * S;
     }
     if (hasShard) {
-      blit(ctx, Spr.icons.shard, cx, 36 * S);
+      blit(ctx, Spr.icons.shard, cx, 50 * S);
       ctx.fillStyle = '#57e6c8';
-      ctx.fillText(String(G.meta.shards), cx + 14 * S, 44 * S);
+      ctx.fillText(String(G.meta.shards), cx + 14 * S, 58 * S);
     }
   }
   // (нивото на героя е преместено над XP лентата; индикаторът „SOUL STONE" е премахнат)
@@ -2828,7 +2826,7 @@ function drawSettings() {
   const S = SCALE;
   UI.btnRects = [];
   rcx(0, 0, CW, CH, 'rgba(4,6,11,0.72)');
-  const pw = 170 * S, ph = 182 * S;
+  const pw = 170 * S, ph = 204 * S;
   const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
   panel(x0, y0, pw, ph);
   ctx.textAlign = 'left';
@@ -2896,7 +2894,143 @@ function drawSettings() {
     ctx.fillText('You can only switch hero in camp', CW / 2, y0 + 146 * S);
     ctx.textAlign = 'left';
   }
-  row('Close', y0 + 158 * S, () => closeSettings());
+  row('Save transfer', y0 + 158 * S, () => { G.state = 'savetransfer'; });
+  row('Close', y0 + 180 * S, () => closeSettings());
+}
+
+// ---------- ТРАНСФЕР НА ПРОГРЕСА (без сървър): файл + код за копиране ----------
+function buildSaveCode() {
+  const data = { v: 1, game: 'sword-and-mage', date: new Date().toISOString().slice(0, 10), chars: {}, best: null };
+  for (let i = 0; i < 3; i++) {
+    try { data.chars[i] = localStorage.getItem('sm_char_' + i) || null; } catch (e) { data.chars[i] = null; }
+  }
+  try { data.best = localStorage.getItem('bezdna_best'); } catch (e) {}
+  return 'SMSAVE1.' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function parseSaveCode(code) {
+  code = (code || '').trim();
+  if (!code.startsWith('SMSAVE1.')) return null;
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.slice(8)))));
+    if (!data || data.game !== 'sword-and-mage' || !data.chars) return null;
+    return data;
+  } catch (e) { return null; }
+}
+function exportProgress() {
+  const code = buildSaveCode();
+  // 1) сваляне като файл
+  let fileOk = false;
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+    a.download = 'sword-and-mage-save.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    fileOk = true;
+  } catch (e) {}
+  // 2) в клипборда (за телефона — там файлът може да не тръгне)
+  try { navigator.clipboard && navigator.clipboard.writeText(code); } catch (e) {}
+  // 3) прозорче с кода за ръчно копиране
+  openTransferOverlay('export', code);
+  toast(fileOk ? 'Save downloaded + code copied.' : 'Save code copied — paste it on the other device.', '#7fd0a0');
+}
+function importProgress(code) {
+  const data = parseSaveCode(code);
+  if (!data) { toast('Invalid save code.', '#ff6b7a'); Sfx.play('deny'); return false; }
+  const names = [];
+  for (let i = 0; i < 3; i++) {
+    if (!data.chars[i]) continue;
+    try { const c = JSON.parse(data.chars[i]); names.push((c.name || 'Exile') + ' (slot ' + (i + 1) + ')'); } catch (e) {}
+  }
+  if (!names.length) { toast('The code contains no heroes.', '#ff6b7a'); Sfx.play('deny'); return false; }
+  if (!confirm('Import heroes: ' + names.join(', ') + '?\nThis REPLACES the heroes on this device!')) return false;
+  for (let i = 0; i < 3; i++) {
+    if (!data.chars[i]) continue;
+    try {
+      localStorage.setItem('sm_char_' + i, data.chars[i]);
+      localStorage.setItem('sm_char_' + i + '_bak', data.chars[i]);
+    } catch (e) {}
+  }
+  if (data.best) { try { localStorage.setItem('bezdna_best', data.best); } catch (e) {} }
+  toast('Progress imported! Reloading…', '#7fd0a0');
+  setTimeout(() => location.reload(), 900);
+  return true;
+}
+// DOM прозорче: показва кода (export) или приема код/файл (import)
+let transferEl = null;
+function closeTransferOverlay() { if (transferEl) { transferEl.remove(); transferEl = null; } }
+function openTransferOverlay(mode, code) {
+  closeTransferOverlay();
+  const d = document.createElement('div');
+  transferEl = d;
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(4,6,11,0.88);z-index:40;display:flex;align-items:center;justify-content:center;font-family:monospace;';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:#101623;border:2px solid #3a4456;padding:14px;max-width:min(92vw,560px);width:100%;color:#e8e4d0;';
+  const h = document.createElement('div');
+  h.textContent = mode === 'export' ? 'YOUR SAVE CODE — copy it or use the downloaded file' : 'PASTE the save code (or open the file and copy its contents)';
+  h.style.cssText = 'font-weight:bold;margin-bottom:8px;font-size:13px;color:' + (mode === 'export' ? '#7fd0a0' : '#8ab0ff');
+  const ta = document.createElement('textarea');
+  ta.style.cssText = 'width:100%;height:110px;background:#0a0e18;color:#a8b2c4;border:1px solid #3a4456;font-size:10px;word-break:break-all;';
+  if (mode === 'export') { ta.value = code; ta.readOnly = true; setTimeout(() => { ta.focus(); ta.select(); }, 50); }
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;';
+  const mkBtn = (label, col, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'background:#1a2233;color:' + col + ';border:1px solid #3a4456;padding:8px 14px;cursor:pointer;font-family:monospace;font-weight:bold;';
+    b.onclick = fn;
+    btns.appendChild(b);
+  };
+  if (mode === 'export') {
+    mkBtn('COPY', '#7fd0a0', () => { ta.select(); try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand('copy'); } toast('Copied.', '#7fd0a0'); });
+  } else {
+    // избор на файл със записа
+    const fi = document.createElement('input');
+    fi.type = 'file'; fi.accept = '.txt,text/plain'; fi.style.display = 'none';
+    fi.onchange = () => {
+      const f = fi.files && fi.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { ta.value = String(rd.result || '').trim(); };
+      rd.readAsText(f);
+    };
+    inner.appendChild(fi);
+    mkBtn('OPEN FILE', '#8ab0ff', () => fi.click());
+    mkBtn('IMPORT', '#7fd0a0', () => { if (importProgress(ta.value)) closeTransferOverlay(); });
+  }
+  mkBtn('CLOSE', '#ff6b7a', () => closeTransferOverlay());
+  inner.appendChild(h); inner.appendChild(ta); inner.appendChild(btns);
+  d.appendChild(inner);
+  document.body.appendChild(d);
+}
+function drawSaveTransfer() {
+  const S = SCALE;
+  UI.btnRects = [];
+  rcx(0, 0, CW, CH, 'rgba(4,6,11,0.72)');
+  const pw = 190 * S, ph = 150 * S;
+  const x0 = (CW - pw) / 2, y0 = (CH - ph) / 2;
+  panel(x0, y0, pw, ph);
+  ctx.textAlign = 'left';
+  ctx.font = fontBold(9);
+  ctx.fillStyle = '#e8e4d0';
+  ctx.fillText('SAVE TRANSFER', x0 + 10 * S, y0 + 14 * S);
+  ctx.font = fontPx(6);
+  ctx.fillStyle = '#7d8899';
+  wrapText('Move your heroes to another device WITHOUT a server: export makes a file + code, import reads it on the new device.', x0 + 10 * S, y0 + 26 * S, pw - 20 * S, 9 * S);
+  const row = (label, y, col, act) => {
+    const rx = x0 + 10 * S, rw = pw - 20 * S, rh = 18 * S;
+    const hov = G.mouse.x >= rx && G.mouse.x < rx + rw && G.mouse.y >= y && G.mouse.y < y + rh;
+    panel(rx, y, rw, rh);
+    if (hov) strokeRect(rx, y, rw, rh, '#ffd23b', S);
+    ctx.font = fontBold(7);
+    ctx.fillStyle = hov ? '#ffd23b' : col;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x0 + pw / 2, y + 12 * S);
+    ctx.textAlign = 'left';
+    UI.btnRects.push({ x: rx, y, w: rw, h: rh, act });
+  };
+  row('EXPORT — download my progress', y0 + 56 * S, '#7fd0a0', () => { saveProfile(); exportProgress(); });
+  row('IMPORT — load progress here', y0 + 80 * S, '#8ab0ff', () => openTransferOverlay('import'));
+  row('Back', y0 + 122 * S, '#e8e4d0', () => { closeTransferOverlay(); G.state = 'settings'; });
 }
 
 // ---------- избор на управление ----------

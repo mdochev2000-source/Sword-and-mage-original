@@ -213,12 +213,12 @@ function makeSoulStone() {
 // price = еднократна цена в злато за отключване. cd = презареждане (сек), dur = траене на бъфа (сек).
 // ---------- СЕЧЕНО СРЕБРО (X век): плячка с ТЕГЛО, обменя се при сарафина ----------
 const SILVER_ITEMS = {
-  hack:    { n: 'Hacksilver',     w: 1, base: 4,  icon: 'sv_hack' },    // насечени парчета
-  ring:    { n: 'Silver Ring',    w: 1, base: 7,  icon: 'sv_ring' },
-  armring: { n: 'Silver Armring', w: 2, base: 12, icon: 'sv_armring' },
-  torc:    { n: 'Silver Torc',    w: 2, base: 18, icon: 'sv_torc' },    // огърлица-обръч
-  goblet:  { n: 'Silver Goblet',  w: 3, base: 23, icon: 'sv_goblet' },
-  ingot:   { n: 'Silver Ingot',   w: 4, base: 33, icon: 'sv_ingot' },
+  hack:    { n: 'Hacksilver',     w: 1, base: 3,  icon: 'sv_hack' },    // насечени парчета
+  ring:    { n: 'Silver Ring',    w: 1, base: 5,  icon: 'sv_ring' },
+  armring: { n: 'Silver Armring', w: 2, base: 8,  icon: 'sv_armring' },
+  torc:    { n: 'Silver Torc',    w: 2, base: 12, icon: 'sv_torc' },    // огърлица-обръч
+  goblet:  { n: 'Silver Goblet',  w: 3, base: 15, icon: 'sv_goblet' },
+  ingot:   { n: 'Silver Ingot',   w: 4, base: 22, icon: 'sv_ingot' },
 };
 const SILVER_CAP = 20; // максимално тегло, което героят носи
 function rollSilver(depth) {
@@ -228,19 +228,19 @@ function rollSilver(depth) {
   const t = Math.min(0.999, Math.max(0, rnd(0, 1) * (1 - bias) + rnd(0, 1) * bias));
   const k = keys[Math.floor(t * keys.length)];
   const d = SILVER_ITEMS[k];
-  const val = Math.max(2, Math.round(d.base * (0.8 + rnd(0, 0.5)) * (1 + depth * 0.05)));
+  const val = Math.max(2, Math.round(d.base * (0.8 + rnd(0, 0.5)) * (1 + depth * 0.03)));
   return { k, w: d.w, val };
 }
 
 const POTIONS = {
   hp:    { n: 'Potion of Life', kind: 'restore', cd: 25, col: '#ff4757', unlock: 1, price: 0,    d: '+45% max life',            restore: { hp: 0.45 } },
   mp:    { n: 'Potion of Mana',   kind: 'restore', cd: 25, col: '#3b82f6', unlock: 1, price: 0,    d: '+60% max mana',             restore: { mp: 0.60 } },
-  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 150,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
-  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 200,  d: '+25% damage for 10s',            buff: 'rage' },
-  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 250,  d: '+20% movement and attack for 10s', buff: 'swift' },
-  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 400,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
-  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 500, d: 'spells cost no mana for 10s',     buff: 'focus' },
-  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 750, d: '+3% max life/sec for 10s',  buff: 'regen' },
+  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 75,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
+  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 100,  d: '+25% damage for 10s',            buff: 'rage' },
+  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 125,  d: '+20% movement and attack for 10s', buff: 'swift' },
+  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 200,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
+  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 250, d: 'spells cost no mana for 10s',     buff: 'focus' },
+  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 375, d: '+3% max life/sec for 10s',  buff: 'regen' },
 };
 const POTION_KEYS = Object.keys(POTIONS);
 
@@ -293,10 +293,11 @@ const Items = {
     const out = [];
     const m = mult || 1;
     const sf = 1 + (silverFind || 0) / 100;
-    if (chance(0.55 * Math.min(1, m))) {
-      out.push({ gold: Math.max(1, Math.round((1 + rnd(0, 2) + depth * 0.28) * m * sf)) }); // 1-5 сребърни монети
+    // ТВЪРДА икономика: НЕ всяко чудовище носи сребро, и то е шепа монети
+    if (chance(0.22 * Math.min(1, m) * sf)) {
+      out.push({ gold: Math.max(1, Math.min(4, Math.round((1 + rnd(0, 1.4) + depth * 0.12) * m))) }); // 1-3 монети
     }
-    if (chance(0.10 * m * sf)) out.push({ silver: rollSilver(depth) });         // сечено сребро
+    if (chance(0.045 * m * sf)) out.push({ silver: rollSilver(depth) });        // сечено сребро — рядко
     if (chance(0.04 * m)) out.push({ item: this.gen(depth, m > 1 ? 12 : 0) });
     if (chance(0.012 * m)) out.push({ item: genTome() });                       // томове с магии
     if (G.meta.legendPool && chance(m > 1 ? 0.025 : 0.004)) out.push({ item: genUnique(depth) }); // уникати — само с отключен пул

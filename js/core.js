@@ -132,7 +132,7 @@ const ACTION_MAP = {};
 for (const a of ACTIONS) ACTION_MAP[a.id] = a;
 
 // менюта, в които контролерът движи маркер по елементите (пространствена навигация)
-const menuNavStates = { title: 1, charselect: 1, settings: 1, spellbook: 1, skilltree: 1, stats: 1, inventory: 1, shop: 1, binds: 1, inputmode: 1, potionsel: 1 };
+const menuNavStates = { title: 1, charselect: 1, settings: 1, savetransfer: 1, spellbook: 1, skilltree: 1, stats: 1, inventory: 1, shop: 1, binds: 1, inputmode: 1, potionsel: 1 };
 function kbBind(id) {
   const o = G.meta && G.meta.kbBinds;
   return (o && id in o) ? o[id] : ACTION_MAP[id].kb;
