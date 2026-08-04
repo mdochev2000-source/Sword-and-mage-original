@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-04 17:58 UTC";
+window.__BUILD__ = "2026-08-04 18:27 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -3290,11 +3290,14 @@ const Surface = {
     }
     // пътеки от площада до всеки магазин
     for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
-    // ОКОЛОВРЪСТНА улица при стените — къщите се редят покрай нея
-    for (let a = 0; a < 84; a++) {
-      const ang = a / 84 * Math.PI * 2;
-      const x = Math.round(cx + Math.cos(ang) * 11), y = Math.round(cy + Math.sin(ang) * 11 / 1.1);
-      path[y * w + x] = 1; path[y * w + x + 1] = 1;
+    // ДВЕ околовръстни улици — вътрешна (около площада) и външна (при стените);
+    // къщите се редят покрай тях от всички страни
+    for (const rr of [7.5, 11]) {
+      for (let a = 0; a < 84; a++) {
+        const ang = a / 84 * Math.PI * 2;
+        const x = Math.round(cx + Math.cos(ang) * rr), y = Math.round(cy + Math.sin(ang) * rr / 1.1);
+        path[y * w + x] = 1; path[y * w + x + 1] = 1;
+      }
     }
     // лъчи от площада към околовръстната (диагоналите)
     for (const ang of [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75]) {
@@ -3341,12 +3344,12 @@ const Surface = {
       props.push({ kind: 'menhir', v: k % 3, x: spots.travel.x + 0.5 + Math.cos(a) * 1.8, y: spots.travel.y + 0.5 + Math.sin(a) * 1.8, r: 0.26, solid: true });
     }
 
-    // ЖИЛИЩНИ КЪЩИ: в ПРЪСТЕНА при стените, с врата към околовръстната улица;
-    // центърът остава открит площад. Всяка къща блокира 2x2 клетки (48px = стените ѝ).
+    // ЖИЛИЩНИ КЪЩИ: гъсто и естествено НАВСЯКЪДЕ около площада — от ръба му до
+    // стените, с врата към улица. Площадът остава открит. 2x2 клетки колизия.
     const candidates = [];
     for (let y = cy - RAD + 3; y <= cy + RAD - 4; y++) for (let x = cx - RAD + 3; x <= cx + RAD - 3; x++) {
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
-      if (d < 8.2 || d > RAD - 2.5) continue; // само пояса покрай стената — не на площада
+      if (d < 6.2 || d > RAD - 2.2) continue; // без площада; чак до стената
       // улица на юг пред вратата (1-2 реда) — къщата гледа към пътя
       let street = false;
       for (let di = 0; di <= 1 && !street; di++) if (path[(y + 1) * w + (x + di)] || path[(y + 2) * w + (x + di)]) street = true;
@@ -3355,7 +3358,7 @@ const Surface = {
     for (let i = candidates.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; const t = candidates[i]; candidates[i] = candidates[j]; candidates[j] = t; }
     let placed = 0;
     for (const c of candidates) {
-      if (placed >= 15) break;
+      if (placed >= 24) break;
       let free = true;
       for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (c.y + dj) * w + (c.x + di);
@@ -3364,17 +3367,17 @@ const Surface = {
       }
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(c.x + di, c.y + dj);
-      // въздух отстрани — но не винаги: понякога къщите опират като редови
-      if (R() < 0.7) { used.add(c.y * w + (c.x - 1)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 1)); used.add((c.y - 1) * w + (c.x + 2)); }
+      // въздух отстрани — но по-често опират като редови (гъсто селище)
+      if (R() < 0.45) { used.add(c.y * w + (c.x - 1)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 1)); used.add((c.y - 1) * w + (c.x + 2)); }
       props.push({ kind: 'house', v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
       placed++;
     }
-    // ако покрай улиците не се е побрало достатъчно — допълваме пак в пояса при стените
+    // ако покрай улиците не се е побрало достатъчно — допълваме из целия пояс
     let tries = 0;
-    while (placed < 12 && tries++ < 400) {
+    while (placed < 18 && tries++ < 600) {
       const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
-      if (d < 8.2 || d > RAD - 2.5) continue;
+      if (d < 6.2 || d > RAD - 2.2) continue;
       let free = true;
       for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (y + dj) * w + (x + di);
