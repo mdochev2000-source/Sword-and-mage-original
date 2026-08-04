@@ -184,6 +184,12 @@ const Surface = {
     carve(gateX, gY - 1, cx, cy + 1);  // южната порта -> центъра
     carve(gateX, gNY + 1, cx, cy - 1); // задната порта -> центъра
     for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    // ОКОЛОВРЪСТНА улица — гръбнакът на селището; къщите се редят покрай нея
+    for (let a = 0; a < 72; a++) {
+      const ang = a / 72 * Math.PI * 2;
+      const x = Math.round(cx + Math.cos(ang) * 8.5), y = Math.round(cy + Math.sin(ang) * 8.5 / 1.1);
+      path[y * w + x] = 1; path[y * w + x + 1] = 1;
+    }
     // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток) + път на север от задната порта
     const crossY = Math.min(h - B - 2, gY + 4);
     for (let y = gY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
@@ -222,14 +228,40 @@ const Surface = {
       props.push({ kind: 'menhir', v: k % 3, x: spots.travel.x + 0.5 + Math.cos(a) * 1.8, y: spots.travel.y + 0.5 + Math.sin(a) * 1.8, r: 0.26, solid: true });
     }
 
-    // ЖИЛИЩНИ КЪЩИ: плътно наблъскани в стените
-    let placed = 0, tries = 0;
-    while (placed < 15 && tries++ < 900) {
+    // ЖИЛИЩНИ КЪЩИ: покрай улиците, с врата към пътя — подредено селище, не разпилени
+    const candidates = [];
+    for (let y = cy - RAD + 3; y <= cy + RAD - 4; y++) for (let x = cx - RAD + 3; x <= cx + RAD - 3; x++) {
+      const d = Math.hypot(x - cx, (y - cy) * 1.1);
+      if (d > RAD - 2.5) continue;
+      // улица на юг пред вратата (1-2 реда) — къщата гледа към пътя
+      let street = false;
+      for (let di = -1; di <= 1 && !street; di++) if (path[(y + 1) * w + (x + di)] || path[(y + 2) * w + (x + di)]) street = true;
+      if (street) candidates.push({ x, y });
+    }
+    for (let i = candidates.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; const t = candidates[i]; candidates[i] = candidates[j]; candidates[j] = t; }
+    let placed = 0;
+    for (const c of candidates) {
+      if (placed >= 15) break;
+      let free = true;
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) {
+        const idx = (c.y + dj) * w + (c.x + di);
+        if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
+      }
+      if (!free) continue;
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(c.x + di, c.y + dj);
+      // въздух отстрани — но не винаги: понякога къщите опират като редови
+      if (R() < 0.7) { used.add(c.y * w + (c.x - 2)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 2)); used.add((c.y - 1) * w + (c.x + 2)); }
+      props.push({ kind: 'house', v: placed % 2, x: c.x + 0.5, y: c.y + 0.6, r: 0.6, solid: false });
+      placed++;
+    }
+    // ако покрай улиците не се е побрало достатъчно — допълваме из двора
+    let tries = 0;
+    while (placed < 12 && tries++ < 400) {
       const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
       if (d > RAD - 2.5) continue;
       let free = true;
-      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) { // плътно наблъскани — само стъпката е свободна
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) {
         const idx = (y + dj) * w + (x + di);
         if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
       }

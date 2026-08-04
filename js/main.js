@@ -747,21 +747,22 @@ function renderWorld() {
     blit(ctx, spr, isoX(d.x, d.y) + camX - spr.width * S / 2, isoY(d.x, d.y) + camY - spr.height * S / 2, false, G.visible[idx] ? 0.85 : 0.4);
   }
 
-  // --- светлина около мангали/огън/фенера на кулата (топла) и хенчстоуна (руническа) ---
+  // --- светлина: мангали/огън/фенер (топла), хенчстоун (руническа), портал за прибиране (лилава) ---
   for (const pr of G.props) {
     const hearthGlow = pr.kind === 'cityportal';
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || hearthGlow) || pr.broken) continue;
+    const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && !G.onSurface);
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
-    const flick = hearthGlow ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
+    const flick = (hearthGlow || portalGlow) ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
     for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
       const i = pi + di, j = pj + dj;
       const dd = Math.hypot(di, dj);
       if (dd > 2.3) continue;
       if (cellAt(i, j) !== FLOOR || !tileVisible(i, j)) continue;
-      const a = (hearthGlow ? 0.07 : 0.09) * (1 - dd / 2.6) * flick;
+      const a = ((hearthGlow || portalGlow) ? 0.07 : 0.09) * (1 - dd / 2.6) * flick;
       const sx = isoX(i, j) + camX, sy = isoY(i, j) + camY;
-      ctx.fillStyle = (hearthGlow ? 'rgba(90,214,196,' : 'rgba(255,150,40,') + a.toFixed(3) + ')';
+      ctx.fillStyle = (portalGlow ? 'rgba(190,110,255,' : hearthGlow ? 'rgba(90,214,196,' : 'rgba(255,150,40,') + a.toFixed(3) + ')';
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(sx + TW / 2, sy + TH / 2);
@@ -824,6 +825,26 @@ function renderWorld() {
     }
     const o = pushDraw(i + j + 1); o.kind = 'wall'; o.alpha = alpha; o.vis = vis; o.spr = spr; o.sx = sx; o.sy = sy;
   }
+  // богатият ефект на портала за прибиране: лилави въгленчета + въртяща се искра
+  function portalFx(pr, vis) {
+    if (!vis) return;
+    if (chance(0.16)) {
+      const aa = rnd(0, Math.PI * 2);
+      addParticle({
+        x: pr.x + Math.cos(aa) * rnd(0.15, 0.8), y: pr.y + Math.sin(aa) * rnd(0.15, 0.8), z: rnd(0, 8),
+        vx: rnd(-0.3, 0.3), vy: rnd(-0.3, 0.3), vz: rnd(4, 10), grav: -3, t: 0, life: rnd(1.2, 2.4),
+        col: pick(['#c84fff', '#e0b0ff', '#8a5fd0', '#e0b0ff', '#f0d8ff']), size: chance(0.2) ? 2 : 1,
+      });
+    }
+    if (chance(0.05)) { // искра, обикаляща рамката
+      const oa = G.time * 2.4;
+      addParticle({
+        x: pr.x + Math.cos(oa) * 0.55, y: pr.y + Math.sin(oa) * 0.28, z: 6 + Math.sin(oa * 2) * 4,
+        vx: 0, vy: 0, vz: 1, grav: 0, t: 0, life: 0.5,
+        col: '#f0d8ff', size: 1,
+      });
+    }
+  }
   // реквизит
   for (const pr of G.props) {
     const i = Math.floor(pr.x), j = Math.floor(pr.y);
@@ -860,8 +881,16 @@ function renderWorld() {
       else spr = Spr.surf.stallTiers[pr.vtype][clamp(((G.meta.vendorLvl && G.meta.vendorLvl[pr.vtype]) || 1) - 1, 0, 4)];
     }
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
-    else if (pr.kind === 'portal') spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
-    else if (pr.kind === 'homeportal') { initSurfaceSprites(); spr = Spr.surf.portal[Math.floor(G.time * 4) % 3]; }
+    else if (pr.kind === 'portal') {
+      if (G.onSurface) {
+        // на повърхността входът към подземието е ПЕЩЕРА, не портал
+        spr = pr.dungeon === 'mirhold' ? Spr.surf.caveMir : Spr.surf.caveAbyss;
+      } else {
+        spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
+        portalFx(pr, vis);
+      }
+    }
+    else if (pr.kind === 'homeportal') { initSurfaceSprites(); spr = Spr.surf.portal[Math.floor(G.time * 4) % 3]; portalFx(pr, vis); }
     else if (pr.kind === 'cityportal') {
       // ХЕНЧСТОУНЪТ: камък + пулсираща руна + издигащи се въгленчета (като титулния екран)
       if (vis && chance(0.10)) {
@@ -960,8 +989,8 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 10 : -14) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 34 : 38) * S;
+      const chx = sx + (pr.kind === 'house' ? 13 : -17) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 39 : 46) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);

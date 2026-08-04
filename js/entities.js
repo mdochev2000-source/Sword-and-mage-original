@@ -1163,8 +1163,8 @@ function updateInteract() {
   else if (best.kind === 'portal') {
     if (best.dungeon === 'mirhold') {
       const cp = (G.mirCheckpoint || 1);
-      G.interactHint = { pr: best, txt: 'E — the Garrison Depths (floor ' + (cp > 1 ? cp : 1) + ' of 10)' };
-    } else G.interactHint = { pr: best, txt: 'E — enter the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
+      G.interactHint = { pr: best, txt: 'E — descend into the Garrison Depths (floor ' + (cp > 1 ? cp : 1) + ' of 10)' };
+    } else G.interactHint = { pr: best, txt: 'E — descend into the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
   }
   else if (best.kind === 'cityportal') G.interactHint = { pr: best, txt: best.city === 'mirhold' ? 'E — travel to MIRHOLD' : 'E — travel to the Camp of the Exiles' };
   else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
