@@ -993,8 +993,8 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 18 : -21) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 41 : 47) * S;
+      const chx = sx + (pr.kind === 'house' ? 13 : -15) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 42 : 45) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);

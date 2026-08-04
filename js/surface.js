@@ -205,10 +205,11 @@ const Surface = {
     const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
 
     // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
+    // блокираме 2x2 клетки (48px) — точно колкото са широки стените, БЕЗ невидими зони
     for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) {
       const s = spots[vt];
-      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(s.x + di, s.y + dj);
-      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(s.x + di, s.y + dj);
+      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
     // КУЛАТА на гарнизона (центъра, с фенер) — тялото ѝ е широко точно 1 клетка,
@@ -230,13 +231,14 @@ const Surface = {
     }
 
     // ЖИЛИЩНИ КЪЩИ: покрай улиците, с врата към пътя — подредено селище, не разпилени
+    // всяка къща блокира 2x2 клетки (48px = ширината на стените ѝ) — БЕЗ невидими зони
     const candidates = [];
     for (let y = cy - RAD + 3; y <= cy + RAD - 4; y++) for (let x = cx - RAD + 3; x <= cx + RAD - 3; x++) {
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
       if (d > RAD - 2.5) continue;
       // улица на юг пред вратата (1-2 реда) — къщата гледа към пътя
       let street = false;
-      for (let di = -1; di <= 1 && !street; di++) if (path[(y + 1) * w + (x + di)] || path[(y + 2) * w + (x + di)]) street = true;
+      for (let di = 0; di <= 1 && !street; di++) if (path[(y + 1) * w + (x + di)] || path[(y + 2) * w + (x + di)]) street = true;
       if (street) candidates.push({ x, y });
     }
     for (let i = candidates.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; const t = candidates[i]; candidates[i] = candidates[j]; candidates[j] = t; }
@@ -244,15 +246,15 @@ const Surface = {
     for (const c of candidates) {
       if (placed >= 15) break;
       let free = true;
-      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (c.y + dj) * w + (c.x + di);
         if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
       }
       if (!free) continue;
-      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(c.x + di, c.y + dj);
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(c.x + di, c.y + dj);
       // въздух отстрани — но не винаги: понякога къщите опират като редови
-      if (R() < 0.7) { used.add(c.y * w + (c.x - 2)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 2)); used.add((c.y - 1) * w + (c.x + 2)); }
-      props.push({ kind: 'house', v: placed % 2, x: c.x + 0.5, y: c.y + 0.6, r: 0.6, solid: false });
+      if (R() < 0.7) { used.add(c.y * w + (c.x - 1)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 1)); used.add((c.y - 1) * w + (c.x + 2)); }
+      props.push({ kind: 'house', v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
       placed++;
     }
     // ако покрай улиците не се е побрало достатъчно — допълваме из двора
@@ -262,13 +264,13 @@ const Surface = {
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
       if (d > RAD - 2.5) continue;
       let free = true;
-      for (let dj = -1; dj <= 1 && free; dj++) for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1 && free; dj++) for (let di = 0; di <= 1; di++) {
         const idx = (y + dj) * w + (x + di);
         if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) { free = false; break; }
       }
       if (!free) continue;
-      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(x + di, y + dj);
-      props.push({ kind: 'house', v: placed % 2, x: x + 0.5, y: y + 0.6, r: 0.6, solid: false });
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(x + di, y + dj);
+      props.push({ kind: 'house', v: placed % 2, x: x + 1.0, y: y + 0.6, r: 0.6, solid: false });
       placed++;
     }
     // ЛОКВИ — по калните пътища и из града
