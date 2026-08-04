@@ -856,6 +856,7 @@ function renderWorld() {
     else if (pr.kind === 'fence') spr = Spr.surf.fence;
     else if (pr.kind === 'stall') {
       if (pr.vtype === 'jewel') spr = Spr.surf.mystic;
+      else if (pr.vtype === 'exchange') spr = Spr.surf.exchange;
       else spr = Spr.surf.stallTiers[pr.vtype][clamp(((G.meta.vendorLvl && G.meta.vendorLvl[pr.vtype]) || 1) - 1, 0, 4)];
     }
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
@@ -899,8 +900,8 @@ function renderWorld() {
     const idx = j * m.w + i;
     if (idx < 0 || !G.explored[idx] || !G.visible[idx]) continue;
     const sx = isoX(gitem.x, gitem.y) + camX, sy = isoY(gitem.x, gitem.y) + camY;
-    const icon = gitem.gold ? 'gold' : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
-    const bobz = (gitem.item || gitem.seal || gitem.shard) ? Math.sin(G.time * 3 + gitem.x * 7) * 1.5 + 2 : 0;
+    const icon = gitem.gold ? 'gold' : gitem.silver ? SILVER_ITEMS[gitem.silver.k].icon : gitem.potion ? ('potion_' + gitem.potion) : gitem.seal ? 'seal' : gitem.shard ? 'shard' : gitem.item.icon;
+    const bobz = (gitem.item || gitem.seal || gitem.shard || gitem.silver) ? Math.sin(G.time * 3 + gitem.x * 7) * 1.5 + 2 : 0;
     const o = pushDraw(gitem.x + gitem.y); o.kind = 'ground'; o.icon = icon; o.sx = sx; o.sy = sy; o.gitem = gitem; o.bobz = bobz;
   }
   // врагове

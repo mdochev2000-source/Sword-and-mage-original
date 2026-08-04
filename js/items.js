@@ -39,7 +39,7 @@ const AFFIXES = {
   armor:   { r: [2, 4],   n: 'armor',                 pre: 'Stony',       pref: 'Stony',        pool: 'suf' },
   spd:     { r: [4, 8],   n: '% speed',             pre: 'Swift',          pref: 'Swift',          pct: true, pool: 'suf' },
   vamp:    { r: [1, 3],   n: '% life steal',     pre: 'Vampiric',     pref: 'Vampiric',      pct: true, pool: 'suf' },
-  gold:    { r: [10, 25], n: '% gold',               pre: 'Greedy',         pref: 'Greedy',          pct: true, pool: 'suf' },
+  gold:    { r: [10, 25], n: '% silver',             pre: 'Greedy',         pref: 'Greedy',          pct: true, pool: 'suf' },
   spellCd: { r: [4, 8],   n: '% spell cooldown', pre: 'Tireless',    pref: 'Tireless',       pct: true, pool: 'suf' },
   spellCost:{ r: [4, 8],  n: '% cheaper spells',     pre: 'Thrifty',      pref: 'Thrifty',      pct: true, pool: 'suf' },
   dashCd:  { r: [5, 10],  n: '% dash cooldown', pre: 'Whirling',    pref: 'Whirling',        pct: true, pool: 'suf' },
@@ -95,7 +95,7 @@ const UNIQUES = [
   },
   {
     uid: 'kingseye', type: 'ring', slot: 'ring', icon: 'ring', name: 'Eye of Kings',
-    power: '+40% crit damage. Crits shake gold loose from enemies.',
+    power: '+40% crit damage. Crits shake silver loose from enemies.',
   },
   {
     uid: 'gravedigger', type: 'greatsword', slot: 'weapon', icon: 'greatsword', name: 'Gravedigger of Kings',
@@ -211,15 +211,36 @@ function makeSoulStone() {
 // ---------- ОТВАРИ: постоянни флакони с презареждане (не се трупат, не свършват) ----------
 // restore = моментално възстановяване; buff = ефект с траене. unlock = ниво на сергията на Яна.
 // price = еднократна цена в злато за отключване. cd = презареждане (сек), dur = траене на бъфа (сек).
+// ---------- СЕЧЕНО СРЕБРО (X век): плячка с ТЕГЛО, обменя се при сарафина ----------
+const SILVER_ITEMS = {
+  hack:    { n: 'Hacksilver',     w: 1, base: 4,  icon: 'sv_hack' },    // насечени парчета
+  ring:    { n: 'Silver Ring',    w: 1, base: 7,  icon: 'sv_ring' },
+  armring: { n: 'Silver Armring', w: 2, base: 12, icon: 'sv_armring' },
+  torc:    { n: 'Silver Torc',    w: 2, base: 18, icon: 'sv_torc' },    // огърлица-обръч
+  goblet:  { n: 'Silver Goblet',  w: 3, base: 23, icon: 'sv_goblet' },
+  ingot:   { n: 'Silver Ingot',   w: 4, base: 33, icon: 'sv_ingot' },
+};
+const SILVER_CAP = 20; // максимално тегло, което героят носи
+function rollSilver(depth) {
+  // по-дълбоко -> по-фините/тежки предмети стават по-чести и по-ценни
+  const keys = ['hack', 'hack', 'ring', 'armring', 'torc', 'goblet', 'ingot'];
+  const bias = Math.min(0.9, depth * 0.045);                  // тежест към края на списъка
+  const t = Math.min(0.999, Math.max(0, rnd(0, 1) * (1 - bias) + rnd(0, 1) * bias));
+  const k = keys[Math.floor(t * keys.length)];
+  const d = SILVER_ITEMS[k];
+  const val = Math.max(2, Math.round(d.base * (0.8 + rnd(0, 0.5)) * (1 + depth * 0.05)));
+  return { k, w: d.w, val };
+}
+
 const POTIONS = {
   hp:    { n: 'Potion of Life', kind: 'restore', cd: 25, col: '#ff4757', unlock: 1, price: 0,    d: '+45% max life',            restore: { hp: 0.45 } },
   mp:    { n: 'Potion of Mana',   kind: 'restore', cd: 25, col: '#3b82f6', unlock: 1, price: 0,    d: '+60% max mana',             restore: { mp: 0.60 } },
-  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 300,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
-  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 400,  d: '+25% damage for 10s',            buff: 'rage' },
-  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 500,  d: '+20% movement and attack for 10s', buff: 'swift' },
-  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 800,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
-  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 1000, d: 'spells cost no mana for 10s',     buff: 'focus' },
-  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 1500, d: '+3% max life/sec for 10s',  buff: 'regen' },
+  mix:   { n: 'Mixed Elixir',   kind: 'restore', cd: 30, col: '#b34fff', unlock: 2, price: 150,  d: '+40% life AND +40% mana',      restore: { hp: 0.40, mp: 0.40 } },
+  rage:  { n: 'Potion of Rage', kind: 'buff',   cd: 45, dur: 10, col: '#e0555a', unlock: 3, price: 200,  d: '+25% damage for 10s',            buff: 'rage' },
+  swift: { n: 'Potion of Wind',  kind: 'buff',   cd: 45, dur: 10, col: '#7fd0a0', unlock: 3, price: 250,  d: '+20% movement and attack for 10s', buff: 'swift' },
+  stone: { n: 'Potion of Stone',  kind: 'buff',   cd: 45, dur: 10, col: '#a8a090', unlock: 4, price: 400,  d: '+15 armor, unmovable for 10s',  buff: 'stone' },
+  focus: { n: 'Potion of Focus',  kind: 'buff',   cd: 45, dur: 10, col: '#8ab0ff', unlock: 4, price: 500, d: 'spells cost no mana for 10s',     buff: 'focus' },
+  regen: { n: 'Potion of Vigor',  kind: 'buff',   cd: 45, dur: 10, col: '#ff8a94', unlock: 5, price: 750, d: '+3% max life/sec for 10s',  buff: 'regen' },
 };
 const POTION_KEYS = Object.keys(POTIONS);
 
@@ -266,15 +287,16 @@ const Items = {
   },
 
   // какво пада от враг; mult — множител за елит/босс
-  // дропът е нарочно скъперски: екипировката идва главно от сандъци, босове и търговците
-  rollDrop(depth, mult, goldFind) {
+  // X век: монетите са ОСКЪДНИ (шепа сребро) — истинската плячка е сеченото сребро
+  // (гривни, слитъци, накити), което тежи и се обменя при сарафина
+  rollDrop(depth, mult, silverFind) {
     const out = [];
     const m = mult || 1;
-    if (chance(0.75 * Math.min(1, m))) {
-      out.push({ gold: Math.round((4 + depth * 2.6 + rnd(0, 5)) * m * (1 + (goldFind || 0) / 100)) });
+    const sf = 1 + (silverFind || 0) / 100;
+    if (chance(0.55 * Math.min(1, m))) {
+      out.push({ gold: Math.max(1, Math.round((1 + rnd(0, 2) + depth * 0.28) * m * sf)) }); // 1-5 сребърни монети
     }
-    // отварите вече не падат от земята — малко повече злато като компенсация
-    if (chance(0.09 * m)) out.push({ gold: Math.round((3 + depth * 1.4) * m * (1 + (goldFind || 0) / 100)) });
+    if (chance(0.10 * m * sf)) out.push({ silver: rollSilver(depth) });         // сечено сребро
     if (chance(0.04 * m)) out.push({ item: this.gen(depth, m > 1 ? 12 : 0) });
     if (chance(0.012 * m)) out.push({ item: genTome() });                       // томове с магии
     if (G.meta.legendPool && chance(m > 1 ? 0.025 : 0.004)) out.push({ item: genUnique(depth) }); // уникати — само с отключен пул
@@ -332,7 +354,7 @@ const PERKS = [
   { id: 'arcane', n: 'Arcana', d: '+25 mana, +20% fire damage' },
   { id: 'stone', n: 'Stone Skin', d: '+6 armor' },
   { id: 'shadow', n: 'Shadow', d: '-30% dash cooldown' },
-  { id: 'greed', n: 'Greed', d: '+30% gold' },
+  { id: 'greed', n: 'Greed', d: '+30% silver' },
   // капстоуни със синергии — не плоски числа
   { id: 'burncrit', n: 'Burning Crits', d: 'Crits set the enemy ablaze' },
   { id: 'harvest', n: 'Reaping', d: 'A nearby kill restores 3% life' },

@@ -898,10 +898,42 @@ function genItemIcon(kind, rarity) {
       rc(g, 3, 5, 1, 5, '#3b82f6'); rc(g, 8, 5, 1, 5, '#2456a8');
       rc(g, 5, 2, 2, 2, '#c9d1d9'); rc(g, 5, 1, 2, 1, '#7d5636');
       break;
-    case 'gold':
-      rc(g, 3, 6, 5, 4, '#ffd23b'); rc(g, 4, 5, 3, 1, '#ffd23b'); px(g, 4, 6, '#fff2a0');
-      rc(g, 7, 3, 4, 3, '#e8c04a'); px(g, 8, 3, '#fff2a0');
-      px(g, 2, 9, '#b8860b'); px(g, 9, 7, '#b8860b');
+    case 'gold': // сребърни монети (X век — среброто е валутата)
+      rc(g, 3, 6, 5, 4, '#d8dee8'); rc(g, 4, 5, 3, 1, '#d8dee8'); px(g, 4, 6, '#f2f6fc');
+      rc(g, 7, 3, 4, 3, '#aab6c8'); px(g, 8, 3, '#f2f6fc');
+      px(g, 2, 9, '#6a7485'); px(g, 9, 7, '#6a7485');
+      break;
+    case 'sv_hack': // насечени сребърни парчета
+      rc(g, 2, 7, 3, 2, '#c6d0dc'); px(g, 2, 7, '#f2f6fc');
+      rc(g, 6, 5, 2, 3, '#aab6c8'); px(g, 6, 5, '#e2e8f0');
+      rc(g, 8, 8, 3, 2, '#c6d0dc'); px(g, 10, 8, '#8a94a5');
+      px(g, 5, 9, '#8a94a5'); px(g, 4, 3, '#aab6c8'); px(g, 5, 3, '#e2e8f0');
+      break;
+    case 'sv_ring': // сребърен пръстен
+      rc(g, 4, 4, 4, 1, '#d8dee8'); rc(g, 4, 8, 4, 1, '#aab6c8');
+      rc(g, 3, 5, 1, 3, '#d8dee8'); rc(g, 8, 5, 1, 3, '#8a94a5');
+      px(g, 4, 4, '#f2f6fc');
+      break;
+    case 'sv_armring': // гривна-спирала
+      rc(g, 3, 3, 6, 1, '#d8dee8'); rc(g, 2, 4, 1, 4, '#c6d0dc'); rc(g, 9, 4, 1, 4, '#8a94a5');
+      rc(g, 3, 8, 6, 1, '#aab6c8'); px(g, 8, 9, '#8a94a5'); px(g, 9, 8, '#6a7485');
+      px(g, 3, 3, '#f2f6fc'); px(g, 4, 9, '#c6d0dc');
+      break;
+    case 'sv_torc': // огърлица-обръч с топчета
+      rc(g, 3, 3, 6, 1, '#c6d0dc'); rc(g, 2, 4, 1, 3, '#d8dee8'); rc(g, 9, 4, 1, 3, '#8a94a5');
+      px(g, 3, 7, '#c6d0dc'); px(g, 8, 7, '#aab6c8');
+      rc(g, 3, 8, 2, 2, '#e2e8f0'); rc(g, 7, 8, 2, 2, '#aab6c8');
+      px(g, 3, 3, '#f2f6fc');
+      break;
+    case 'sv_goblet': // сребърен бокал
+      rc(g, 4, 2, 4, 1, '#e2e8f0'); rc(g, 4, 3, 4, 3, '#c6d0dc'); px(g, 7, 4, '#8a94a5');
+      rc(g, 5, 6, 2, 3, '#aab6c8');
+      rc(g, 4, 9, 4, 1, '#c6d0dc'); px(g, 4, 3, '#f2f6fc');
+      break;
+    case 'sv_ingot': // сребърен слитък
+      rc(g, 2, 6, 8, 3, '#c6d0dc'); rc(g, 3, 5, 6, 1, '#e2e8f0');
+      rc(g, 2, 8, 8, 1, '#8a94a5'); px(g, 3, 6, '#f2f6fc'); px(g, 4, 6, '#f2f6fc');
+      px(g, 8, 7, '#aab6c8');
       break;
     case 'tome':
       // том с магия: книга с runa
@@ -1167,7 +1199,8 @@ function initSprites(themeIdx) {
     };
 
     Spr.icons = {};
-    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome', 'soulstone'])
+    for (const k of ['sword', 'axe', 'dagger', 'greatsword', 'spear', 'chains', 'armor', 'ring', 'amulet', 'potion_hp', 'potion_mp', 'gold', 'seal', 'shard', 'tome', 'soulstone',
+      'sv_hack', 'sv_ring', 'sv_armring', 'sv_torc', 'sv_goblet', 'sv_ingot'])
       Spr.icons[k] = genItemIcon(k, 0);
 
     Spr.slash = genSlash();
@@ -1367,6 +1400,27 @@ function genStallTier(tier, c, goods) {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
+// тезгях на САРАФИНА (лагера): маса с везни, кесии и окачени сребърни дрънкулки
+function genExchangeStand() {
+  const g = mk(24, 26);
+  rc(g, 3, 15, 18, 8, '#4a3c2c');                                     // дървен тезгях
+  rc(g, 2, 14, 20, 2, '#5c4a34'); rc(g, 3, 22, 18, 1, '#382d20');
+  rc(g, 4, 16, 1, 6, '#5c4a34');
+  // ВЕЗНИТЕ: стойка + рамо + две блюда
+  rc(g, 11, 4, 1, 10, '#6a6d75'); rc(g, 7, 4, 9, 1, '#8a8d95'); px(g, 11, 3, '#aab6c8');
+  rc(g, 6, 5, 1, 3, '#6a6d75'); rc(g, 16, 5, 1, 3, '#6a6d75');        // въженца
+  rc(g, 5, 8, 3, 1, '#c6d0dc'); px(g, 5, 9, '#8a94a5');               // блюдо ляво
+  rc(g, 15, 8, 3, 1, '#c6d0dc'); px(g, 17, 9, '#8a94a5');             // блюдо дясно
+  px(g, 6, 7, '#e2e8f0');                                             // сребро в блюдото
+  // кесии с монети на тезгяха
+  rc(g, 5, 12, 3, 3, '#6e5a3e'); px(g, 6, 11, '#8a7350');
+  rc(g, 17, 12, 3, 3, '#6e5a3e'); px(g, 18, 11, '#8a7350');
+  px(g, 9, 13, '#d8dee8'); px(g, 13, 13, '#d8dee8'); px(g, 14, 14, '#aab6c8'); // разпилени монети
+  // окачени гривни отстрани
+  px(g, 2, 17, '#c6d0dc'); px(g, 2, 18, '#8a94a5'); px(g, 21, 18, '#c6d0dc'); px(g, 21, 19, '#8a94a5');
+  outlineSprite(g, '#10141c');
+  return g.canvas;
+}
 function genMysticStand() {
   // маса на Мистика: каменен пиедестал с реещ се печат
   const g = mk(22, 26);
@@ -1529,7 +1583,7 @@ function genMirShopHouse(vtype, R) {
   const plas = '#665e4e', plasD = '#585042', beam = '#382d20', beamL = '#4a3c2c';
   const stone = '#565a62', stoneD = '#44484f';
   const rA = '#39404a', rB = '#2d333c', rC = '#454e5a';
-  const sign = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f' }[vtype] || '#8f2a3a';
+  const sign = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f', exchange: '#5a6472' }[vtype] || '#8f2a3a';
   // стени + шум
   rc(g, 4, 20, 38, 18, plas);
   for (let i = 0; i < 30; i++) { const x = 5 + ((R() * 36) | 0), y = 22 + ((R() * 14) | 0); px(g, x, y, plasD); }
@@ -1576,6 +1630,11 @@ function genMirShopHouse(vtype, R) {
   } else if (vtype === 'potion') { // колба
     px(g, 37, 24, IC); rc(g, 36, 25, 3, 2, IC); rc(g, 35, 27, 5, 4, '#4fd0a0'); rc(g, 36, 30, 3, 1, '#2f8a68');
     px(g, 36, 27, '#a8f0d8');
+  } else if (vtype === 'exchange') { // ВЕЗНИ на сарафина
+    rc(g, 37, 24, 1, 5, IC); rc(g, 34, 25, 7, 1, IC); px(g, 37, 30, IC);
+    px(g, 34, 26, '#aab6c8'); px(g, 40, 26, '#aab6c8');
+    rc(g, 33, 28, 3, 1, '#c6d0dc'); rc(g, 39, 28, 3, 1, '#c6d0dc');
+    px(g, 34, 27, '#8a94a5'); px(g, 40, 27, '#8a94a5');
   } else {                        // руна-камък на Мистика
     px(g, 37, 24, '#e0c0ff'); px(g, 36, 25, '#e0c0ff'); px(g, 38, 25, '#e0c0ff');
     rc(g, 37, 25, 1, 5, '#e0c0ff'); px(g, 35, 27, '#e0c0ff'); px(g, 39, 27, '#e0c0ff');
@@ -1825,7 +1884,9 @@ function initSurfaceSprites() {
       armor: genMirShopHouse('armor', R),
       potion: genMirShopHouse('potion', R),
       jewel: genMirShopHouse('jewel', R),
+      exchange: genMirShopHouse('exchange', R),
     },
+    exchange: genExchangeStand(),
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),
     gate: genMirGate(R),

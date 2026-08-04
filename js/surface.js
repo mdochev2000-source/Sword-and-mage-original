@@ -6,8 +6,9 @@ const VENDOR_DEFS = {
   armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
   potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
+  exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
-const VENDOR_UP_COST = [0, 300, 900, 2700, 8000]; // цена в злато за ниво 2..5 (индекс = текущо ниво)
+const VENDOR_UP_COST = [0, 150, 450, 1350, 4000]; // цена в СРЕБРО за ниво 2..5 (индекс = текущо ниво)
 const STALL_NAMES = ['cart', 'small tent', 'tent', 'large tent', 'pavilion'];
 
 const Surface = {
@@ -34,6 +35,7 @@ const Surface = {
       armor: { x: cx + 8, y: cy - 3 },           // изток
       potion: { x: cx - 6, y: cy + 6 },          // югозапад
       jewel: { x: cx + 1, y: cy - 9 },           // север, при руините
+      exchange: { x: cx + 7, y: cy + 4 },        // югоизток — САРАФИНЪТ (сребро и рядкости)
       portal: { x: cx + 9, y: cy + 9 },          // югоизток — гробището
       travel: { x: cx - 9, y: cy + 8 },          // югозапад — порталът към МИРХОЛД
     };
@@ -46,7 +48,7 @@ const Surface = {
       while (y !== by) { step(); y += y < by ? 1 : -1; }
       step();
     };
-    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'portal', 'travel']) {
+    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange', 'portal', 'travel']) {
       carvePath(spots.camp.x, spots.camp.y, spots[k].x, spots[k].y);
     }
 
@@ -69,6 +71,8 @@ const Surface = {
       props.push({ kind: 'stall', vtype: vt, x: s.x + 0.5, y: s.y + 0.5, r: 0.6, solid: true });
       props.push({ kind: 'vendor', vtype: vt, x: s.x + 1.6, y: s.y + 1.1, r: 0.3, solid: true, name: VENDOR_DEFS[vt].name });
     }
+    // САРАФИНЪТ: тезгях с везните — обменя сечено сребро, продава рядкости
+    props.push({ kind: 'stall', vtype: 'exchange', x: spots.exchange.x + 0.5, y: spots.exchange.y + 0.5, r: 0.6, solid: true });
 
     // гробище около портала
     for (let t = 0; t < 7; t++) {
@@ -165,6 +169,7 @@ const Surface = {
       armor: { x: cx + 8, y: cy - 2 },    // бронетворецът — изток
       potion: { x: cx - 6, y: cy + 6 },   // алхимикът — югозапад
       jewel: { x: cx + 6, y: cy - 7 },    // Майстор Захари — североизток
+      exchange: { x: cx + 6, y: cy + 6 }, // сарафинът — югоизток
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
@@ -178,7 +183,7 @@ const Surface = {
     };
     carve(gateX, gY - 1, cx, cy + 1);  // южната порта -> центъра
     carve(gateX, gNY + 1, cx, cy - 1); // задната порта -> центъра
-    for (const k of ['weapon', 'armor', 'potion', 'jewel']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
     // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток) + път на север от задната порта
     const crossY = Math.min(h - B - 2, gY + 4);
     for (let y = gY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
@@ -194,7 +199,7 @@ const Surface = {
     const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
 
     // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
-    for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
+    for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) {
       const s = spots[vt];
       for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(s.x + di, s.y + dj);
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 0.5, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
@@ -265,14 +270,14 @@ const Surface = {
 
 // ---------- магазини ----------
 function shopItemPrice(it) {
-  if (it.slot === 'spell') return 60 + (it.lvl || 1) * 6; // томовете имат добра цена
-  let base = it.dmg ? it.dmg * 3 : it.armor ? it.armor * 7 : 30;
+  if (it.slot === 'spell') return 30 + (it.lvl || 1) * 3; // томовете имат добра цена
+  let base = it.dmg ? it.dmg * 1.5 : it.armor ? it.armor * 3.5 : 15;
   const wgt = {
     dmg: 3, hp: 0.9, mp: 0.9, armor: 5, spd: 2.5, aspd: 2.2, crit: 3, critd: 1.1, vamp: 9, gold: 1.2,
     spellDmg: 2.5, range: 2, thorns: 4, spellCd: 2.5, spellCost: 2.5, dashCd: 2, hpRegen: 8, mpRegen: 6, xp: 1.5, potionPow: 2,
   };
-  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1);
-  return Math.max(15, Math.round(base * (1 + it.rarity * 0.45)));
+  for (const a of it.affixes) base += a.v * (wgt[a.k] || 1) * 0.5; // сребърната икономика: цените са наполовина
+  return Math.max(8, Math.round(base * (1 + it.rarity * 0.45)));
 }
 function shopSellPrice(it) { return Math.max(3, Math.round(shopItemPrice(it) * 0.35)); }
 function potionPrice(key) { return (POTIONS[key] && POTIONS[key].price) || 0; } // еднократна цена за отключване
@@ -291,6 +296,17 @@ function dailyShopRng(vtype) {
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
 }
+// ДНЕВЕН КУРС на сарафина: 80%..125%, същият за целия ден, различен всеки ден
+function dailyExchangeRate() {
+  const day = Math.floor(Date.now() / 86400000);
+  const str = 'rate:' + day;
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h += 0x6D2B79F5; let r = Math.imul(h ^ (h >>> 15), 1 | h);
+  r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+  const u = ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  return 0.8 + u * 0.45;
+}
 // стоката зависи от нивото на сергията: повече, по-редки и по-дълбоки предмети
 function genShopStock(vtype) {
   const _mr = Math.random;
@@ -301,11 +317,12 @@ function genShopStock(vtype) {
   const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
   // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
   const cityTier = G.city === 'mirhold' ? 1 : 0;
-  const priceMult = 1 + cityTier * 0.35;
+  const rare = vtype === 'exchange' ? 1 : 0; // сарафинът: по-редки и по-дълбоки стоки, по-солени цени
+  const priceMult = (1 + cityTier * 0.35) * (rare ? 1.6 : 1);
   const depthCap = [4, 8, 14, 22, 999][lvl - 1];
-  const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0));
-  const depth = clamp(Math.min(G.meta.bestDepth, depthCap) + cityTier * 3, 1, 99);
-  const boost = lvl * 3 + cityTier * 5;
+  const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0) + rare);
+  const depth = clamp(Math.min(G.meta.bestDepth, depthCap) + cityTier * 3 + rare * 4, 1, 99);
+  const boost = lvl * 3 + cityTier * 5 + rare * 14;
   const items = [];
   const genSlots = (slots, count) => {
     for (let i = 0; i < count; i++) {
@@ -327,7 +344,7 @@ function genShopStock(vtype) {
     // + пръстени и амулети (те се и вдигат на ниво тук)
     if (lvl >= 2) genSlots(['ring', 'amulet'], lvl - 1);
     // Камък на душата: само на макс ниво (5) на сергията на Яна — еднократно съживяване
-    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 3000, soulstone: true });
+    if (lvl >= 5) items.push({ item: makeSoulStone(), price: 1500, soulstone: true });
   } else {
     genSlots(def.slots, 2 + lvl);
   }

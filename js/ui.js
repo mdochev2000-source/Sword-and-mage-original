@@ -375,9 +375,16 @@ function drawHUD() {
   ctx.translate(0, 15 * S);
   ctx.textAlign = 'left';
   blit(ctx, Spr.icons.gold, 10 * S, 25 * S);
-  ctx.fillStyle = '#ffd23b';
+  ctx.fillStyle = '#d8dee8';
   ctx.font = fontBold(7);
+  const goldTxtW = ctx.measureText(String(p.gold)).width;
   ctx.fillText(String(p.gold), 24 * S, 33 * S);
+  // тежестта на кесията със сечено сребро — показва се само ако носиш нещо
+  if (p.silverBag && p.silverBag.length) {
+    ctx.fillStyle = silverWeight(p) >= SILVER_CAP ? '#ff6b7a' : '#8a94a5';
+    ctx.font = fontPx(6);
+    ctx.fillText('+' + p.silverBag.length + ' (' + silverWeight(p) + '/' + SILVER_CAP + ')', 24 * S + goldTxtW + 6 * S, 33 * S);
+  }
   const hasSeal = G.meta.seals > 0, hasShard = (G.meta.shards || 0) > 0;
   if (hasSeal || hasShard) {
     let cx = 10 * S;
@@ -706,6 +713,16 @@ function drawInventory() {
       ctx.fillText(String(v), x0 + 44 * S, ly + 8 * S);
       ly += 17 * S;
     }
+    // КЕСИЯТА със сечено сребро: тежест + мини-лента (обменя се при сарафина)
+    const sw = silverWeight(p);
+    ctx.font = fontPx(4.5);
+    ctx.fillStyle = '#7d8899';
+    ctx.fillText('SILVER', x0 + 44 * S, ly);
+    ctx.font = fontBold(6.5);
+    ctx.fillStyle = sw >= SILVER_CAP ? '#ff6b7a' : '#d8dee8';
+    ctx.fillText(sw + '/' + SILVER_CAP, x0 + 44 * S, ly + 8 * S);
+    rcx(x0 + 44 * S, ly + 10 * S, 26 * S, 2 * S, '#232a36');
+    rcx(x0 + 44 * S, ly + 10 * S, Math.min(1, sw / SILVER_CAP) * 26 * S, 2 * S, sw >= SILVER_CAP ? '#ff6b7a' : '#aab6c8');
   }
 
   // === ДЯСНА КОЛОНА: филтри -> мрежа с предмети -> магии -> перкове; бутоните са най-долу ===
@@ -1130,13 +1147,13 @@ function drawShop() {
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
-  // валутите — на ЕДИН РЕД: златото си стои, вляво от него осколките, после печатите
+  // валутите — на ЕДИН РЕД: среброто си стои, вляво от него осколките, после печатите
   {
     ctx.font = fontBold(8);
     const iy = y0 + 5 * S;
-    let ix = x0 + pw - 84 * S; // златото — на познатото място
+    let ix = x0 + pw - 84 * S; // среброто — на познатото място
     blit(ctx, Spr.icons.gold, ix, iy);
-    ctx.fillStyle = '#ffd23b';
+    ctx.fillStyle = '#d8dee8';
     ctx.fillText(String(p.gold), ix + 14 * S, iy + 9 * S);
     if (isMystic || (G.meta.shards || 0) > 0) {
       ix -= 42 * S;
@@ -1252,7 +1269,7 @@ function drawShop() {
         }
         ctx.textAlign = 'right'; ctx.font = fontBold(6.5);
         ctx.fillStyle = p.gold >= entry.price ? '#ffd23b' : '#ff6b7a';
-        ctx.fillText(entry.price + ' g', listX + rowW - 4 * S, ry + 11 * S);
+        ctx.fillText(entry.price + ' s', listX + rowW - 4 * S, ry + 11 * S);
         ctx.textAlign = 'left';
         UI.shopRects.push({ x: listX, y: ry, w: rowW, h: rowH, entry });
       }
@@ -1275,7 +1292,7 @@ function drawShop() {
         ctx.fillText('more and stronger wares', listX + 4 * S, ry + 15 * S);
         ctx.textAlign = 'right'; ctx.font = fontBold(6.5);
         ctx.fillStyle = p.gold >= cost ? '#ffd23b' : '#ff6b7a';
-        ctx.fillText(cost + ' g', listX + rowW - 4 * S, ry + 11 * S);
+        ctx.fillText(cost + ' s', listX + rowW - 4 * S, ry + 11 * S);
         ctx.textAlign = 'left';
         UI.shopRects.push({ x: listX, y: ry, w: rowW, h: rowH, entry: { upgrade: G.shopVendor } });
       }
@@ -1387,7 +1404,7 @@ function drawShop() {
       wrapText(pd.d, zx + 8 * S, zMid + 28 * S, zw - 16 * S, 9 * S);
     }
     const can = p.gold >= e.price;
-    actBtn('Buy — ' + e.price + ' g', midX - 45 * S, 90 * S, 'buy', can ? '#7fd0a0' : '#ff6b7a');
+    actBtn('Buy — ' + e.price + ' s', midX - 45 * S, 90 * S, 'buy', can ? '#7fd0a0' : '#ff6b7a');
   } else if (G.selItem) {
     const sit = G.selItem;
     if (isMystic) {
@@ -1436,6 +1453,39 @@ function drawShop() {
         }
       }
     }
+  } else if (G.shopVendor === 'exchange') {
+    // САРАФИНЪТ: кесията със сечено сребро + дневният курс + обмяна
+    const rate = dailyExchangeRate();
+    panel(zx, zTop, zw, zBot - zTop - 24 * S);
+    ctx.font = fontBold(8); ctx.fillStyle = '#d8dee8';
+    ctx.fillText('YOUR HACKSILVER', zx + 8 * S, zTop + 14 * S);
+    ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
+    ctx.fillText('Weight ' + silverWeight(p) + '/' + SILVER_CAP + '   ·   today\'s rate: ' + Math.round(rate * 100) + '%', zx + 8 * S, zTop + 24 * S);
+    // групираме по вид: икона, брой, обща стойност
+    const byKind = {};
+    for (const s of (p.silverBag || [])) { (byKind[s.k] = byKind[s.k] || { n: 0, val: 0, w: 0 }); byKind[s.k].n++; byKind[s.k].val += s.val; byKind[s.k].w += s.w; }
+    let ry = zTop + 32 * S;
+    for (const k in byKind) {
+      const b = byKind[k];
+      blit(ctx, Spr.icons[SILVER_ITEMS[k].icon], zx + 8 * S, ry);
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#e8e4d0';
+      ctx.fillText('×' + b.n + '  ' + SILVER_ITEMS[k].n, zx + 24 * S, ry + 9 * S);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#aab6c8';
+      ctx.fillText(b.val + ' s · ' + b.w + ' wt', zx + zw - 8 * S, ry + 9 * S);
+      ctx.textAlign = 'left';
+      ry += 15 * S;
+      if (ry > zBot - 46 * S) break;
+    }
+    const totalV = silverValue(p), gain = Math.max(1, Math.round(totalV * rate));
+    if (!p.silverBag || !p.silverBag.length) {
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
+      ctx.fillText('The pouch is empty — hacksilver drops in the dungeons.', midX, (zTop + zBot) / 2);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.font = fontBold(7); ctx.fillStyle = '#d8dee8';
+      ctx.fillText('Total: ' + totalV + ' × ' + Math.round(rate * 100) + '% = ' + gain + ' coins', zx + 8 * S, zBot - 32 * S);
+      actBtn('Exchange all — +' + gain + ' s', midX - 55 * S, 110 * S, 'exchange', '#7fd0a0');
+    }
   } else {
     // нищо избрано — подсказка по средата
     ctx.font = fontPx(7); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
@@ -1453,17 +1503,22 @@ function drawShop() {
     let title = 'Confirm', body = 'Are you sure?', yesTxt = 'Yes', yesCol = '#7fd0a0';
     if (c.kind === 'buy' && c.entry) {
       const nm = c.entry.potion ? POTIONS[c.entry.potion].n : (c.entry.item ? c.entry.item.name : 'item');
-      title = 'Confirm purchase'; body = nm + ' — ' + c.entry.price + ' gold. Buy it?'; yesTxt = 'Buy';
+      title = 'Confirm purchase'; body = nm + ' — ' + c.entry.price + ' silver. Buy it?'; yesTxt = 'Buy';
     } else if (c.kind === 'stall') {
       const lv2 = (G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1;
-      title = 'Upgrade the stall'; body = STALL_NAMES[lv2 - 1] + ' → ' + STALL_NAMES[lv2] + ' for ' + VENDOR_UP_COST[lv2] + ' gold?'; yesTxt = 'Upgrade';
+      title = 'Upgrade the stall'; body = STALL_NAMES[lv2 - 1] + ' → ' + STALL_NAMES[lv2] + ' for ' + VENDOR_UP_COST[lv2] + ' silver?'; yesTxt = 'Upgrade';
     } else if (c.kind === 'sell' && c.item) {
-      title = 'Sell item'; body = (c.item.name || 'Item') + ' — sell for ' + shopSellPrice(c.item) + ' gold?'; yesTxt = 'Sell'; yesCol = '#ffd23b';
+      title = 'Sell item'; body = (c.item.name || 'Item') + ' — sell for ' + shopSellPrice(c.item) + ' silver?'; yesTxt = 'Sell'; yesCol = '#ffd23b';
     } else if (c.kind === 'levelup' && c.item) {
-      title = 'Level up item'; body = (c.item.name || 'Item') + ': level ' + (c.item.lvl || 1) + ' → ' + ((c.item.lvl || 1) + 1) + ' for ' + itemUpgradeCost(c.item) + ' gold?'; yesTxt = 'Level up'; yesCol = '#8ab0ff';
+      title = 'Level up item'; body = (c.item.name || 'Item') + ': level ' + (c.item.lvl || 1) + ' → ' + ((c.item.lvl || 1) + 1) + ' for ' + itemUpgradeCost(c.item) + ' silver?'; yesTxt = 'Level up'; yesCol = '#8ab0ff';
     } else if (c.kind === 'affix' && G.selItem && G.selItem.affixes[c.ai]) {
       const a = G.selItem.affixes[c.ai], d = AFFIXES[a.k];
       title = 'Upgrade affix'; body = '+' + a.v + ' ' + (d ? d.n : '') + ' → +' + Math.max(a.v + 1, Math.round(a.v * 1.15)) + ' for ' + enchantCost(a) + ' shards?'; yesTxt = 'Upgrade'; yesCol = '#57e6c8';
+    } else if (c.kind === 'exchange') {
+      const rate2 = dailyExchangeRate(), tv = silverValue(G.player);
+      title = 'Exchange hacksilver';
+      body = tv + ' silver worth × ' + Math.round(rate2 * 100) + '% rate = ' + Math.max(1, Math.round(tv * rate2)) + ' coins. Exchange everything?';
+      yesTxt = 'Exchange';
     } else if (c.kind === 'potion') {
       const up = (p.potionUp && p.potionUp[c.key]) || 0;
       title = 'Upgrade potion'; body = POTIONS[c.key].n + ': −12% cd · +12% power for ' + potionEnchantCost(up) + ' shards?'; yesTxt = 'Upgrade'; yesCol = '#57e6c8';
@@ -1498,6 +1553,7 @@ function shopClick(mx, my) {
         else if (c.kind === 'levelup' && c.item) upgradeItemLevel(c.item, G.shopVendor);
         else if (c.kind === 'affix' && G.selItem) enchantAffix(G.selItem, c.ai);
         else if (c.kind === 'potion') enchantPotion(c.key);
+        else if (c.kind === 'exchange') exchangeSilver();
         else if (c.kind === 'unlock' && c.unlock) shopBuy({ unlock: c.unlock });
         else if (c.item) enchantScramble(c.item); // омагьосване (reroll)
       }
@@ -1512,6 +1568,7 @@ function shopClick(mx, my) {
   for (const r of UI.shopActRects || []) if (hit(r)) {
     const sit = G.selItem;
     if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
+    if (r.act === 'exchange') { G.shopConfirm = { kind: 'exchange' }; return; }
     if (r.act === 'sell') { if (sit) G.shopConfirm = { kind: 'sell', item: sit }; } // цената се вижда в потвърждението
     else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }
     else if (r.act === 'scramble') { if (sit) G.shopConfirm = { kind: 'scramble', item: sit }; }
@@ -1796,7 +1853,7 @@ function drawStats() {
     ['Crit', Math.round(st.crit) + '% (x' + st.critd.toFixed(1) + ')'],
     ['Life Steal', st.vamp + '%'],
     ['Move Speed', Math.round(st.spd * 10) / 10],
-    ['Gold Bonus', Math.round(st.gold) + '%'],
+    ['Silver Find', Math.round(st.gold) + '%'],
     ['Max Life', st.maxhp],
     ['Max Mana', st.maxmp],
     ['Experience', p.xp + ' / ' + p.xpNext],
@@ -2301,7 +2358,7 @@ function drawCharSelect() {
       ctx.fillText(c.name, x + 10 * S, y + 13 * S);
       ctx.font = fontPx(6);
       ctx.fillStyle = '#7d8899';
-      ctx.fillText('gold ' + c.gold + ' · floor ' + c.depth + ' · deaths ' + c.deaths, x + 10 * S, y + 23 * S);
+      ctx.fillText('silver ' + c.gold + ' · floor ' + c.depth + ' · deaths ' + c.deaths, x + 10 * S, y + 23 * S);
       ctx.textAlign = 'center';
       UI.btnRects.push({ x, y, w: rw - 26 * S, h: rh, act: ((slot) => () => startGame(slot))(i) });
       // изтриване (две натискания за сигурност)
@@ -2530,14 +2587,14 @@ function drawDead() {
   const secs = Math.floor((performance.now() - G.startTime) / 1000) % 60;
   ctx.fillText('Floor: ' + G.maxDepth + '  ·  Kills: ' + G.kills + '  ·  Hero: level ' + G.player.lvl, CW / 2, CH * 0.42);
   ctx.fillStyle = '#7d8899';
-  ctx.fillText('Gold: ' + G.player.gold + '  ·  Time: ' + mins + ':' + String(secs).padStart(2, '0'), CW / 2, CH * 0.47);
+  ctx.fillText('Silver: ' + G.player.gold + '  ·  Time: ' + mins + ':' + String(secs).padStart(2, '0'), CW / 2, CH * 0.47);
   if (G.best) {
     ctx.fillStyle = '#c8a832';
     ctx.fillText('Record: floor ' + G.best.depth + ' · ' + G.best.kills + ' kills', CW / 2, CH * 0.53);
   }
   ctx.fillStyle = '#7fd0a0';
   ctx.font = fontPx(7);
-  ctx.fillText('Your gold and items survived. The Abyss awaits you from floor 1.', CW / 2, CH * 0.57);
+  ctx.fillText('Your silver and items survived. The Abyss awaits you from floor 1.', CW / 2, CH * 0.57);
   const btnW = 100 * S, btnH = 18 * S;
   const bx = (CW - btnW) / 2, by = CH * 0.62;
   const hov = G.mouse.x >= bx && G.mouse.x < bx + btnW && G.mouse.y >= by && G.mouse.y < by + btnH;
