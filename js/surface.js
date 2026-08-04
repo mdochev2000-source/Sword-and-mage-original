@@ -263,20 +263,20 @@ const Surface = {
     for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) {
       const s = spots[vt];
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(s.x + di, s.y + dj);
-      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.6, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
+      props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.0, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
     // КУЛАТА на гарнизона (центъра, с фенер) — тялото ѝ е широко точно 1 клетка,
     // затова блокираме само централната колона (без невидими зони отстрани)
-    block(spots.tower.x, spots.tower.y); block(spots.tower.x, spots.tower.y - 1);
-    props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
+    block(spots.tower.x, spots.tower.y);
+    props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.5, r: 0.6, solid: false });
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
     const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
-    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(ch.x + di, ch.y + dj);
-    props.push({ kind: 'church', x: ch.x + 0.5, y: ch.y + 0.6, r: 0.6, solid: false });
-    props.push({ kind: 'priest', x: ch.x - 0.8, y: ch.y + 1.6, r: 0.3, solid: true });
-    props.push({ kind: 'almsbox', x: ch.x + 1.9, y: ch.y + 1.5, r: 0.3, solid: true });
+    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
+    props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
+    props.push({ kind: 'priest', x: ch.x + 0.2, y: ch.y + 1.4, r: 0.3, solid: true });
+    props.push({ kind: 'almsbox', x: ch.x + 2.2, y: ch.y + 1.2, r: 0.3, solid: true });
     noProp(ch.x, ch.y + 1, 2);
     carve(ch.x, ch.y + 2, cx, cy);
     // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
@@ -297,7 +297,7 @@ const Surface = {
       // РЪЧНАТА подредба от едитора: къщите са точно където са оставени
       for (const hh of LAY.houses) {
         for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(hh.x + di, hh.y + dj);
-        props.push({ kind: 'house', t: hh.t || 0, v: hh.v || 0, x: hh.x + 1.0, y: hh.y + 0.6, r: 0.6, solid: false });
+        props.push({ kind: 'house', t: hh.t || 0, v: hh.v || 0, x: hh.x + 1.0, y: hh.y + 0.0, r: 0.6, solid: false });
       }
     } else {
     const candidates = [];
@@ -323,7 +323,7 @@ const Surface = {
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(c.x + di, c.y + dj);
       // къщите НЕ се допират: винаги въздух отстрани и отзад
       for (const [ax, ay] of [[c.x - 1, c.y], [c.x + 2, c.y], [c.x - 1, c.y - 1], [c.x + 2, c.y - 1], [c.x, c.y - 2], [c.x + 1, c.y - 2], [c.x - 1, c.y - 2], [c.x + 2, c.y - 2], [c.x - 1, c.y + 1], [c.x + 2, c.y + 1]]) used.add(ay * w + ax);
-      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
+      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: c.x + 1.0, y: c.y + 0.0, r: 0.6, solid: false });
       placed++;
     }
     // ако покрай улиците не се е побрало достатъчно — допълваме из целия пояс
@@ -340,7 +340,7 @@ const Surface = {
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(x + di, y + dj);
       for (const [ax, ay] of [[x - 1, y], [x + 2, y], [x - 1, y - 1], [x + 2, y - 1], [x, y - 2], [x + 1, y - 2], [x - 1, y - 2], [x + 2, y - 2], [x - 1, y + 1], [x + 2, y + 1]]) used.add(ay * w + ax);
-      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: x + 1.0, y: y + 0.6, r: 0.6, solid: false });
+      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: x + 1.0, y: y + 0.0, r: 0.6, solid: false });
       placed++;
     }
     } // край на автоматичното разположение (без ръчна подредба)

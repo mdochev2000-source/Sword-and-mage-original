@@ -930,14 +930,18 @@ function renderWorld() {
     // (тясна зона: краката му са в тялото на спрайта и е с по-малка дълбочина)
     let alpha = 0;
     if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'church' || pr.kind === 'gatetower') && pr.x + pr.y > pD + 0.6) {
-      const hw = spr.width * S / 2 - 2 * S, hTop = sy - spr.height * S + 6 * S, hBot = sy - 6 * S;
+      // lift = изометричната котва (дъното е на южния връх, не на центъра)
+      const lift = (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : 8;
+      const hw = spr.width * S / 2 - 2 * S, hTop = sy + lift * S - spr.height * S + 6 * S, hBot = sy + lift * S - 8 * S;
       if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) alpha = 0.45;
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : pr.kind === 'gatebanner' ? -2.5 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
-    // pyo: изометрична котва (дъното на призмата стъпва на плочката); стената и кулите на портата
-    o.pyo = pr.kind === 'wallseg' || pr.kind === 'gatetower' ? 8 : undefined; o.alpha = alpha;
+    // pyo: изометрична котва — дъното ляга на южния връх на футпринта
+    o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower' || pr.kind === 'tower') ? 8
+      : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : undefined;
+    o.alpha = alpha;
   }
   // предмети по земята
   for (const gitem of G.ground) {
@@ -1005,9 +1009,9 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната: комин вляво, по-висок
-      const chx = sx + (pr.kind === 'house' ? (h2 ? -15 : 13) : -15) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? (h2 ? 52 : 42) : 45) * S;
+      const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната е по-висока
+      const chx = sx + (pr.kind === 'house' ? 10 : -12) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? (h2 ? 44 : 32) : 36) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
@@ -1335,10 +1339,10 @@ boot();
 // Местиш сгради на живо; подредбата се пази локално и се копира като код (COPY),
 // който се вгражда в играта (MIRHOLD_LAYOUT) — така става градът ЗА ВСИЧКИ.
 const BLD_DEFS = {
-  house:     { ax: 1.0, ay: 0.6, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
-  shophouse: { ax: 1.0, ay: 0.6, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
-  church:    { ax: 0.5, ay: 0.6, cells: (x, y) => [[x - 1, y - 1], [x, y - 1], [x + 1, y - 1], [x - 1, y], [x, y], [x + 1, y]] },
-  tower:     { ax: 0.5, ay: 0.7, cells: (x, y) => [[x, y - 1], [x, y]] },
+  house:     { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
+  shophouse: { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
+  church:    { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
+  tower:     { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },
 };
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
