@@ -1619,6 +1619,58 @@ function genMirHouse(R, v) {
   return g.canvas;
 }
 
+// ДВУЕТАЖНА къща 50x58 — каменен приземен етаж, надвесен горен с фахверк, стръмен покрив
+// v0: тъмни плочи, v1: слама; колизията остава 2x2 клетки (стените са 48-50px)
+function genMirHouse2(R, v) {
+  const g = mk(50, 58);
+  const plas = '#6b6252', plasD = '#5d5546', beam = '#382d20', beamL = '#4a3c2c';
+  const stone = '#565a62', stoneD = '#44484f', stoneL = '#686d76';
+  const rA = v ? '#584426' : '#39404a', rB = v ? '#463619' : '#2d333c', rC = v ? '#6a5430' : '#454e5a';
+  // ПРИЗЕМЕН ЕТАЖ: каменна зидария
+  rc(g, 1, 42, 48, 14, stone);
+  for (let y = 44; y < 55; y += 4) rc(g, 1, y, 48, 1, '#3a3e46');
+  for (let y = 42; y < 55; y += 4) for (let x = 4 + ((y / 4) | 0) % 2 * 4; x < 47; x += 8) px(g, x, y + 2, '#3a3e46');
+  for (let i = 0; i < 16; i++) { const x = 2 + ((R() * 46) | 0), y = 43 + ((R() * 12) | 0); px(g, x, y, R() < 0.5 ? stoneD : stoneL); }
+  rc(g, 1, 54, 48, 1, stoneD);
+  // врата с арка + праг
+  rc(g, 21, 45, 8, 11, '#2a2118'); rc(g, 22, 46, 6, 10, '#1a140e');
+  px(g, 24, 47, '#241c12'); px(g, 24, 52, '#241c12'); px(g, 26, 50, '#241c12');
+  px(g, 22, 47, '#6a6d75'); px(g, 27, 51, '#9a9da5');
+  rc(g, 21, 44, 8, 1, stoneD);
+  rc(g, 20, 56, 10, 1, stone);
+  // малко прозорче на приземния (с решетка)
+  rc(g, 37, 45, 5, 4, '#171310'); px(g, 39, 45, stoneD); px(g, 38, 46, '#c98a3b');
+  // ГОРЕН ЕТАЖ: надвесен фахверк (издаден с 1px от двете страни)
+  rc(g, 0, 28, 50, 14, plas);
+  for (let i = 0; i < 24; i++) { const x = 1 + ((R() * 48) | 0), y = 30 + ((R() * 11) | 0); px(g, x, y, plasD); }
+  rc(g, 0, 28, 2, 14, beam); rc(g, 48, 28, 2, 14, beam);
+  rc(g, 0, 28, 50, 1, beam); rc(g, 0, 41, 50, 1, beam);          // пояси + ръб на надвеса
+  rc(g, 12, 29, 1, 12, beam); rc(g, 37, 29, 1, 12, beam);
+  px(g, 5, 38, beam); px(g, 6, 37, beam); px(g, 7, 36, beam);     // скоси
+  px(g, 44, 38, beam); px(g, 43, 37, beam); px(g, 42, 36, beam);
+  // два прозореца с капаци и топла светлина
+  rc(g, 15, 31, 1, 7, beamL); rc(g, 23, 31, 1, 7, beamL);
+  rc(g, 16, 31, 7, 7, '#171310'); px(g, 17, 33, '#e8a84d'); px(g, 19, 34, '#c98a3b'); px(g, 20, 32, '#c98a3b');
+  rc(g, 16, 38, 7, 1, beamL);
+  rc(g, 27, 31, 1, 7, beamL); rc(g, 35, 31, 1, 7, beamL);
+  rc(g, 28, 31, 7, 7, '#171310'); px(g, 30, 33, '#c98a3b'); px(g, 32, 34, '#8a6420');
+  rc(g, 28, 38, 7, 1, beamL);
+  // СТРЪМЕН покрив
+  for (let i = 0; i < 12; i++) {
+    const y = 26 - i * 2, x = i * 2, w = 50 - i * 4;
+    if (w < 2) break;
+    rc(g, x, y, w, 2, i % 2 ? rA : rB);
+    for (let k = 0; k < 3; k++) { const tx = x + 1 + ((R() * (w - 2)) | 0); px(g, tx, y + (i % 2), rC); }
+  }
+  rc(g, 22, 2, 6, 1, beam); rc(g, 21, 3, 8, 1, rB); // било
+  if (v) for (let x = 2; x < 48; x += 3) px(g, x, 28, rB); // рошава слама
+  // комин ВЛЯВО на ската
+  rc(g, 8, 4, 4, 9, stone); rc(g, 7, 3, 6, 2, stoneD); rc(g, 9, 2, 2, 1, '#171310');
+  px(g, 9, 7, stoneD); px(g, 10, 10, stoneD);
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+
 // ТАБЕЛАТА на занаята: дъска 12x12 с цвят и символ (ползва се от магазин-сградите)
 function genShopSign(vtype) {
   const g = mk(12, 12);
@@ -1963,6 +2015,7 @@ function initSurfaceSprites() {
     portal: genPortal(),
     // МИРХОЛД
     houses: [genMirHouse(R, 0), genMirHouse(R, 1)],
+    houses2: [genMirHouse2(R, 0), genMirHouse2(R, 1)],
     shophouses: {
       weapon: genMirShopHouse('weapon', R),
       armor: genMirShopHouse('armor', R),

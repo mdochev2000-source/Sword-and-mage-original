@@ -908,7 +908,7 @@ function renderWorld() {
       const o2 = pushDraw(pr.x + pr.y); o2.kind = 'hearth'; o2.sx = sx; o2.sy = sy; o2.vis = vis;
       continue;
     }
-    else if (pr.kind === 'house') spr = Spr.surf.houses[pr.v || 0];
+    else if (pr.kind === 'house') spr = (pr.t === 1 ? Spr.surf.houses2 : Spr.surf.houses)[pr.v || 0];
     else if (pr.kind === 'shophouse') spr = Spr.surf.shophouses[pr.vtype];
     else if (pr.kind === 'tower') spr = Spr.surf.tower;
     else if (pr.kind === 'wallseg') spr = Spr.surf.wallseg;
@@ -994,8 +994,9 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 13 : -15) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 42 : 45) * S;
+      const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната: комин вляво, по-висок
+      const chx = sx + (pr.kind === 'house' ? (h2 ? -15 : 13) : -15) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? (h2 ? 52 : 42) : 45) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);

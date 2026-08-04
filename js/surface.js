@@ -268,9 +268,9 @@ const Surface = {
       }
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(c.x + di, c.y + dj);
-      // въздух отстрани — но по-често опират като редови (гъсто селище)
-      if (R() < 0.45) { used.add(c.y * w + (c.x - 1)); used.add(c.y * w + (c.x + 2)); used.add((c.y - 1) * w + (c.x - 1)); used.add((c.y - 1) * w + (c.x + 2)); }
-      props.push({ kind: 'house', v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
+      // къщите НЕ се допират: винаги въздух отстрани и отзад
+      for (const [ax, ay] of [[c.x - 1, c.y], [c.x + 2, c.y], [c.x - 1, c.y - 1], [c.x + 2, c.y - 1], [c.x, c.y - 2], [c.x + 1, c.y - 2], [c.x - 1, c.y - 2], [c.x + 2, c.y - 2], [c.x - 1, c.y + 1], [c.x + 2, c.y + 1]]) used.add(ay * w + ax);
+      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: c.x + 1.0, y: c.y + 0.6, r: 0.6, solid: false });
       placed++;
     }
     // ако покрай улиците не се е побрало достатъчно — допълваме из целия пояс
@@ -286,7 +286,8 @@ const Surface = {
       }
       if (!free) continue;
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(x + di, y + dj);
-      props.push({ kind: 'house', v: placed % 2, x: x + 1.0, y: y + 0.6, r: 0.6, solid: false });
+      for (const [ax, ay] of [[x - 1, y], [x + 2, y], [x - 1, y - 1], [x + 2, y - 1], [x, y - 2], [x + 1, y - 2], [x - 1, y - 2], [x + 2, y - 2], [x - 1, y + 1], [x + 2, y + 1]]) used.add(ay * w + ax);
+      props.push({ kind: 'house', t: R() < 0.45 ? 1 : 0, v: placed % 2, x: x + 1.0, y: y + 0.6, r: 0.6, solid: false });
       placed++;
     }
     // ЛОКВИ — по калните пътища и из града
