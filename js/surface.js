@@ -60,10 +60,10 @@ const Surface = {
 
     // лагерен огън
     props.push({ kind: 'campfire', x: spots.camp.x + 0.5, y: spots.camp.y + 0.5, r: 0.4, solid: true });
-    // портал (вход към Бездната)
-    props.push({ kind: 'portal', x: spots.portal.x + 0.5, y: spots.portal.y + 0.5, r: 0.55, solid: false });
-    // портал-телепорт към МИРХОЛД (градът-дом на кръстопътя)
-    props.push({ kind: 'cityportal', city: 'mirhold', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
+    // пещерата към Бездната (плътна скала — не се минава през нея)
+    props.push({ kind: 'portal', x: spots.portal.x + 0.5, y: spots.portal.y + 0.5, r: 0.7, solid: true });
+    // хенчстоунът към МИРХОЛД (плътен камък)
+    props.push({ kind: 'cityportal', city: 'mirhold', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.45, solid: true });
 
     // търговци: сергия + продавач отпред-вдясно (за да не го скриват големите палатки)
     for (const vt of ['weapon', 'armor', 'potion', 'jewel']) {
@@ -160,14 +160,19 @@ const Surface = {
         props.push({ kind: 'wallseg', x: i + 0.5, y: j + 0.5, r: 0.5, solid: false });
       }
     }
-    props.push({ kind: 'gate', x: gateX + 0.5, y: gY + 0.5, r: 0.1, solid: false });  // главната порта (юг)
-    props.push({ kind: 'gate', x: gateX + 0.5, y: gNY + 0.5, r: 0.1, solid: false }); // задната порта (север)
+    // портите: ДВЕ отделни кули (всяка със собствена дълбочина — не скриват героя
+    // когато е встрани) + греда със знамената, рисувана рано (никога върху героя)
+    for (const gy2 of [gY, gNY]) {
+      props.push({ kind: 'gatetower', x: gateX - 1.5, y: gy2 + 0.5, r: 0.5, solid: false });
+      props.push({ kind: 'gatetower', x: gateX + 2.5, y: gy2 + 0.5, r: 0.5, solid: false });
+      props.push({ kind: 'gatebanner', x: gateX + 0.5, y: gy2 + 0.4, r: 0.1, solid: false });
+    }
 
     // СТРУКТУРАТА: ПЛОЩАД в центъра (кулата, огънят и магазините около него),
     // къщите — в пръстен покрай стената, свързани с околовръстна улица
     const spots = {
       tower: { x: cx, y: cy - 1 },
-      jewel: { x: cx - 1, y: cy - 7 },    // Мистикът — северния ръб на площада
+      jewel: { x: cx + 4, y: cy - 6 },    // Мистикът — североизточния ръб на площада (север е за църквата)
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
@@ -231,12 +236,19 @@ const Surface = {
     // затова блокираме само централната колона (без невидими зони отстрани)
     block(spots.tower.x, spots.tower.y); block(spots.tower.x, spots.tower.y - 1);
     props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.7, r: 0.6, solid: false });
-    // огън за почивка до кулата
-    props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
-    noProp(cx - 3, cy + 2, 1);
+    // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
+    // свещеника + кутия за дарения (благословия срещу сребро)
+    const ch = { x: cx - 4, y: cy - 6 };
+    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 1; di++) block(ch.x + di, ch.y + dj);
+    props.push({ kind: 'church', x: ch.x + 0.5, y: ch.y + 0.6, r: 0.6, solid: false });
+    props.push({ kind: 'priest', x: ch.x - 0.8, y: ch.y + 1.6, r: 0.3, solid: true });
+    props.push({ kind: 'almsbox', x: ch.x + 1.9, y: ch.y + 1.5, r: 0.3, solid: true });
+    noProp(ch.x, ch.y + 1, 2);
+    carve(ch.x, ch.y + 2, cx, cy);
     // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
-    props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.55, solid: false });
-    props.push({ kind: 'cityportal', city: 'camp', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
+    // ПЛЪТНИ са — героят не минава през скалата на пещерата, нито през камъка
+    props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.7, solid: true });
+    props.push({ kind: 'cityportal', city: 'camp', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.45, solid: true });
     noProp(spots.dungeon.x, spots.dungeon.y, 1);
     noProp(spots.travel.x, spots.travel.y, 2);
     for (let k = 0; k < 8; k++) { // кръгът от малки камъни; пролука откъм пътеката (изток)

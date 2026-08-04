@@ -100,8 +100,9 @@ function calcStats(p) {
   st.atkCd = (w ? w.cd : 0.4) / ((1 + sum('aspd') / 100) * (1 + 0.12 * perkCount(p, 'fury')) * (1 + 0.1 * sk('sw2')) * (1 + 0.20 * buff('swift')));
   st.range = w ? w.range : 1.3; // обхватът идва САМО от размера на оръжието (без афикси/пъркове)
   st.arc = (w && w.arc) || 1.2;
-  st.maxhp = Math.round((100 + 12 * (p.lvl - 1) + sum('hp') + 30 * perkCount(p, 'vit')) * (1 + 0.12 * sk('bd1')));
-  st.maxmp = 40 + 4 * (p.lvl - 1) + sum('mp') + 25 * perkCount(p, 'arcane') + 25 * sk('mg1');
+  const bless = p.blessing ? 1.10 : 1; // Благословията на църквата (до смъртта)
+  st.maxhp = Math.round((100 + 12 * (p.lvl - 1) + sum('hp') + 30 * perkCount(p, 'vit')) * (1 + 0.12 * sk('bd1')) * bless);
+  st.maxmp = Math.round((40 + 4 * (p.lvl - 1) + sum('mp') + 25 * perkCount(p, 'arcane') + 25 * sk('mg1')) * bless);
   st.armor = (p.equip.armor ? p.equip.armor.armor : 0) + sum('armor') + 6 * perkCount(p, 'stone') + 5 * sk('bd2') + Math.round(15 * buff('stone'));
   st.spd = 4.3 * (1 + sum('spd') / 100) * (1 + 0.08 * perkCount(p, 'haste')) * (1 + 0.06 * sk('bd3')) * (1 + 0.20 * buff('swift'));
   st.noKnock = hasPowerEq(p, 'golemskin') || !!(p.buffs && p.buffs.stone); // неизбутваем
@@ -116,7 +117,7 @@ function calcStats(p) {
   st.spellCdMult = Math.max(0.4, 1 - sum('spellCd') / 100); // % презареждане на магии
   st.dashCd = 1.25 * Math.pow(0.7, perkCount(p, 'shadow')) * (1 - sum('dashCd') / 100);
   st.mpRegen = 2.4 + 1.5 * sk('mg2') + sum('mpRegen');
-  st.hpRegen = 1 * sk('bd4') + sum('hpRegen') + (buff('regen') ? st.maxhp * 0.03 * buff('regen') : 0); // Отвара на живеца
+  st.hpRegen = 1 * sk('bd4') + sum('hpRegen') + (p.blessing ? 1 : 0) + (buff('regen') ? st.maxhp * 0.03 * buff('regen') : 0); // Отвара на живеца + благословията
   st.thorns = sum('thorns');       // отвърнати щети (както при 'golemskin')
   st.xpFind = sum('xp');           // % опит
   st.potionPow = sum('potionPow'); // % сила на отварите
@@ -1170,6 +1171,8 @@ function updateInteract() {
   else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: G.dungeonId === 'mirhold' ? 'E — back to Mirhold (keep your level and skills)' : 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
+  else if (best.kind === 'priest') G.interactHint = { pr: best, txt: 'E — pray (full heal)' };
+  else if (best.kind === 'almsbox') G.interactHint = { pr: best, txt: G.player.blessing ? 'The church has blessed you' : 'E — donate 20 silver (blessing until death)' };
   else if (best.kind === 'vaultdoor') G.interactHint = { pr: best, txt: 'Locked — the Key Guardian holds the key' };
   else if (best.kind === 'arena') G.interactHint = { pr: best, txt: (G.arena && G.arena.state !== 'idle') ? 'Arena — clear the waves!' : 'Arena — step inside to seal the doors' };
 }
@@ -1223,6 +1226,24 @@ function doInteract() {
     burst(p.x, p.y, ['#ff8a1f', '#ffd23b', '#7fd0a0'], 18, 3.5, 0.8);
     toast('The fire warmed you. You\'re ready.', '#7fd0a0');
     Sfx.play('potion');
+  } else if (pr.kind === 'priest') {
+    // молитвата при свещеника замества огъня: пълно изцеление
+    p.hp = p.st.maxhp; p.mp = p.st.maxmp;
+    burst(p.x, p.y, ['#e8c04a', '#fff2c0', '#7fd0a0'], 20, 3.5, 0.9);
+    toast('The priest\'s prayer restored you.', '#7fd0a0');
+    Sfx.play('potion');
+  } else if (pr.kind === 'almsbox') {
+    // дарение: 20 сребро -> БЛАГОСЛОВИЯ до смъртта (+10% живот и мана, +1 живот/сек)
+    if (p.blessing) { toast('You already carry the blessing.', '#7d8899'); return; }
+    if (p.gold < 20) { toast('A donation is 20 silver.', '#ff6b7a'); Sfx.play('deny'); return; }
+    p.gold -= 20;
+    p.blessing = 1;
+    calcStats(p);
+    p.hp = Math.min(p.st.maxhp, p.hp + Math.round(p.st.maxhp * 0.1));
+    burst(p.x, p.y, ['#e8c04a', '#fff2c0', '#ffffff'], 30, 4.5, 1.1);
+    toast('Blessing of the Hearth: +10% life and mana, +1 life/sec until death.', '#e8c04a');
+    Sfx.play('level');
+    saveProfile();
   }
 }
 
@@ -2263,6 +2284,7 @@ function startGame(slot, freshName) {
     G.charName = prof.name || 'Exile';
     p.gold = prof.gold || 0;
     p.silverBag = Array.isArray(prof.silverBag) ? prof.silverBag : [];
+    p.blessing = prof.blessing || 0;
     // МИГРАЦИЯ към сребърната ера (X век): старото злато се обменя в сребро, но НАПОЛОВИНА
     if (!prof.silverEra) { p.gold = Math.ceil(p.gold / 2); }
     // отвари: нови постоянни флакони; стар запис с брой { hp:N, mp:M } -> само отключване
@@ -2359,7 +2381,7 @@ function saveProfile() {
     const data = JSON.stringify({
       v: SAVE_VERSION,                             // версия на записа — за бъдещи миграции
       name: G.charName || 'Exile',
-      gold: p.gold, silverBag: p.silverBag || [], silverEra: true, equip: p.equip, inv: p.inv, meta: G.meta,
+      gold: p.gold, silverBag: p.silverBag || [], silverEra: true, blessing: p.blessing || 0, equip: p.equip, inv: p.inv, meta: G.meta,
       potionsOwned: p.potionsOwned, potionSlots: p.potionSlots, potionUp: p.potionUp, // постоянни отвари
       spellsKnown: p.spellsKnown, activeSpells: p.activeSpells, activePassives: p.activePassives || [null, null], spellLvl: p.spellLvl || {}, // нивата на магиите са ЗАВИНАГИ
       skills: p.skills || {}, skillPoints: p.skillPoints || 0, // дървото е ЗАВИНАГИ
@@ -2513,6 +2535,7 @@ function respawnAtCamp() {
   p.lvl = 1; p.xp = 0; p.xpNext = 30;
   p.perks = {};
   p.usedSecondChance = false;
+  p.blessing = 0; // благословията на църквата е до смъртта
   G.heroBank = null;   // банкираният герой умира със смъртта
   G.checkpoint = 1;    // входът пак е от етаж 1
   G.mirCheckpoint = 1; // и в Гарнизонната тъмница започваш от етаж 1

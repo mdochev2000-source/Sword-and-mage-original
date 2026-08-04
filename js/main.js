@@ -755,7 +755,7 @@ function renderWorld() {
   for (const pr of G.props) {
     const hearthGlow = pr.kind === 'cityportal';
     const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && !G.onSurface);
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || hearthGlow || portalGlow) || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = (hearthGlow || portalGlow) ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -911,8 +911,12 @@ function renderWorld() {
     else if (pr.kind === 'house') spr = (pr.t === 1 ? Spr.surf.houses2 : Spr.surf.houses)[pr.v || 0];
     else if (pr.kind === 'shophouse') spr = Spr.surf.shophouses[pr.vtype];
     else if (pr.kind === 'tower') spr = Spr.surf.tower;
+    else if (pr.kind === 'church') spr = Spr.surf.church;
+    else if (pr.kind === 'priest') spr = Spr.surf.priest;
+    else if (pr.kind === 'almsbox') spr = Spr.surf.almsbox;
     else if (pr.kind === 'wallseg') spr = Spr.surf.wallseg;
-    else if (pr.kind === 'gate') spr = Spr.surf.gate;
+    else if (pr.kind === 'gatetower') spr = Spr.surf.gateTower;
+    else if (pr.kind === 'gatebanner') spr = Spr.surf.gateBanner;
     else if (pr.kind === 'menhir') spr = Spr.surf.menhirs[(pr.v || 0) % 3];
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
@@ -920,13 +924,15 @@ function renderWorld() {
     // високите сгради стават полупрозрачни САМО когато героят реално е СКРИТ зад тях
     // (тясна зона: краката му са в тялото на спрайта и е с по-малка дълбочина)
     let alpha = 0;
-    if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'gate') && pr.x + pr.y > pD + 0.6) {
+    if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'church' || pr.kind === 'gatetower') && pr.x + pr.y > pD + 0.6) {
       const hw = spr.width * S / 2 - 2 * S, hTop = sy - spr.height * S + 6 * S, hBot = sy - 6 * S;
       if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) alpha = 0.45;
     }
-    const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : 0)); o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
-    // pyo: изометрична котва (дъното на призмата стъпва на плочката); стената и портата
-    o.pyo = pr.kind === 'wallseg' ? 8 : pr.kind === 'gate' ? 24 : undefined; o.alpha = alpha;
+    // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
+    const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : pr.kind === 'gatebanner' ? -2.5 : 0));
+    o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
+    // pyo: изометрична котва (дъното на призмата стъпва на плочката); стената и кулите на портата
+    o.pyo = pr.kind === 'wallseg' || pr.kind === 'gatetower' ? 8 : undefined; o.alpha = alpha;
   }
   // предмети по земята
   for (const gitem of G.ground) {

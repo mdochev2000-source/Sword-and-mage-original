@@ -595,11 +595,13 @@ function drawMinimap() {
     if (pr.kind === 'stairs') dot(pr.x, pr.y, '#7fd0a0', cell * 1.6);
     else if (pr.kind === 'chest' && !pr.opened) dot(pr.x, pr.y, '#ffd23b', cell * 1.3);
     else if (pr.kind === 'fountain') dot(pr.x, pr.y, '#4f9cff', cell * 1.3);
-    else if (pr.kind === 'stall') {
-      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff' };
+    else if (pr.kind === 'stall' || pr.kind === 'shophouse') {
+      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff', exchange: '#d8dee8' };
       dot(pr.x, pr.y, vc[pr.vtype] || '#ffd23b', cell * 1.8);
     }
     else if (pr.kind === 'portal') dot(pr.x, pr.y, '#b34fff', cell * 2);
+    else if (pr.kind === 'cityportal') dot(pr.x, pr.y, '#5cd6c4', cell * 2);      // хенчстоунът
+    else if (pr.kind === 'church') dot(pr.x, pr.y, '#ffd23b', cell * 2);          // църквата
     else if (pr.kind === 'campfire') dot(pr.x, pr.y, '#ff8a1f', cell * 1.6);
   }
   for (const e of G.enemies) {
