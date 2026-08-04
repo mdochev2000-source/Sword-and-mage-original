@@ -135,31 +135,38 @@ const Surface = {
       variant[j * w + i] = Math.floor(R() * 4);
     }
     const cx = w >> 1, cy = (h >> 1) - 3; // градът е леко на север — място за кръстопътя на юг
-    const RAD = 12;
+    const RAD = 15; // по-голям град
     const props = [];
     const used = new Set();
     const block = (x, y) => { const idx = y * w + x; cells[idx] = 0; used.add(idx); };
 
-    // СТЕНАТА: нисък каменен пръстен с ПОРТА на юг
-    const gateX = cx, gateY = cy + RAD;
+    // СТЕНАТА: каменен пръстен с ДВА входа — порта на юг и задна порта на север.
+    // Отворът е 3 клетки; клетките на ±2 остават блокирани — върху тях стъпват кулите на портата.
+    const gY = cy + Math.round(RAD / 1.1);  // редът на пръстена точно на юг
+    const gNY = cy - Math.round(RAD / 1.1); // и на север
+    const gateX = cx;
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
       const d = Math.hypot(i - cx, (j - cy) * 1.1);
       if (d >= RAD - 0.5 && d < RAD + 0.6) {
-        if (Math.abs(i - gateX) <= 1 && j > cy + RAD - 4) continue; // отворът на портата
+        const adx = Math.abs(i - gateX);
+        const southGap = j > cy + 3, northGap = j < cy - 3;
+        if (adx <= 1 && (southGap || northGap)) continue;       // проходът — свободен
         block(i, j);
+        if (adx === 2 && (southGap || northGap)) continue;      // кулите на портата заместват стената тук
         props.push({ kind: 'wallseg', x: i + 0.5, y: j + 0.5, r: 0.5, solid: false });
       }
     }
-    props.push({ kind: 'gate', x: gateX + 0.5, y: gateY + 0.4, r: 0.1, solid: false }); // портата със знамената
+    props.push({ kind: 'gate', x: gateX + 0.5, y: gY + 0.5, r: 0.1, solid: false });  // главната порта (юг)
+    props.push({ kind: 'gate', x: gateX + 0.5, y: gNY + 0.5, r: 0.1, solid: false }); // задната порта (север)
 
     const spots = {
       tower: { x: cx, y: cy - 1 },
-      weapon: { x: cx - 7, y: cy - 1 },   // ковачницата — запад
-      armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — изток
-      potion: { x: cx - 5, y: cy + 5 },   // алхимикът — югозапад
-      jewel: { x: cx + 5, y: cy - 6 },    // Майстор Захари — североизток
-      dungeon: { x: cx + 5, y: cy + 5 },  // порталът към тъмницата — югоизток
-      travel: { x: cx - 2, y: cy + RAD - 3 }, // порталът към лагера — до портата
+      weapon: { x: cx - 8, y: cy - 2 },   // ковачницата — запад
+      armor: { x: cx + 8, y: cy - 2 },    // бронетворецът — изток
+      potion: { x: cx - 6, y: cy + 6 },   // алхимикът — югозапад
+      jewel: { x: cx + 6, y: cy - 7 },    // Майстор Захари — североизток
+      dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
+      travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
     // улици вътре + пътища навън
     const carve = (ax, ay, bx, by) => {
@@ -169,15 +176,20 @@ const Surface = {
       while (x !== bx) { st(); x += x < bx ? 1 : -1; }
       st();
     };
-    carve(gateX, gateY - 1, cx, cy + 1); // портата -> центъра
+    carve(gateX, gY - 1, cx, cy + 1);  // южната порта -> центъра
+    carve(gateX, gNY + 1, cx, cy - 1); // задната порта -> центъра
     for (const k of ['weapon', 'armor', 'potion', 'jewel']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
-    // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток)
-    const crossY = Math.min(h - B - 2, gateY + 4);
-    for (let y = gateY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
+    // КРЪСТОПЪТЯТ: 3 пътя потъват в мъглата (юг, югозапад, югоизток) + път на север от задната порта
+    const crossY = Math.min(h - B - 2, gY + 4);
+    for (let y = gY; y < h - B; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
+    for (let y = B; y <= gNY; y++) { path[y * w + gateX] = 1; path[y * w + gateX + 1] = 1; }
     let dx2 = gateX, dy2 = crossY;
     while (dx2 > B + 1 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 - 1] = 1; dx2--; if (R() < 0.5) dy2++; }
     dx2 = gateX; dy2 = crossY;
     while (dx2 < w - B - 2 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 + 1] = 1; dx2++; if (R() < 0.5) dy2++; }
+    // отбивки към хенчстоуна и портала на тъмницата
+    carve(spots.travel.x, gY + 3, gateX, gY + 3);
+    carve(spots.dungeon.x, gY + 3, gateX, gY + 3);
 
     const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
 
@@ -194,15 +206,20 @@ const Surface = {
     // огън за почивка до кулата
     props.push({ kind: 'campfire', x: cx - 2.5, y: cy + 2.5, r: 0.4, solid: true });
     noProp(cx - 3, cy + 2, 1);
-    // ПОРТАЛИ: тъмницата на гарнизона + телепорт към лагера
+    // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
     props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.55, solid: false });
     props.push({ kind: 'cityportal', city: 'camp', x: spots.travel.x + 0.5, y: spots.travel.y + 0.5, r: 0.55, solid: false });
     noProp(spots.dungeon.x, spots.dungeon.y, 1);
-    noProp(spots.travel.x, spots.travel.y, 1);
+    noProp(spots.travel.x, spots.travel.y, 2);
+    for (let k = 0; k < 8; k++) { // кръгът от малки камъни; пролука откъм пътеката (изток)
+      const a = k * Math.PI / 4 + Math.PI / 8;
+      if (Math.cos(a) > 0.75) continue;
+      props.push({ kind: 'menhir', v: k % 3, x: spots.travel.x + 0.5 + Math.cos(a) * 1.8, y: spots.travel.y + 0.5 + Math.sin(a) * 1.8, r: 0.26, solid: true });
+    }
 
     // ЖИЛИЩНИ КЪЩИ: плътно наблъскани в стените
     let placed = 0, tries = 0;
-    while (placed < 10 && tries++ < 700) {
+    while (placed < 15 && tries++ < 900) {
       const x = cx + ri(-RAD + 3, RAD - 3), y = cy + ri(-RAD + 3, RAD - 4);
       const d = Math.hypot(x - cx, (y - cy) * 1.1);
       if (d > RAD - 2.5) continue;
@@ -240,7 +257,7 @@ const Surface = {
     }
 
     return {
-      map: { w, h, cells, variant, rooms: [], start: { x: gateX + 0.5, y: gateY - 1.5 }, path },
+      map: { w, h, cells, variant, rooms: [], start: { x: gateX + 0.5, y: gY - 1.5 }, path },
       props, spots,
     };
   },

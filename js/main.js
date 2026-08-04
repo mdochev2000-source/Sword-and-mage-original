@@ -609,10 +609,34 @@ function drawItem(it) {
       }
       break;
     }
-    case 'prop':
-      if (!it.flat) blit(ctx, Spr.shadow, it.sx - Spr.shadow.width * S / 2, it.sy - Spr.shadow.height * S / 2 + 2 * S, false, it.vis ? 1 : 0.4);
-      blit(ctx, it.spr, it.sx - it.spr.width * S / 2, it.sy - it.spr.height * S + (it.flat ? it.spr.height * S / 2 : 4 * S), false, it.vis ? 1 : 0.45);
+    case 'prop': {
+      // it.alpha: сградата скрива героя -> полупрозрачна (blit сам управлява globalAlpha)
+      const pa = it.alpha ? it.alpha : (it.vis ? 1 : 0.45);
+      if (it.pyo !== undefined) {
+        // изометрична котва: дъното на призмата стъпва точно на плочката (безшевна стена/порта)
+        blit(ctx, it.spr, it.sx - it.spr.width * S / 2, it.sy + it.pyo * S - it.spr.height * S, false, pa);
+      } else {
+        if (!it.flat) blit(ctx, Spr.shadow, it.sx - Spr.shadow.width * S / 2, it.sy - Spr.shadow.height * S / 2 + 2 * S, false, it.vis ? 1 : 0.4);
+        blit(ctx, it.spr, it.sx - it.spr.width * S / 2, it.sy - it.spr.height * S + (it.flat ? it.spr.height * S / 2 : 4 * S), false, pa);
+      }
       break;
+    }
+    case 'hearth': {
+      // хенчстоунът: камък + вдълбана руна, върху която пулсира светещият знак с ореол
+      blit(ctx, Spr.shadow, it.sx - Spr.shadow.width * S / 2, it.sy - Spr.shadow.height * S / 2 + 2 * S, false, it.vis ? 1 : 0.4);
+      const hs = Spr.surf.hearth;
+      blit(ctx, hs, it.sx - hs.width * S / 2, it.sy - hs.height * S + 4 * S, false, it.vis ? 1 : 0.45);
+      if (it.vis) {
+        const rn = Spr.surf.hearthRune;
+        const pulse = 0.5 + 0.5 * Math.sin(G.time * 1.7);
+        // руната в арта на камъка е на (9,11); слоевете имат 2px рамка -> (7,9)
+        const rx = it.sx - hs.width * S / 2 + 7 * S, ry = it.sy - hs.height * S + 4 * S + 9 * S;
+        blit(ctx, rn.halo, rx, ry, false, 0.28 + 0.34 * pulse);
+        blit(ctx, rn.core, rx, ry, false, 0.62 + 0.38 * pulse);
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
     case 'ground': {
       const gitem = it.gitem;
       blit(ctx, Spr.shadow, it.sx - Spr.shadow.width * S / 2, it.sy - Spr.shadow.height * S / 2 + 2 * S);
@@ -723,20 +747,21 @@ function renderWorld() {
     blit(ctx, spr, isoX(d.x, d.y) + camX - spr.width * S / 2, isoY(d.x, d.y) + camY - spr.height * S / 2, false, G.visible[idx] ? 0.85 : 0.4);
   }
 
-  // --- топла светлина около мангалите, огъня и фенера на кулата (остри ромбове) ---
+  // --- светлина около мангали/огън/фенера на кулата (топла) и хенчстоуна (руническа) ---
   for (const pr of G.props) {
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower') || pr.broken) continue;
+    const hearthGlow = pr.kind === 'cityportal';
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || hearthGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
-    const flick = 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
+    const flick = hearthGlow ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
     for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
       const i = pi + di, j = pj + dj;
       const dd = Math.hypot(di, dj);
       if (dd > 2.3) continue;
       if (cellAt(i, j) !== FLOOR || !tileVisible(i, j)) continue;
-      const a = 0.09 * (1 - dd / 2.6) * flick;
+      const a = (hearthGlow ? 0.07 : 0.09) * (1 - dd / 2.6) * flick;
       const sx = isoX(i, j) + camX, sy = isoY(i, j) + camY;
-      ctx.fillStyle = 'rgba(255,150,40,' + a.toFixed(3) + ')';
+      ctx.fillStyle = (hearthGlow ? 'rgba(90,214,196,' : 'rgba(255,150,40,') + a.toFixed(3) + ')';
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(sx + TW / 2, sy + TH / 2);
@@ -836,16 +861,37 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'portal') spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
     else if (pr.kind === 'homeportal') { initSurfaceSprites(); spr = Spr.surf.portal[Math.floor(G.time * 4) % 3]; }
-    else if (pr.kind === 'cityportal') spr = Spr.surf.portal[Math.floor(G.time * 4 + 1) % 3];
+    else if (pr.kind === 'cityportal') {
+      // ХЕНЧСТОУНЪТ: камък + пулсираща руна + издигащи се въгленчета (като титулния екран)
+      if (vis && chance(0.10)) {
+        const aa = rnd(0, Math.PI * 2);
+        addParticle({
+          x: pr.x + Math.cos(aa) * rnd(0.2, 0.9), y: pr.y + Math.sin(aa) * rnd(0.2, 0.9), z: rnd(0, 6),
+          vx: rnd(-0.25, 0.25), vy: rnd(-0.25, 0.25), vz: rnd(3, 8), grav: -3, t: 0, life: rnd(1.4, 2.6),
+          col: pick(['#3fae9e', '#5cd6c4', '#8af0e0', '#8af0e0', '#d8fff8']), size: chance(0.18) ? 2 : 1,
+        });
+      }
+      const o2 = pushDraw(pr.x + pr.y); o2.kind = 'hearth'; o2.sx = sx; o2.sy = sy; o2.vis = vis;
+      continue;
+    }
     else if (pr.kind === 'house') spr = Spr.surf.houses[pr.v || 0];
     else if (pr.kind === 'shophouse') spr = Spr.surf.shophouses[pr.vtype];
     else if (pr.kind === 'tower') spr = Spr.surf.tower;
     else if (pr.kind === 'wallseg') spr = Spr.surf.wallseg;
     else if (pr.kind === 'gate') spr = Spr.surf.gate;
+    else if (pr.kind === 'menhir') spr = Spr.surf.menhirs[(pr.v || 0) % 3];
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
+    // високите сгради на Мирхолд стават полупрозрачни, когато скриват героя
+    let alpha = 0;
+    if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'gate') && pr.x + pr.y > pD + 0.2) {
+      const hw = spr.width * S / 2 + 8 * S, hTop = sy - spr.height * S, hBot = sy + 8 * S;
+      if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) alpha = 0.45;
+    }
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : 0)); o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
+    // pyo: изометрична котва (дъното на призмата стъпва на плочката); стената и портата
+    o.pyo = pr.kind === 'wallseg' ? 8 : pr.kind === 'gate' ? 24 : undefined; o.alpha = alpha;
   }
   // предмети по земята
   for (const gitem of G.ground) {
@@ -913,8 +959,8 @@ function renderWorld() {
       const pi2 = Math.floor(pr.x), pj2 = Math.floor(pr.y);
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
-      const chx = sx + (pr.kind === 'house' ? 6 : -8) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? 26 : 28) * S;
+      const chx = sx + (pr.kind === 'house' ? 10 : -14) * S; // над комина
+      const base = sy - (pr.kind === 'house' ? 34 : 38) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
