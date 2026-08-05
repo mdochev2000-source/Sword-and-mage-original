@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-04 20:12 UTC";
+window.__BUILD__ = "2026-08-04 20:17 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1857,12 +1857,12 @@ function iso2Body(g, R, oy, wallH, roofH, pal) {
   // ТРИЪГЪЛНИЯТ ФРОНТОН на СИ-стената (дясно) — старият силует, видян отстрани
   for (let x = 32; x < 64; x++) {
     const ey = iso2EdgeY(oy, x);
-    const ph = Math.max(0, Math.round(N * (1 - Math.abs(x - 47.5) / 15.5)));
+    const ph = Math.max(0, Math.round((roofH + 1) * (1 - Math.abs(x - 47.5) / 15.5)));
     for (let k = 0; k < ph; k++) px(g, x, ey - k, pal.wallSE);
     if (ph > 0) { px(g, x, ey - ph, pal.beam); }                 // ръбът на фронтона
   }
   { const mx = 47, ey = iso2EdgeY(oy, mx);                       // таванско прозорче
-    rc(g, mx - 1, ey - (N >> 1) - 2, 3, 3, '#171310'); px(g, mx, ey - (N >> 1) - 1, '#8a6420'); }
+    rc(g, mx - 1, ey - (roofH >> 1) - 2, 3, 2, '#171310'); px(g, mx, ey - (roofH >> 1) - 1, '#8a6420'); }
   // СКАТЪТ над фасадата: старият покрив, изтеглен по дълбочината към билото
   for (let s = 0; s < N; s++) {
     const dx = Math.round(16 * s / N);
@@ -2075,14 +2075,6 @@ function genMirWallBlock(R) {
     px(g, x, yb, left ? topL : topD);
   }
   for (let k = 0; k < FH; k++) px(g, 16, SK + 16 + k, mort);
-  // палисада: заострени колове по задния ръб на капака (по-високи за високата стена)
-  for (let s = 0; s < 4; s++) {
-    const sx2 = 6 + s * 6 + (s % 2);
-    const sy2 = SK + 3 + (s < 2 ? 2 - s : s - 1); // следват ръба на ромба
-    rc(g, sx2, sy2 - 11, 2, 12, '#4a3a28');
-    px(g, sx2, sy2 - 11, '#5c4a34'); px(g, sx2 + 1, sy2 - 12, '#382d20');
-    px(g, sx2, sy2 - 4, '#382d20'); px(g, sx2 + 1, sy2 - 7, '#3f3324');
-  }
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
