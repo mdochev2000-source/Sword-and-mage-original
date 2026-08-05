@@ -2039,8 +2039,24 @@ function genMirShopHouse(vtype, R) {
   if (vtype === 'weapon') {          // наковалня + жар
     rc(g, 2, gy(4) - 3, 6, 2, '#3c4046'); rc(g, 3, gy(4) - 5, 3, 2, '#565a62');
     px(g, 8, gy(8) - 4, '#ff8a1f'); px(g, 9, gy(9) - 3, '#ffb84d');
-  } else if (vtype === 'armor') {    // окачен щит на фасадата
-    rc(g, 4, iso2EdgeY(oy, 4) + 6, 5, 4, '#aab6c8'); px(g, 6, iso2EdgeY(oy, 6) + 8, '#c93a4a');
+  } else if (vtype === 'armor') {    // ОКАЧЕН ЩИТ на фасадата — знакът на бронаря
+    // формата следва наклона на стената: горе широк, долу заострен
+    const shTop = [6, 5, 5, 5, 5, 5, 6], shBot = [10, 12, 13, 14, 13, 12, 10];
+    for (let i = 0; i < 7; i++) {
+      const x = 3 + i, ey = iso2EdgeY(oy, x);
+      for (let k = shTop[i]; k <= shBot[i]; k++) {
+        let col = i <= 1 ? '#c6d3e6' : i >= 5 ? '#67738c' : '#8a97ad';   // блик отляво, сянка отдясно
+        if (k === shTop[i] || k === shBot[i] || i === 0 || i === 6) col = '#3c4046'; // ръб
+        px(g, x, ey + k, col);
+      }
+    }
+    { // умбото и червеният кръст
+      const e5 = iso2EdgeY(oy, 5), e6 = iso2EdgeY(oy, 6), e7 = iso2EdgeY(oy, 7);
+      px(g, 6, e6 + 8, '#c93a4a'); px(g, 6, e6 + 9, '#8f2a3a');
+      px(g, 5, e5 + 9, '#c93a4a'); px(g, 7, e7 + 8, '#c93a4a');
+      px(g, 6, e6 + 7, '#e8eef8');                                        // блик по умбото
+      px(g, 6, e6 + 4, '#241f1a');                                        // гвоздеят, на който виси
+    }
   } else if (vtype === 'potion') {   // шишета на прага
     px(g, 3, gy(3) - 3, '#4fd0a0'); px(g, 5, gy(5) - 3, '#c94f6e'); px(g, 7, gy(7) - 4, '#4f9cff');
   } else if (vtype === 'exchange') { // монети на прага
