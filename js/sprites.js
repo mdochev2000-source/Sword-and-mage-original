@@ -1569,6 +1569,58 @@ function genPortal() {
   return frames;
 }
 
+// ---------- ДЕКОР: второ дърво, втори камък, храсти, треви (за едитора) ----------
+function genTree2(R) {
+  // широколистно дърво с объл балдахин
+  const g = mk(22, 30);
+  rc(g, 10, 22, 3, 7, '#3a2f24'); rc(g, 10, 22, 1, 7, '#4a3c2d');   // ствол
+  px(g, 8, 24, '#3a2f24'); px(g, 14, 25, '#33291f');                 // корени
+  const blob = (cx2, cy2, r2, col) => { for (let y = -r2; y <= r2; y++) for (let x = -r2; x <= r2; x++) if (x * x + y * y <= r2 * r2 + 1) px(g, cx2 + x, cy2 + y, col); };
+  blob(11, 12, 7, '#3c4a2e');                                        // балдахин
+  blob(7, 9, 4, '#46563a'); blob(15, 8, 4, '#46563a');
+  blob(11, 5, 4, '#3c4a2e');
+  for (let i = 0; i < 14; i++) { const x = 4 + ((R() * 15) | 0), y = 3 + ((R() * 15) | 0); px(g, x, y, R() < 0.5 ? '#525f3f' : '#333f28'); }
+  px(g, 6, 6, '#5c6a48'); px(g, 14, 4, '#5c6a48');                   // светлинки
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genRock2(R) {
+  // голям объл камък на две части
+  const g = mk(16, 11);
+  rc(g, 2, 4, 9, 6, '#565a62'); rc(g, 3, 3, 7, 1, '#5c6068');
+  rc(g, 10, 6, 5, 4, '#4a4e56'); px(g, 11, 5, '#565a62');
+  rc(g, 2, 4, 1, 5, '#6d7280'); px(g, 3, 3, '#6d7280');              // светъл ръб
+  rc(g, 9, 5, 1, 5, '#3c4046'); rc(g, 13, 7, 2, 3, '#41454d');       // сенки
+  px(g, 5, 9, '#3c4046'); px(g, 4, 6, '#63676f');
+  px(g, 3, 9, '#4f6a45'); px(g, 12, 9, '#4f6a45');                   // мъх
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genBush(R, v) {
+  // рошав храст; v1 е по-светъл, с плодчета
+  const g = mk(14, 10);
+  const c1 = v ? '#4a5836' : '#3c4a2e', c2 = v ? '#586844' : '#46563a', c3 = v ? '#333f28' : '#2c3822';
+  rc(g, 2, 4, 10, 5, c1); rc(g, 3, 2, 8, 3, c1);
+  px(g, 1, 6, c1); px(g, 12, 5, c1);
+  for (let i = 0; i < 10; i++) { const x = 2 + ((R() * 10) | 0), y = 2 + ((R() * 6) | 0); px(g, x, y, R() < 0.5 ? c2 : c3); }
+  px(g, 4, 2, c2); px(g, 9, 3, c2);
+  if (v) { px(g, 5, 4, '#a04a5a'); px(g, 9, 6, '#a04a5a'); px(g, 7, 3, '#b85a6a'); } // плодчета
+  px(g, 6, 9, '#2a2118'); px(g, 8, 9, '#2a2118');                    // стъбълца
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genTuft(R, v) {
+  // туфа трева; v1 е суха/висока
+  const g = mk(9, 7);
+  const c1 = v ? '#6a6034' : '#525f3f', c2 = v ? '#7a7040' : '#5c6a48';
+  px(g, 2, 5, c1); px(g, 2, 4, c1); px(g, 1, 3, c2);
+  px(g, 4, 5, c1); px(g, 4, 3, c2); px(g, 4, 2, v ? c2 : c1);
+  px(g, 6, 5, c1); px(g, 6, 4, c1); px(g, 7, 3, c2);
+  px(g, 3, 6, c1); px(g, 5, 6, c1);
+  if (v) { px(g, 5, 1, c2); px(g, 3, 2, c1); }
+  return g.canvas;
+}
+
 // ---------- МИРХОЛД: сгради, стена, кула, порта ----------
 // палитра: сив камък, кафява кал/дърво, тъмни покриви, едно топло оранжево (фенери/прозорци)
 
@@ -2158,6 +2210,10 @@ function initSurfaceSprites() {
       exchange: genMirShopHouse('exchange', R),
     },
     exchange: genExchangeStand(),
+    tree2: genTree2(R),
+    rock2: genRock2(R),
+    bushes: [genBush(R, 0), genBush(R, 1)],
+    tufts: [genTuft(R, 0), genTuft(R, 1)],
     cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),

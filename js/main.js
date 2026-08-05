@@ -148,7 +148,10 @@ function setupInput() {
     handlePress(G.mouse.x, G.mouse.y, e.button);
   });
   window.addEventListener('mouseup', e => {
-    if (e.button === 0) { G.mouse.down = false; G.editDrag = null; G.setDrag = false; }
+    if (e.button === 0) {
+      G.mouse.down = false; G.editDrag = null; G.setDrag = false;
+      if (G.editPaint) { G.editPaint = false; if (G.editPathDirty) { G.editPathDirty = false; saveCityLayout(); } }
+    }
     if (e.button === 2) G.mouse.rdown = false;
   });
   cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -924,6 +927,12 @@ function renderWorld() {
     else if (pr.kind === 'gatetower') spr = Spr.surf.gateTower;
     else if (pr.kind === 'gatebanner') spr = Spr.surf.gateBanner;
     else if (pr.kind === 'menhir') spr = Spr.surf.menhirs[(pr.v || 0) % 3];
+    else if (pr.kind === 'tree2') spr = Spr.surf.tree2;
+    else if (pr.kind === 'rock2') spr = Spr.surf.rock2;
+    else if (pr.kind === 'bush') spr = Spr.surf.bushes[0];
+    else if (pr.kind === 'bush2') spr = Spr.surf.bushes[1];
+    else if (pr.kind === 'tuft') spr = Spr.surf.tufts[0];
+    else if (pr.kind === 'tuft2') spr = Spr.surf.tufts[1];
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
@@ -1351,9 +1360,28 @@ const BLD_DEFS = {
   portal:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // пещерата — мести се свободно
   cityportal:{ ax: 0.5, ay: 0.5, cells: () => [], free: true },            // хенчстоунът — мести се свободно
   tree:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // декорите — свободни
+  tree2:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   deadTree:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   rock:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  rock2:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bush:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bush2:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  tuft:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  tuft2:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+};
+// какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
+const DECOR_KINDS = {
+  tree:     { r: 0.38, solid: true },
+  tree2:    { r: 0.38, solid: true },
+  deadTree: { r: 0.38, solid: true },
+  rock:     { r: 0.3, solid: true },
+  rock2:    { r: 0.35, solid: true },
+  bush:     { r: 0.3, solid: true },
+  bush2:    { r: 0.3, solid: true },
+  tuft:     { r: 0, solid: false },
+  tuft2:    { r: 0, solid: false },
+  fence:    { r: 0.35, solid: true },
 };
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
@@ -1409,15 +1437,61 @@ function saveCityLayout() {
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
     else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
-    else if (pr.kind === 'tree' || pr.kind === 'deadTree' || pr.kind === 'rock' || pr.kind === 'fence') L.decor.push({ k: pr.kind, x: bx, y: by });
+    else if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: bx, y: by });
   }
+  // пътищата (боядисани с четката) — целият слой, пакетиран в base64
+  try {
+    const pb = G.map.path; const bytes = new Uint8Array((pb.length + 7) >> 3);
+    for (let i = 0; i < pb.length; i++) if (pb[i]) bytes[i >> 3] |= 1 << (i & 7);
+    L.paths = btoa(String.fromCharCode.apply(null, bytes));
+  } catch (e) {}
   try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
   return L;
+}
+function paintPathCell(v) {
+  const m = G.map;
+  const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+  if (cx2 < 2 || cy2 < 2 || cx2 >= m.w - 2 || cy2 >= m.h - 2) return;
+  const idx = cy2 * m.w + cx2;
+  if (m.path[idx] === v) return;
+  m.path[idx] = v;
+  G.editPathDirty = true; // записваме при пускане на бутона (не на всеки пиксел)
 }
 function cityEditClick(mx, my) {
   // бутоните на лентата
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
+  const tool = G.editTool || 'move';
   const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
+  // ЧЕТКИ за път/трева: боядисваме и започваме влачене
+  if (tool === 'path' || tool === 'grass') {
+    G.editPaint = true;
+    paintPathCell(tool === 'path' ? 1 : 0);
+    return true;
+  }
+  // ДОБАВЯНЕ на елемент от палитрата
+  if (tool === 'place') {
+    const m = G.map, idx = cellY * m.w + cellX;
+    if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return true; }
+    const d = DECOR_KINDS[G.editPlaceKind || 'tree'];
+    G.props.push({ kind: G.editPlaceKind || 'tree', x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
+    saveCityLayout();
+    Sfx.play('coin');
+    return true;
+  }
+  // ТРИЕНЕ на декор
+  if (tool === 'erase') {
+    for (let i = G.props.length - 1; i >= 0; i--) {
+      const pr = G.props[i];
+      if (!DECOR_KINDS[pr.kind]) continue;
+      if (Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) {
+        G.props.splice(i, 1);
+        saveCityLayout();
+        Sfx.play('deny');
+        return true;
+      }
+    }
+    return true;
+  }
   // избор на сграда (клик върху някоя от клетките ѝ; свободните — по собствената им клетка)
   let hit = null;
   for (const pr of G.props) {
@@ -1478,5 +1552,53 @@ function drawCityEditOverlay() {
     toast('Back to the automatic layout.', '#ffd23b');
   });
   btn('EXIT', CW / 2 + 42 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
+  // ВТОРИ РЕД: инструментите
+  const tool = G.editTool || 'move';
+  const tbtn = (label, x, wpx, id) => {
+    panel(x, 23 * S, wpx, 12 * S);
+    if (tool === id) strokeRect(x, 23 * S, wpx, 12 * S, '#ffd23b', S);
+    ctx.font = fontBold(6); ctx.fillStyle = tool === id ? '#ffd23b' : '#a8b2c4'; ctx.textAlign = 'center';
+    ctx.fillText(label, x + wpx / 2, 31.5 * S);
+    UI.cityEditBtns.push({ x, y: 23 * S, w: wpx, h: 12 * S, act: () => { G.editTool = id; G.editSelBld = null; } });
+  };
+  tbtn('MOVE', CW / 2 - 118 * S, 40 * S, 'move');
+  tbtn('ADD', CW / 2 - 74 * S, 34 * S, 'place');
+  tbtn('ERASE', CW / 2 - 36 * S, 40 * S, 'erase');
+  tbtn('PATH', CW / 2 + 8 * S, 36 * S, 'path');
+  tbtn('GRASS', CW / 2 + 48 * S, 42 * S, 'grass');
+  // ПАЛИТРАТА (при ADD): елементите за поставяне с мини-иконки
+  if (tool === 'place') {
+    const items = [
+      ['tree', Spr.surf.tree], ['tree2', Spr.surf.tree2], ['deadTree', Spr.surf.deadTree],
+      ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2],
+      ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
+      ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
+      ['fence', Spr.surf.fence],
+    ];
+    const cw2 = 20 * S, x0 = CW / 2 - items.length * (cw2 + 2 * S) / 2;
+    if (!G.editPlaceKind) G.editPlaceKind = 'tree';
+    items.forEach(([k, spr2], i) => {
+      const bx2 = x0 + i * (cw2 + 2 * S), by2 = 37 * S;
+      panel(bx2, by2, cw2, cw2);
+      if (G.editPlaceKind === k) strokeRect(bx2, by2, cw2, cw2, '#7fd0a0', S);
+      const f = Math.min((cw2 - 4 * S) / spr2.width, (cw2 - 4 * S) / spr2.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(spr2, 0, 0, spr2.width, spr2.height,
+        bx2 + (cw2 - spr2.width * f) / 2, by2 + (cw2 - spr2.height * f) / 2, spr2.width * f, spr2.height * f);
+      UI.cityEditBtns.push({ x: bx2, y: by2, w: cw2, h: cw2, act: () => { G.editPlaceKind = k; } });
+    });
+  }
+  // влаченето на четката за път/трева
+  if (G.editPaint && (tool === 'path' || tool === 'grass')) paintPathCell(tool === 'path' ? 1 : 0);
+  // курсорната клетка при четка/добавяне/триене
+  if (tool !== 'move') {
+    const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+    const col = tool === 'erase' ? 'rgba(255,107,122,0.9)' : tool === 'grass' ? 'rgba(140,160,90,0.9)' : tool === 'path' ? 'rgba(150,120,80,0.9)' : 'rgba(127,208,160,0.9)';
+    const sx2 = isoX(cx2, cy2) + G.camRX, sy2 = isoY(cx2, cy2) + G.camRY;
+    ctx.strokeStyle = col; ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.moveTo(sx2, sy2); ctx.lineTo(sx2 + TW / 2, sy2 + TH / 2); ctx.lineTo(sx2, sy2 + TH); ctx.lineTo(sx2 - TW / 2, sy2 + TH / 2);
+    ctx.closePath(); ctx.stroke();
+  }
   ctx.textAlign = 'left';
 }

@@ -357,8 +357,9 @@ const Surface = {
     // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
     // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
     if (LAY && Array.isArray(LAY.decor)) {
+      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, rock: 0.3, rock2: 0.35, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35 };
       for (const d2 of LAY.decor) {
-        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: d2.k === 'fence' ? 0.35 : d2.k === 'rock' ? 0.3 : 0.38, solid: true });
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' });
       }
     } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
@@ -373,9 +374,19 @@ const Surface = {
       if (r2 < 0.045) { used.add(idx); props.push({ kind: 'deadTree', x: i + 0.5, y: j + 0.5, r: 0.38, solid: true }); }
       else if (r2 < 0.072) { used.add(idx); props.push({ kind: 'fence', x: i + 0.5, y: j + 0.5, r: 0.35, solid: true }); }
       else if (r2 < 0.084) { used.add(idx); props.push({ kind: 'rock', x: i + 0.5, y: j + 0.5, r: 0.3, solid: true }); }
+      else if (r2 < 0.094) { used.add(idx); props.push({ kind: 'bush', x: i + 0.5, y: j + 0.5, r: 0.3, solid: true }); }
+      else if (r2 < 0.1) { used.add(idx); props.push({ kind: 'rock2', x: i + 0.5, y: j + 0.5, r: 0.35, solid: true }); }
+      else if (r2 < 0.13) { props.push({ kind: r2 < 0.115 ? 'tuft' : 'tuft2', x: i + 0.5, y: j + 0.5, r: 0, solid: false }); }
     }
     }
 
+    // РЪЧНО боядисаните пътища (от четката в едитора) заместват процедурните
+    if (LAY && typeof LAY.paths === 'string') {
+      try {
+        const raw = atob(LAY.paths);
+        for (let i = 0; i < path.length; i++) path[i] = (raw.charCodeAt(i >> 3) >> (i & 7)) & 1;
+      } catch (e) {}
+    }
     return {
       map: { w, h, cells, variant, rooms: [], start: { x: gateX + 0.5, y: gY - 1.5 }, path },
       props, spots,
