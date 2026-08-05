@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 22:29 UTC";
+window.__BUILD__ = "2026-08-05 22:56 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -2275,7 +2275,7 @@ function genMirShopHouse(vtype, R) {
   // ФЕНЕРЪТ до вратата (топлият акцент)
   { const ey = iso2EdgeY(oy, 22); px(g, 22, ey + wallH - 10, '#241f1a'); px(g, 22, ey + wallH - 9, '#ffb84d'); px(g, 22, ey + wallH - 8, '#c98a3b'); }
   // вертикален банер на фасадата (квадратните табели са премахнати)
-  const banCol = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f', exchange: '#5a6472' }[vtype] || '#8f2a3a';
+  const banCol = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f', tavern: '#a86a1e', exchange: '#5a6472' }[vtype] || '#8f2a3a';
   for (let x = 25; x < 30; x++) {
     const ey = iso2EdgeY(oy, x);
     for (let k = 2; k <= 15; k++) px(g, x, ey + k, banCol);
@@ -2308,6 +2308,22 @@ function genMirShopHouse(vtype, R) {
     }
   } else if (vtype === 'potion') {   // шишета на прага
     px(g, 3, gy(3) - 3, '#4fd0a0'); px(g, 5, gy(5) - 3, '#c94f6e'); px(g, 7, gy(7) - 4, '#4f9cff');
+  } else if (vtype === 'tavern') {   // БЪЧВА с канелка до вратата
+    const gb = gy(4);                                              // ЕДНА земна линия — бъчвата е изправена
+    for (let i = 0; i < 6; i++) {
+      const x = 2 + i;
+      const top = (i === 0 || i === 5) ? gb - 8 : gb - 9;           // заоблени ръбове
+      const bot = (i === 0 || i === 5) ? gb - 2 : gb - 1;
+      for (let y = top; y <= bot; y++) {
+        let col = i <= 1 ? '#8a6a3a' : i >= 4 ? '#5c4423' : '#73562c';
+        if (y === gb - 7 || y === gb - 3) col = '#3c4046';          // железните обръчи
+        px(g, x, y, col);
+      }
+    }
+    rc(g, 3, gb - 10, 4, 1, '#8a6a3a'); px(g, 4, gb - 10, '#a3823f'); // капакът
+    px(g, 7, gb - 5, '#241f1a'); px(g, 8, gb - 4, '#241f1a');        // канелката
+    px(g, 8, gb - 1, '#8a97ad'); px(g, 9, gb - 1, '#67738c');        // калаени канчета
+    px(g, 8, gb - 2, '#c6d3e6');
   } else if (vtype === 'exchange') { // монети на прага
     px(g, 4, gy(4) - 3, '#d8dee8'); px(g, 6, gy(6) - 3, '#c6d0dc'); px(g, 5, gy(5) - 4, '#f2f6fc');
   } else {                           // кристали на Мистика
@@ -2711,6 +2727,7 @@ function initSurfaceSprites() {
       armor: genMirShopHouse('armor', R),
       potion: genMirShopHouse('potion', R),
       jewel: genMirShopHouse('jewel', R),
+      tavern: genMirShopHouse('tavern', R), // ХАНЪТ (слага се от едитора)
     },
     exchange: genExchangeStand(),
     tree2: genTree2(R),
@@ -3612,6 +3629,8 @@ const VENDOR_DEFS = {
   armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
   potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
+  // ХАНЪТ: засега само постройка — гозбите, леглото и сандъкът идват по-нататък
+  tavern: { name: 'Rada the Innkeeper', flavor: 'Hot food, a straw bed and news from the road.', slots: [] },
   // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: няма сергия и не се надгражда — идва и си отива,
   // носи само редки неща (сарафинът отпадна: обмяната е при ковача)
   peddler: { name: 'Kosta the Peddler', flavor: 'I pass through when the roads allow. Rare things — today only.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
@@ -3820,6 +3839,7 @@ const Surface = {
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
+      tavern: { x: cx - 9, y: cy + 5 },  // ханът — слага се РЪЧНО от едитора
       peddler: { x: cx, y: cy + 4 }, // мястото на странстващия търговец — южно на площада, на открито
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
@@ -3828,11 +3848,11 @@ const Surface = {
       if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
       if (LAY.cave) spots.dungeon = { x: LAY.cave.x, y: LAY.cave.y };
       if (LAY.travel) spots.travel = { x: LAY.travel.x, y: LAY.travel.y };
-      for (const vt of ['weapon', 'armor', 'potion', 'jewel']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'tavern']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
       if (LAY.peddler) spots.peddler = { x: LAY.peddler.x, y: LAY.peddler.y };
     }
     // РЪЧНАТА подредба е ЗАКОН: махнеш ли сграда в едитора, тя вече не се връща
-    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel'];
+    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel', 'tavern'];
     const shopList = (LAY && LAY.shops) ? SHOPS_ALL.filter(vt => LAY.shops[vt]) : SHOPS_ALL;
     const hasTower = !LAY || !!LAY.tower;
     const hasChurch = !LAY || !!LAY.church;
@@ -4102,7 +4122,7 @@ function genShopStock(vtype) {
   Math.random = dailyShopRng(vtype); // дневна стока: rnd/chance/Items.gen стават детерминистични за деня
   try {
   const def = VENDOR_DEFS[vtype];
-  if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
+  if (vtype === 'jewel' || vtype === 'tavern') return []; // Мистикът и ханът нямат щанд със стока
   const lvl = vtype === 'peddler' ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1);
   // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
   const cityTier = G.city === 'mirhold' ? 1 : 0;
@@ -5355,6 +5375,11 @@ function doInteract() {
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
   } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse' || pr.kind === 'peddler') {
+    if (pr.vtype === 'tavern') { // услугите на хана идват по-нататък
+      toast('The inn is not open yet — meals, a bed and a chest are coming.', '#ffd23b');
+      Sfx.play('deny');
+      return;
+    }
     openShop(pr.vtype);
   } else if (pr.kind === 'cityportal') {
     // телепорт между градовете
@@ -7317,7 +7342,7 @@ function drawMinimap() {
     else if (pr.kind === 'chest' && !pr.opened) dot(pr.x, pr.y, '#ffd23b', cell * 1.3);
     else if (pr.kind === 'fountain') dot(pr.x, pr.y, '#4f9cff', cell * 1.3);
     else if (pr.kind === 'stall' || pr.kind === 'shophouse') {
-      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff' };
+      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff', tavern: '#e0912f' };
       dot(pr.x, pr.y, vc[pr.vtype] || '#ffd23b', cell * 1.8);
     }
     else if (pr.kind === 'peddler') dot(pr.x, pr.y, '#e8c04a', cell * 1.8); // странстващият търговец
@@ -12081,6 +12106,7 @@ function drawCityEditOverlay() {
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
       ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
+      ['b_shop_tavern', Spr.surf.shophouses.tavern],
       ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
       ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
     );
@@ -12325,7 +12351,7 @@ function spriteByKey(key) {
     menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],
     house_0_0: S2.houses[0], house_0_1: S2.houses[1], house_1_0: S2.houses2[0], house_1_1: S2.houses2[1],
     shop_weapon: S2.shophouses.weapon, shop_armor: S2.shophouses.armor,
-    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel,
+    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel, shop_tavern: S2.shophouses.tavern,
   };
   return map[key] || null;
 }

@@ -596,7 +596,7 @@ function drawMinimap() {
     else if (pr.kind === 'chest' && !pr.opened) dot(pr.x, pr.y, '#ffd23b', cell * 1.3);
     else if (pr.kind === 'fountain') dot(pr.x, pr.y, '#4f9cff', cell * 1.3);
     else if (pr.kind === 'stall' || pr.kind === 'shophouse') {
-      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff' };
+      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff', tavern: '#e0912f' };
       dot(pr.x, pr.y, vc[pr.vtype] || '#ffd23b', cell * 1.8);
     }
     else if (pr.kind === 'peddler') dot(pr.x, pr.y, '#e8c04a', cell * 1.8); // странстващият търговец

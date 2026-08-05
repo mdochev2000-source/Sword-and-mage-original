@@ -1857,6 +1857,7 @@ function drawCityEditOverlay() {
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
       ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
+      ['b_shop_tavern', Spr.surf.shophouses.tavern],
       ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
       ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
     );
@@ -2101,7 +2102,7 @@ function spriteByKey(key) {
     menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],
     house_0_0: S2.houses[0], house_0_1: S2.houses[1], house_1_0: S2.houses2[0], house_1_1: S2.houses2[1],
     shop_weapon: S2.shophouses.weapon, shop_armor: S2.shophouses.armor,
-    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel,
+    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel, shop_tavern: S2.shophouses.tavern,
   };
   return map[key] || null;
 }

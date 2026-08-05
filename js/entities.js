@@ -1211,6 +1211,11 @@ function doInteract() {
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
   } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse' || pr.kind === 'peddler') {
+    if (pr.vtype === 'tavern') { // услугите на хана идват по-нататък
+      toast('The inn is not open yet — meals, a bed and a chest are coming.', '#ffd23b');
+      Sfx.play('deny');
+      return;
+    }
     openShop(pr.vtype);
   } else if (pr.kind === 'cityportal') {
     // телепорт между градовете

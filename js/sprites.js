@@ -2026,7 +2026,7 @@ function genMirShopHouse(vtype, R) {
   // ФЕНЕРЪТ до вратата (топлият акцент)
   { const ey = iso2EdgeY(oy, 22); px(g, 22, ey + wallH - 10, '#241f1a'); px(g, 22, ey + wallH - 9, '#ffb84d'); px(g, 22, ey + wallH - 8, '#c98a3b'); }
   // вертикален банер на фасадата (квадратните табели са премахнати)
-  const banCol = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f', exchange: '#5a6472' }[vtype] || '#8f2a3a';
+  const banCol = { weapon: '#8f2a3a', armor: '#2a4a8f', potion: '#2f6e3a', jewel: '#6e2a8f', tavern: '#a86a1e', exchange: '#5a6472' }[vtype] || '#8f2a3a';
   for (let x = 25; x < 30; x++) {
     const ey = iso2EdgeY(oy, x);
     for (let k = 2; k <= 15; k++) px(g, x, ey + k, banCol);
@@ -2059,6 +2059,22 @@ function genMirShopHouse(vtype, R) {
     }
   } else if (vtype === 'potion') {   // шишета на прага
     px(g, 3, gy(3) - 3, '#4fd0a0'); px(g, 5, gy(5) - 3, '#c94f6e'); px(g, 7, gy(7) - 4, '#4f9cff');
+  } else if (vtype === 'tavern') {   // БЪЧВА с канелка до вратата
+    const gb = gy(4);                                              // ЕДНА земна линия — бъчвата е изправена
+    for (let i = 0; i < 6; i++) {
+      const x = 2 + i;
+      const top = (i === 0 || i === 5) ? gb - 8 : gb - 9;           // заоблени ръбове
+      const bot = (i === 0 || i === 5) ? gb - 2 : gb - 1;
+      for (let y = top; y <= bot; y++) {
+        let col = i <= 1 ? '#8a6a3a' : i >= 4 ? '#5c4423' : '#73562c';
+        if (y === gb - 7 || y === gb - 3) col = '#3c4046';          // железните обръчи
+        px(g, x, y, col);
+      }
+    }
+    rc(g, 3, gb - 10, 4, 1, '#8a6a3a'); px(g, 4, gb - 10, '#a3823f'); // капакът
+    px(g, 7, gb - 5, '#241f1a'); px(g, 8, gb - 4, '#241f1a');        // канелката
+    px(g, 8, gb - 1, '#8a97ad'); px(g, 9, gb - 1, '#67738c');        // калаени канчета
+    px(g, 8, gb - 2, '#c6d3e6');
   } else if (vtype === 'exchange') { // монети на прага
     px(g, 4, gy(4) - 3, '#d8dee8'); px(g, 6, gy(6) - 3, '#c6d0dc'); px(g, 5, gy(5) - 4, '#f2f6fc');
   } else {                           // кристали на Мистика
@@ -2462,6 +2478,7 @@ function initSurfaceSprites() {
       armor: genMirShopHouse('armor', R),
       potion: genMirShopHouse('potion', R),
       jewel: genMirShopHouse('jewel', R),
+      tavern: genMirShopHouse('tavern', R), // ХАНЪТ (слага се от едитора)
     },
     exchange: genExchangeStand(),
     tree2: genTree2(R),

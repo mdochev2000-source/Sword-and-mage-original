@@ -6,6 +6,8 @@ const VENDOR_DEFS = {
   armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
   potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
+  // ХАНЪТ: засега само постройка — гозбите, леглото и сандъкът идват по-нататък
+  tavern: { name: 'Rada the Innkeeper', flavor: 'Hot food, a straw bed and news from the road.', slots: [] },
   // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: няма сергия и не се надгражда — идва и си отива,
   // носи само редки неща (сарафинът отпадна: обмяната е при ковача)
   peddler: { name: 'Kosta the Peddler', flavor: 'I pass through when the roads allow. Rare things — today only.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
@@ -214,6 +216,7 @@ const Surface = {
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
+      tavern: { x: cx - 9, y: cy + 5 },  // ханът — слага се РЪЧНО от едитора
       peddler: { x: cx, y: cy + 4 }, // мястото на странстващия търговец — южно на площада, на открито
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
@@ -222,11 +225,11 @@ const Surface = {
       if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
       if (LAY.cave) spots.dungeon = { x: LAY.cave.x, y: LAY.cave.y };
       if (LAY.travel) spots.travel = { x: LAY.travel.x, y: LAY.travel.y };
-      for (const vt of ['weapon', 'armor', 'potion', 'jewel']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'tavern']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
       if (LAY.peddler) spots.peddler = { x: LAY.peddler.x, y: LAY.peddler.y };
     }
     // РЪЧНАТА подредба е ЗАКОН: махнеш ли сграда в едитора, тя вече не се връща
-    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel'];
+    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel', 'tavern'];
     const shopList = (LAY && LAY.shops) ? SHOPS_ALL.filter(vt => LAY.shops[vt]) : SHOPS_ALL;
     const hasTower = !LAY || !!LAY.tower;
     const hasChurch = !LAY || !!LAY.church;
@@ -496,7 +499,7 @@ function genShopStock(vtype) {
   Math.random = dailyShopRng(vtype); // дневна стока: rnd/chance/Items.gen стават детерминистични за деня
   try {
   const def = VENDOR_DEFS[vtype];
-  if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
+  if (vtype === 'jewel' || vtype === 'tavern') return []; // Мистикът и ханът нямат щанд със стока
   const lvl = vtype === 'peddler' ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1);
   // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
   const cityTier = G.city === 'mirhold' ? 1 : 0;
