@@ -760,7 +760,7 @@ function renderWorld() {
   for (const pr of G.props) {
     const hearthGlow = pr.kind === 'cityportal';
     const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && !G.onSurface);
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'tower' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = (hearthGlow || portalGlow) ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -1010,8 +1010,8 @@ function renderWorld() {
       if (pi2 < i0 - 1 || pi2 > i1 + 1 || pj2 < j0 - 1 || pj2 > j1 + 1) continue;
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
       const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната е по-висока
-      const chx = sx + (pr.kind === 'house' ? 14 : -10) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? (h2 ? 44 : 32) : 38) * S;
+      const chx = sx + (pr.kind === 'house' ? 0 : -10) * S; // над комина (в средата на покрива)
+      const base = sy - (pr.kind === 'house' ? (h2 ? 50 : 38) : 38) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
@@ -1343,6 +1343,9 @@ const BLD_DEFS = {
   shophouse: { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
   church:    { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
   tower:     { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },
+  gatetower: { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },              // за диагностика/местене
+  portal:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // пещерата — мести се свободно
+  cityportal:{ ax: 0.5, ay: 0.5, cells: () => [], free: true },            // хенчстоунът — мести се свободно
 };
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
@@ -1369,19 +1372,26 @@ function bldCellsFree(cellsList, self) {
 function moveBuilding(pr, bx, by) {
   const def = BLD_DEFS[pr.kind];
   const cellsNew = def.cells(bx, by);
-  if (!bldCellsFree(cellsNew, pr)) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (def.free) {
+    // свободните (пещера/хенчстоун): целта трябва само да е проходима
+    const m = G.map;
+    if (m.cells[by * m.w + bx] !== FLOOR) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return; }
+  } else if (!bldCellsFree(cellsNew, pr)) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return; }
   const m = G.map;
   const sb = bldBase(pr);
-  for (const [x, y] of def.cells(sb.bx, sb.by)) m.cells[y * m.w + x] = FLOOR;
-  for (const [x, y] of cellsNew) m.cells[y * m.w + x] = 0;
+  if (!def.free) {
+    for (const [x, y] of def.cells(sb.bx, sb.by)) m.cells[y * m.w + x] = FLOOR;
+    for (const [x, y] of cellsNew) m.cells[y * m.w + x] = 0;
+  }
   const ox = bx + def.ax - pr.x, oy = by + def.ay - pr.y;
   pr.x += ox; pr.y += oy;
   if (pr.kind === 'church') for (const q of G.props) if (q.kind === 'priest' || q.kind === 'almsbox') { q.x += ox; q.y += oy; }
+  if (pr.kind === 'cityportal') for (const q of G.props) if (q.kind === 'menhir') { q.x += ox; q.y += oy; } // кръгът следва камъка
   saveCityLayout();
   Sfx.play('open');
 }
 function saveCityLayout() {
-  const L = { houses: [], shops: {}, church: null, tower: null };
+  const L = { houses: [], shops: {}, church: null, tower: null, cave: null, travel: null };
   for (const pr of G.props) {
     if (!BLD_DEFS[pr.kind]) continue;
     const { bx, by } = bldBase(pr);
@@ -1389,6 +1399,8 @@ function saveCityLayout() {
     else if (pr.kind === 'shophouse') L.shops[pr.vtype] = { x: bx, y: by };
     else if (pr.kind === 'church') L.church = { x: bx, y: by };
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
+    else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
+    else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
   }
   try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
   return L;

@@ -212,6 +212,8 @@ const Surface = {
     };
     if (LAY) {
       if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
+      if (LAY.cave) spots.dungeon = { x: LAY.cave.x, y: LAY.cave.y };
+      if (LAY.travel) spots.travel = { x: LAY.travel.x, y: LAY.travel.y };
       for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
     }
     // улици вътре + пътища навън
@@ -253,8 +255,8 @@ const Surface = {
     dx2 = gateX; dy2 = crossY;
     while (dx2 < w - B - 2 && dy2 < h - B - 1) { path[dy2 * w + dx2] = 1; path[dy2 * w + dx2 + 1] = 1; dx2++; if (R() < 0.5) dy2++; }
     // отбивки към хенчстоуна и портала на тъмницата
-    carve(spots.travel.x, gY + 3, gateX, gY + 3);
-    carve(spots.dungeon.x, gY + 3, gateX, gY + 3);
+    carve(spots.travel.x, spots.travel.y + 1, gateX, gY + 3);
+    carve(spots.dungeon.x, spots.dungeon.y + 1, gateX, gY + 3);
 
     const noProp = (x, y, r) => { for (let j = y - r; j <= y + r; j++) for (let i = x - r; i <= x + r; i++) used.add(j * w + i); };
 
