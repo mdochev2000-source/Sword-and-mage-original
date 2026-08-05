@@ -1162,6 +1162,7 @@ function updateInteract() {
     G.interactHint = { pr: best, txt: 'E — drink (' + price + ' silver, full heal)', price };
   }
   else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
+  else if (best.kind === 'peddler') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS.peddler.name };
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
@@ -1209,7 +1210,7 @@ function doInteract() {
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
-  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse') {
+  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse' || pr.kind === 'peddler') {
     openShop(pr.vtype);
   } else if (pr.kind === 'cityportal') {
     // телепорт между градовете
@@ -1260,7 +1261,7 @@ function openShop(vtype) {
   if (G.shopsDay !== day) { G.shops = {}; G.shopsDay = day; }
   if (!G.shops[shopKey(vtype)]) G.shops[shopKey(vtype)] = genShopStock(vtype);
   G.shopVendor = vtype;
-  G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт
+  G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; G.shopSilver = false; // чист старт
   G.state = 'shop';
   document.body.classList.add('menu');
   Sfx.play('open');
@@ -2528,6 +2529,7 @@ function startSurface(city) {
   G.miniDirty = true;
   // стоката се опреснява при всяко завръщане
   G.shops = {};
+  if (G.peddlerHere) setTimeout(() => toast('A peddler is in town today — rare wares.', '#e8c04a'), 900);
   G.transMsg = G.city === 'mirhold' ? 'MIRHOLD' : 'Camp of the Exiles';
   G.transSub = G.city === 'mirhold' ? 'the last safe crossroads' : 'here the dead take their rest';
   saveProfile();

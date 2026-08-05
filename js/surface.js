@@ -6,13 +6,24 @@ const VENDOR_DEFS = {
   armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
   potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
-  exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
+  // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: няма сергия и не се надгражда — идва и си отива,
+  // носи само редки неща (сарафинът отпадна: обмяната е при ковача)
+  peddler: { name: 'Kosta the Peddler', flavor: 'I pass through when the roads allow. Rare things — today only.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
+const PEDDLER_LVL = 3; // стоката му е като на добра сергия, но по-рядка и по-скъпа
+// Идва ли днес? Един и същи отговор за целия ден (не мига при презареждане).
+function peddlerToday(city) {
+  const day = Math.floor(Date.now() / 86400000);
+  let hh = 2166136261 >>> 0;
+  const s = 'peddler:' + (city || 'camp') + ':' + day;
+  for (let i = 0; i < s.length; i++) { hh ^= s.charCodeAt(i); hh = Math.imul(hh, 16777619) >>> 0; }
+  return (((hh ^ (hh >>> 13)) >>> 0) / 4294967296) < 0.4; // ~2 от всеки 5 дни
+}
 const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
 
 // РЪЧНАТА подредба на Мирхолд (от градския dev-едитор, ?editor=1 + F2).
 // Наредена на ръка от дизайнера на 2026-08-05 — важи ЗА ВСИЧКИ играчи.
-const MIRHOLD_LAYOUT = {"houses":[{"x":25,"y":12,"t":0,"v":0},{"x":33,"y":14,"t":0,"v":1},{"x":15,"y":28,"t":1,"v":0},{"x":11,"y":24,"t":1,"v":1},{"x":26,"y":29,"t":1,"v":0},{"x":30,"y":11,"t":0,"v":1},{"x":15,"y":12,"t":0,"v":0},{"x":12,"y":16,"t":1,"v":1},{"x":34,"y":18,"t":0,"v":0},{"x":13,"y":20,"t":0,"v":1},{"x":33,"y":22,"t":0,"v":0},{"x":30,"y":26,"t":0,"v":1},{"x":9,"y":19,"t":0,"v":0}],"shops":{"weapon":{"x":26,"y":25},"armor":{"x":18,"y":24},"potion":{"x":27,"y":9},"jewel":{"x":18,"y":9},"exchange":{"x":28,"y":17}},"church":{"x":21,"y":14},"tower":{"x":21,"y":20},"cave":{"x":4,"y":37},"travel":{"x":5,"y":31},"decor":[{"k":"deadTree","x":2,"y":2},{"k":"deadTree","x":9,"y":2},{"k":"deadTree","x":17,"y":2},{"k":"rock","x":27,"y":2},{"k":"deadTree","x":35,"y":2},{"k":"deadTree","x":39,"y":2},{"k":"deadTree","x":10,"y":3},{"k":"deadTree","x":11,"y":3},{"k":"deadTree","x":12,"y":3},{"k":"rock","x":37,"y":3},{"k":"deadTree","x":6,"y":4},{"k":"rock","x":14,"y":4},{"k":"deadTree","x":10,"y":5},{"k":"deadTree","x":13,"y":5},{"k":"deadTree","x":37,"y":7},{"k":"deadTree","x":3,"y":6},{"k":"fence","x":14,"y":7},{"k":"rock","x":41,"y":7},{"k":"fence","x":12,"y":8},{"k":"deadTree","x":39,"y":9},{"k":"deadTree","x":2,"y":11},{"k":"deadTree","x":3,"y":11},{"k":"rock","x":4,"y":11},{"k":"deadTree","x":6,"y":11},{"k":"deadTree","x":6,"y":16},{"k":"deadTree","x":43,"y":17},{"k":"deadTree","x":6,"y":19},{"k":"deadTree","x":2,"y":21},{"k":"deadTree","x":3,"y":21},{"k":"deadTree","x":5,"y":21},{"k":"deadTree","x":42,"y":21},{"k":"rock","x":41,"y":24},{"k":"deadTree","x":43,"y":28},{"k":"deadTree","x":39,"y":29},{"k":"deadTree","x":36,"y":30},{"k":"deadTree","x":11,"y":31},{"k":"deadTree","x":37,"y":31},{"k":"deadTree","x":13,"y":34},{"k":"deadTree","x":14,"y":34},{"k":"deadTree","x":32,"y":35},{"k":"deadTree","x":33,"y":35},{"k":"deadTree","x":36,"y":35},{"k":"rock","x":40,"y":37},{"k":"deadTree","x":8,"y":40},{"k":"deadTree","x":38,"y":40},{"k":"rock","x":12,"y":41},{"k":"deadTree","x":38,"y":41},{"k":"rock","x":42,"y":41},{"k":"deadTree","x":8,"y":42}],"sprites":{"tower":"data:image/png;base64,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","church":"data:image/png;base64,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"},"paths":"AAAAAAAAAAAAAAAAAAAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAEAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAgAAAAIAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAEAgAAAAAAIAAAAAQACAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAABgAYAAAAAYAGAAAgAEABgAAYACAAQAA/P9/AAAAAwAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAYAAAAAAAAAAAAAAAAAAA=="};
+const MIRHOLD_LAYOUT = {"houses":[{"x":25,"y":12,"t":0,"v":0},{"x":33,"y":14,"t":0,"v":1},{"x":15,"y":28,"t":1,"v":0},{"x":11,"y":24,"t":1,"v":1},{"x":26,"y":29,"t":1,"v":0},{"x":30,"y":11,"t":0,"v":1},{"x":15,"y":12,"t":0,"v":0},{"x":12,"y":16,"t":1,"v":1},{"x":34,"y":18,"t":0,"v":0},{"x":13,"y":20,"t":0,"v":1},{"x":33,"y":22,"t":0,"v":0},{"x":30,"y":26,"t":0,"v":1},{"x":9,"y":19,"t":0,"v":0}],"shops":{"weapon":{"x":26,"y":25},"armor":{"x":18,"y":24},"potion":{"x":27,"y":9},"jewel":{"x":18,"y":9}},"church":{"x":21,"y":14},"tower":{"x":21,"y":20},"cave":{"x":4,"y":37},"travel":{"x":5,"y":31},"decor":[{"k":"deadTree","x":2,"y":2},{"k":"deadTree","x":9,"y":2},{"k":"deadTree","x":17,"y":2},{"k":"rock","x":27,"y":2},{"k":"deadTree","x":35,"y":2},{"k":"deadTree","x":39,"y":2},{"k":"deadTree","x":10,"y":3},{"k":"deadTree","x":11,"y":3},{"k":"deadTree","x":12,"y":3},{"k":"rock","x":37,"y":3},{"k":"deadTree","x":6,"y":4},{"k":"rock","x":14,"y":4},{"k":"deadTree","x":10,"y":5},{"k":"deadTree","x":13,"y":5},{"k":"deadTree","x":37,"y":7},{"k":"deadTree","x":3,"y":6},{"k":"fence","x":14,"y":7},{"k":"rock","x":41,"y":7},{"k":"fence","x":12,"y":8},{"k":"deadTree","x":39,"y":9},{"k":"deadTree","x":2,"y":11},{"k":"deadTree","x":3,"y":11},{"k":"rock","x":4,"y":11},{"k":"deadTree","x":6,"y":11},{"k":"deadTree","x":6,"y":16},{"k":"deadTree","x":43,"y":17},{"k":"deadTree","x":6,"y":19},{"k":"deadTree","x":2,"y":21},{"k":"deadTree","x":3,"y":21},{"k":"deadTree","x":5,"y":21},{"k":"deadTree","x":42,"y":21},{"k":"rock","x":41,"y":24},{"k":"deadTree","x":43,"y":28},{"k":"deadTree","x":39,"y":29},{"k":"deadTree","x":36,"y":30},{"k":"deadTree","x":11,"y":31},{"k":"deadTree","x":37,"y":31},{"k":"deadTree","x":13,"y":34},{"k":"deadTree","x":14,"y":34},{"k":"deadTree","x":32,"y":35},{"k":"deadTree","x":33,"y":35},{"k":"deadTree","x":36,"y":35},{"k":"rock","x":40,"y":37},{"k":"deadTree","x":8,"y":40},{"k":"deadTree","x":38,"y":40},{"k":"rock","x":12,"y":41},{"k":"deadTree","x":38,"y":41},{"k":"rock","x":42,"y":41},{"k":"deadTree","x":8,"y":42}],"sprites":{"tower":"data:image/png;base64,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","church":"data:image/png;base64,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"},"paths":"AAAAAAAAAAAAAAAAAAAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAEAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAgAAAAIAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAEAgAAAAAAIAAAAAQACAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAABgAYAAAAAYAGAAAgAEABgAAYACAAQAA/P9/AAAAAwAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAYAAAAAAAAAAAAAAAAAAA=="};
 function mirholdLayout() {
   try {
     const local = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null');
@@ -46,7 +57,7 @@ const Surface = {
       armor: { x: cx + 8, y: cy - 3 },           // изток
       potion: { x: cx - 6, y: cy + 6 },          // югозапад
       jewel: { x: cx + 1, y: cy - 9 },           // север, при руините
-      exchange: { x: cx + 7, y: cy + 4 },        // югоизток — САРАФИНЪТ (сребро и рядкости)
+      exchange: { x: cx + 7, y: cy + 4 },        // югоизток — мястото на странстващия търговец
       portal: { x: cx + 9, y: cy + 9 },          // югоизток — гробището
       travel: { x: cx - 9, y: cy + 8 },          // югозапад — порталът към МИРХОЛД
     };
@@ -82,8 +93,9 @@ const Surface = {
       props.push({ kind: 'stall', vtype: vt, x: s.x + 0.5, y: s.y + 0.5, r: 0.6, solid: true });
       props.push({ kind: 'vendor', vtype: vt, x: s.x + 1.6, y: s.y + 1.1, r: 0.3, solid: true, name: VENDOR_DEFS[vt].name });
     }
-    // САРАФИНЪТ: тезгях с везните — обменя сечено сребро, продава рядкости
-    props.push({ kind: 'stall', vtype: 'exchange', x: spots.exchange.x + 0.5, y: spots.exchange.y + 0.5, r: 0.6, solid: true });
+    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: само в дните, в които е в лагера (в едитора — винаги)
+    G.peddlerHere = peddlerToday('camp') || !!G.editorOn;
+    if (G.peddlerHere) props.push({ kind: 'peddler', vtype: 'peddler', x: spots.exchange.x + 0.5, y: spots.exchange.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
 
     // гробище около портала
     for (let t = 0; t < 7; t++) {
@@ -202,7 +214,7 @@ const Surface = {
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
-      exchange: { x: cx + 4, y: cy + 5 }, // сарафинът — югоизточния
+      peddler: { x: cx + 4, y: cy + 5 }, // мястото на странстващия търговец — югоизточно от площада
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
@@ -210,8 +222,14 @@ const Surface = {
       if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
       if (LAY.cave) spots.dungeon = { x: LAY.cave.x, y: LAY.cave.y };
       if (LAY.travel) spots.travel = { x: LAY.travel.x, y: LAY.travel.y };
-      for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      for (const vt of ['weapon', 'armor', 'potion', 'jewel']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      if (LAY.peddler) spots.peddler = { x: LAY.peddler.x, y: LAY.peddler.y };
     }
+    // РЪЧНАТА подредба е ЗАКОН: махнеш ли сграда в едитора, тя вече не се връща
+    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel'];
+    const shopList = (LAY && LAY.shops) ? SHOPS_ALL.filter(vt => LAY.shops[vt]) : SHOPS_ALL;
+    const hasTower = !LAY || !!LAY.tower;
+    const hasChurch = !LAY || !!LAY.church;
     // улици вътре + пътища навън
     const carve = (ax, ay, bx, by) => {
       let x = ax, y = ay;
@@ -227,7 +245,7 @@ const Surface = {
       if (Math.hypot(i - cx - 0.5, (j - cy) * 1.1) < 4.9) path[j * w + i] = 1;
     }
     // пътеки от площада до всеки магазин
-    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    for (const k of shopList) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
     // ДВЕ околовръстни улици — вътрешна (около площада) и външна (при стените);
     // къщите се редят покрай тях от всички страни
     for (const rr of [7.5, 11]) {
@@ -258,23 +276,33 @@ const Surface = {
 
     // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
     // блокираме 2x2 клетки (48px) — точно колкото са широки стените, БЕЗ невидими зони
-    for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) {
+    for (const vt of shopList) {
       const s = spots[vt];
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(s.x + di, s.y + dj);
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.0, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
     // КУЛАТА на гарнизона: масивен КИЙП върху 2x2 клетки (като къщите)
-    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
-    props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
+    if (hasTower) {
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+      props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
+    }
+    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: идва само в някои дни (в едитора — винаги, за да го наместиш)
+    G.peddlerHere = peddlerToday('mirhold') || !!G.editorOn;
+    if (G.peddlerHere) {
+      props.push({ kind: 'peddler', vtype: 'peddler', x: spots.peddler.x + 0.5, y: spots.peddler.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
+      noProp(spots.peddler.x, spots.peddler.y, 1);
+    }
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
     const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
-    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
-    props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
-    // свещеникът и кутията са премахнати (дизайнерът има друга идея за тях)
-    noProp(ch.x, ch.y + 1, 2);
-    carve(ch.x, ch.y + 2, cx, cy);
+    if (hasChurch) {
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
+      props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
+      // свещеникът и кутията са премахнати (дизайнерът има друга идея за тях)
+      noProp(ch.x, ch.y + 1, 2);
+      carve(ch.x, ch.y + 2, cx, cy);
+    }
     // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
     // ПЛЪТНИ са — героят не минава през скалата на пещерата, нито през камъка
     props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.7, solid: true });
@@ -447,10 +475,10 @@ function genShopStock(vtype) {
   try {
   const def = VENDOR_DEFS[vtype];
   if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
-  const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
+  const lvl = vtype === 'peddler' ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1);
   // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
   const cityTier = G.city === 'mirhold' ? 1 : 0;
-  const rare = vtype === 'exchange' ? 1 : 0; // сарафинът: по-редки и по-дълбоки стоки, по-солени цени
+  const rare = vtype === 'peddler' ? 1 : 0; // странникът: по-редки и по-дълбоки стоки, по-солени цени
   const priceMult = (1 + cityTier * 0.35) * (rare ? 1.6 : 1);
   const depthCap = [4, 8, 14, 22, 999][lvl - 1];
   const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0) + rare);

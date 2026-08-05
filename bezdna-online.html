@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 20:49 UTC";
+window.__BUILD__ = "2026-08-05 21:10 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1857,6 +1857,22 @@ function genVendor(type) {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
+function genPeddler() {
+  const g = mk(16, 20);
+  const skin = '#d9a878';
+  rc(g, 11, 6, 5, 8, '#5a4a32'); rc(g, 12, 7, 3, 5, '#6b5a3e'); // вързопът на гърба
+  px(g, 11, 6, '#3d3122'); px(g, 15, 13, '#3d3122');
+  rc(g, 4, 8, 8, 11, '#4a3f2e'); rc(g, 4, 8, 8, 2, '#5c503b'); // пътен плащ
+  rc(g, 5, 1, 6, 6, '#5c503b');                                 // качулка
+  rc(g, 6, 4, 4, 3, skin);
+  px(g, 6, 5, '#1a1d26'); px(g, 9, 5, '#1a1d26');
+  rc(g, 3, 2, 1, 16, '#6b5636'); px(g, 3, 1, '#8a7048');        // тоягата
+  rc(g, 6, 12, 4, 1, '#8a7048');                                // колан
+  px(g, 10, 13, '#c6c9d1'); px(g, 10, 14, '#9aa0ad');           // сребърна кесия
+  rc(g, 5, 18, 2, 2, '#3a3040'); rc(g, 9, 18, 2, 2, '#3a3040');
+  outlineSprite(g, '#10141c');
+  return g.canvas;
+}
 function genPortal() {
   const frames = [];
   for (let f = 0; f < 3; f++) {
@@ -2599,6 +2615,7 @@ function initSurfaceSprites() {
       armor: genVendor('armor'),
       potion: genVendor('potion'),
       jewel: genVendor('jewel'),
+      peddler: genPeddler(), // странстващият търговец
     },
     portal: genPortal(),
     // МИРХОЛД (2.5D изометрични сгради)
@@ -2609,7 +2626,6 @@ function initSurfaceSprites() {
       armor: genMirShopHouse('armor', R),
       potion: genMirShopHouse('potion', R),
       jewel: genMirShopHouse('jewel', R),
-      exchange: genMirShopHouse('exchange', R),
     },
     exchange: genExchangeStand(),
     tree2: genTree2(R),
@@ -3511,13 +3527,24 @@ const VENDOR_DEFS = {
   armor:  { name: 'Bogdan the Armorer', flavor: 'Iron between you and their teeth.', slots: ['armor'] },
   potion: { name: 'Yana the Alchemist', flavor: 'Potions and trinkets — everything for survival.', slots: ['ring', 'amulet'] },
   jewel:  { name: 'Master Zahari', flavor: 'I don\'t sell goods. I build paths to power.', slots: [] },
-  exchange: { name: 'Kosta the Moneychanger', flavor: 'Hacksilver for coins, coins for treasures.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
+  // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: няма сергия и не се надгражда — идва и си отива,
+  // носи само редки неща (сарафинът отпадна: обмяната е при ковача)
+  peddler: { name: 'Kosta the Peddler', flavor: 'I pass through when the roads allow. Rare things — today only.', slots: ['weapon', 'armor', 'ring', 'amulet'] },
 };
+const PEDDLER_LVL = 3; // стоката му е като на добра сергия, но по-рядка и по-скъпа
+// Идва ли днес? Един и същи отговор за целия ден (не мига при презареждане).
+function peddlerToday(city) {
+  const day = Math.floor(Date.now() / 86400000);
+  let hh = 2166136261 >>> 0;
+  const s = 'peddler:' + (city || 'camp') + ':' + day;
+  for (let i = 0; i < s.length; i++) { hh ^= s.charCodeAt(i); hh = Math.imul(hh, 16777619) >>> 0; }
+  return (((hh ^ (hh >>> 13)) >>> 0) / 4294967296) < 0.4; // ~2 от всеки 5 дни
+}
 const VENDOR_UP_COST = [0, 60, 180, 500, 1200]; // цена в СРЕБРО за ниво 2..5 — евтини, защото среброто се събира трудно
 
 // РЪЧНАТА подредба на Мирхолд (от градския dev-едитор, ?editor=1 + F2).
 // Наредена на ръка от дизайнера на 2026-08-05 — важи ЗА ВСИЧКИ играчи.
-const MIRHOLD_LAYOUT = {"houses":[{"x":25,"y":12,"t":0,"v":0},{"x":33,"y":14,"t":0,"v":1},{"x":15,"y":28,"t":1,"v":0},{"x":11,"y":24,"t":1,"v":1},{"x":26,"y":29,"t":1,"v":0},{"x":30,"y":11,"t":0,"v":1},{"x":15,"y":12,"t":0,"v":0},{"x":12,"y":16,"t":1,"v":1},{"x":34,"y":18,"t":0,"v":0},{"x":13,"y":20,"t":0,"v":1},{"x":33,"y":22,"t":0,"v":0},{"x":30,"y":26,"t":0,"v":1},{"x":9,"y":19,"t":0,"v":0}],"shops":{"weapon":{"x":26,"y":25},"armor":{"x":18,"y":24},"potion":{"x":27,"y":9},"jewel":{"x":18,"y":9},"exchange":{"x":28,"y":17}},"church":{"x":21,"y":14},"tower":{"x":21,"y":20},"cave":{"x":4,"y":37},"travel":{"x":5,"y":31},"decor":[{"k":"deadTree","x":2,"y":2},{"k":"deadTree","x":9,"y":2},{"k":"deadTree","x":17,"y":2},{"k":"rock","x":27,"y":2},{"k":"deadTree","x":35,"y":2},{"k":"deadTree","x":39,"y":2},{"k":"deadTree","x":10,"y":3},{"k":"deadTree","x":11,"y":3},{"k":"deadTree","x":12,"y":3},{"k":"rock","x":37,"y":3},{"k":"deadTree","x":6,"y":4},{"k":"rock","x":14,"y":4},{"k":"deadTree","x":10,"y":5},{"k":"deadTree","x":13,"y":5},{"k":"deadTree","x":37,"y":7},{"k":"deadTree","x":3,"y":6},{"k":"fence","x":14,"y":7},{"k":"rock","x":41,"y":7},{"k":"fence","x":12,"y":8},{"k":"deadTree","x":39,"y":9},{"k":"deadTree","x":2,"y":11},{"k":"deadTree","x":3,"y":11},{"k":"rock","x":4,"y":11},{"k":"deadTree","x":6,"y":11},{"k":"deadTree","x":6,"y":16},{"k":"deadTree","x":43,"y":17},{"k":"deadTree","x":6,"y":19},{"k":"deadTree","x":2,"y":21},{"k":"deadTree","x":3,"y":21},{"k":"deadTree","x":5,"y":21},{"k":"deadTree","x":42,"y":21},{"k":"rock","x":41,"y":24},{"k":"deadTree","x":43,"y":28},{"k":"deadTree","x":39,"y":29},{"k":"deadTree","x":36,"y":30},{"k":"deadTree","x":11,"y":31},{"k":"deadTree","x":37,"y":31},{"k":"deadTree","x":13,"y":34},{"k":"deadTree","x":14,"y":34},{"k":"deadTree","x":32,"y":35},{"k":"deadTree","x":33,"y":35},{"k":"deadTree","x":36,"y":35},{"k":"rock","x":40,"y":37},{"k":"deadTree","x":8,"y":40},{"k":"deadTree","x":38,"y":40},{"k":"rock","x":12,"y":41},{"k":"deadTree","x":38,"y":41},{"k":"rock","x":42,"y":41},{"k":"deadTree","x":8,"y":42}],"sprites":{"tower":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAACcCAYAAADPla2KAAAK2UlEQVR42u1d3YocRRSuvo+yu1GEIBghAUlAvRJxxJlA7w6a2QxkIIHtLBjxwr3wRl9Ab/MIgpeCj+Ar+Ca+xWjPWL3V1ee36lTt5megCJmZ3u3z1Tlffeec6lrnLF+Nex1fr6fVdYFrat7Qmwm9bt7xZkZezbA+uPn+NhyvFU69wT/+9Mv22bc/DOMagtCYXhHPeGj8N4+eIABU5oKG+j1NOk7QjMsAKDSRTeU1FppxDIBXkhukABTnhiYn5pt0VscACP+FuOFh0dCoxOoY6WF8YM0NTQ3vwVg9BAGaeS0AEE9UILFG5PoYABJDOQBCwzUcMf2syXPzOMbjGU5xcez98+hzTj80JcOhRIxLQSrNESJ9QyEfAqCN8dRxTgAQe2rsrWbruEWMh8aU5AjW+GbCrGPExoZeJM+wlWeMPe1CxBGoVpEoMOgHx8ZQWj/le1ZAsTZCN3TVMW4VMrEd4GeYa1ExTi1ftY2kxsPAjgkAawaAUsbVcv1ngI5QeUCtWSpptCg84jdjTig18zXJkApzR6GXanx1455PjZTew24VwL5sPftXxSPU73VffHWyffT4bAsBkZvU0N5xAc5eCUAxUt/phB0Am7MdCP3gLrRx74sr8wBv+IPj090YPCAEQMqooRQtOSDPhN6j9ElseADAcgRAPGpyRGo4xDM8ZfynE8MftIgHaIDAADjPiNtzxhMw6Y7N+sTwqQecbKUg9N+z5YiLojHe3y8LQGgcB4QHAOMISxGlARKLcQoAb+8egM3YSAwI6P0aHIEJm3AiMCMxwyceABkbG0x5SI6OELn4c32Mh4Z6e46/fiwHIAZCwhUSAKREJlnHOQDiGY+BYQGIPWItACBcfjjyw78Dx3hszIIxHvrsydl3egDw0OjI6/eh8StrHOQdUIxzzE4ZDnoARnqSFYH6TvyZZg2nXB0zTmI4GgJhrEgB4ICA3lv/DwTXKqdifGzkCo1zKTe4+GYhMPrRx80EgA1+DQUg3CJ/KiI3b2hstGb2QQ/Qujg22z1Q0mt7b9CwOuXqqdwwBWCjByIVwH5N/vzLVjR7nJuncoOTxLsXDxqF6FcH6rreAzgApPHtRU7PC5QGSAIgRyFS11EApBBbfN1CEBrTZXAzvfmQACUKcS0EwgMw62+ynRqewuxabiCzwVCBhUoslSxjAEMP4CRrKW5w8UzHBh0d3NgNvULkCTMEIJSnmnRWI3ogbkCkcDd8yQPgQbBUiB4AzezFhi9SdEN7ygFwebO94Xc++vQSgHmKQuxG76+lAMxPQMNTuGG/QkyBEQHghybe1wKFKPGA0tzgOAOgEEhRiKEx/WzsAPi5B+BYbYAlNzhO4MQAWCpEyAO06WyubnCcwMEASK0hhp+FAKSms7nc4DiBwwGQoxBjHZCSzuZyg+NKYBoAtDXE2ANyFF8qNzhutrQAaDgiBGBmXOpSZYNczT8clHDScoQH4DJpWWWQ2746pM0pHFnxQZKhvBpiJwoBcamrzeMGh5XA8NGZ1RAhAKxKXWIAcktgagA3l9eEAPhETHzzgKsvErjBpWR1VjVEaUXIsgwecwPZGJklCpxQ7koAyElnc3WDq1kCywEglxuweoMIgDBuYwComeYAlAJgWQZnAVgbCBypQqQAoAyASnX+s5kwPPaku+S3yFiUwEIvQbPBVkduoUJN44bVNBmq0SS1yAZjAHK4wUHGlG6SYn0BLQC+VBe+H5e+QqXIbpGZ5QicBABjDtCks3EIQJsfVNlgeLOQ9qdyhcvvLlUAagCIDYgBWEh1QysAAFoRSihECQCY1MU8QKsbXAmBo+0NppS6jg4DAFra1akeodPuArNUiBAA0nQWWwZVOUWr7Q2un/ACZ3Mm5Av5Mjh9f4Uug9qcItgpCvfzsXIYrhDHu8aeDmB0KAASyRqzOxT/KTkFu1M0rgl6VWehECW5QDx7PRBQqS61YOK4fn7cG7RUiBoA8srgS74iRAEQxlq2QtzoAJgavkK3zKUUTBy0H4gqi0sVIiSmYgBV2WBr1CJrgWVwRhgz7Qt0Q+OUqwVwNcTU3qBdi2zFZ4MDAIc3wH1EOQoRWgaxm18AMwld43e0LXTZYIca5I1P6Q1yfAEtg+GmiBotMsdVcKStMQoIOFS6aQi09rvBVdkgNFspAEibpBgHZJXBW4QbEHAdt4lJ1hsc7ygd/bz5SRYAqlJXq9cNrmYJjMoGvdSt3SJzfAWnMyuB5WyRgd4b8oM2nRtczRJYTlG0VIsM7g3Oc5uknajLLM0GaW5YZrXIXGqsWzRJewAmVVyC2Epwg6tZApOsAlBik9sio0B2OSUwaeWHWgaxMjbX3PRG5XKDs+jxpQKoyQYXwt6gtkXmUra5WzVJc7JBrijK7RqRb5HZ2D8nwC2DWgBy2ueuhMCBRBS2DQ9aBqUAQL3BeNXgSNGVEDhSADEOkKSzWGdImlMsOAAoMNZGChEGYCVKZykA9knZUqQbnFbgrA230Uk8AOMGiQdIuMGVEDhShTgA0OrL4FRzdLJ8tqejByrZZZDW852ZQtQug7NAEGl7g6gHUAIHEhySmZ0ldIa06eze+LfEvUGsReY4gcOVw3IUoiYbDG++94J49lOfMHWcwJE8MpOTDUpaY/HNW/QGvRZgj9LCeoMW2+g0AJR6isxxBQysN2hRQ8zZKWr1FJnIA+IHJymSxAgzNxss1SJjs0GqO9yP924ejIZGIVLLYK2nyOS9QSQEYgAoIKjucO0nRZBssEOXQQqAf/48HQx/8f3t//49FJ8tRJ0gUYMbVFtkOA/4+8WM8IAOAeD4Sp4UgQHYTGcrNQT6bIzbRjfmgFWBJ0WWeYepSXqDO4OPIAB4hcitAjW4wVn0+CBPkCjElGXQ/jC1eXoJDPIQrpMchkZKUfSlPkxNmg1SjYy4pDXc+1xWBU4+TG1Klp2oBIY1T3ojtdkgxw0PGWVa5TA1TZc5FYD4+/E5of2AOEl2mFrFJqmuO7wUcQO2LGefJVaiSTo6SsvoUBRYmR6gW+8YADraoI2A8DZ1D1PDlKnJ0drWTVJwn2DmoShJIcC56rpQkxQ9TK2ViZ7w7DOM/GIAFrmPz3NFEKhyLDlMTfqkCBciEPtD2+dH5witkWZmDMSdD26JAKh5mFo4OGUan00mOkssBOLWO2/vQOiHhULUAGB60CJ6mtyGFjg9AH7cFQCRfZja/ARc/y2eFBF7QPj/EAA/KI/gFGJqUdTuMLUVf5gaBwAFxCtxmJoUgCkQXdXD1BbHRoepzQiBIwHAj5TD1Ogtc6urOUyNBeDdfADEzN5WPEzN5/GzaBmUGN8P/wt7PW4BQLHD1O5/8tm2H5KUV2L8b7//MXhAP7Z/nYp6g7XK4CgAflAgaDnAq0dJUVS6q8uqRebtdbfv3N/2QwJECgDX7TC12M4BgP24N/rwXgSEBQAhCJJlMIkbgE1XseHe5uHP6g4g3MU9whKAy2N1sWxwZcINmOEDAPFfZY6/EP8AUwCyDlNbZhke/PXpxkF/vDwXCGrvcMnD1BSG06/DTCDUh6m1ghhvcc8wMxz6y/MpQJQ8TC0EoJjhuR4hkdh8NriyiPHLV+PyX1KPKHWYWrUZtwLC6jA1yPAPr8LwXI/QHqV1bWa8BBAUAMmGNy8BEF5iQwC8NDOeBcTHe+NCALSGF5/opgIQHoBrPeNNLjINDkQIwLUxvCl8bQiEB+AqDf8XRw6eZmf1cSYAAAAASUVORK5CYII=","church":"data:image/png;base64,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"},"paths":"AAAAAAAAAAAAAAAAAAAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAEAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAgAAAAIAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAEAgAAAAAAIAAAAAQACAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAABgAYAAAAAYAGAAAgAEABgAAYACAAQAA/P9/AAAAAwAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAYAAAAAAAAAAAAAAAAAAA=="};
+const MIRHOLD_LAYOUT = {"houses":[{"x":25,"y":12,"t":0,"v":0},{"x":33,"y":14,"t":0,"v":1},{"x":15,"y":28,"t":1,"v":0},{"x":11,"y":24,"t":1,"v":1},{"x":26,"y":29,"t":1,"v":0},{"x":30,"y":11,"t":0,"v":1},{"x":15,"y":12,"t":0,"v":0},{"x":12,"y":16,"t":1,"v":1},{"x":34,"y":18,"t":0,"v":0},{"x":13,"y":20,"t":0,"v":1},{"x":33,"y":22,"t":0,"v":0},{"x":30,"y":26,"t":0,"v":1},{"x":9,"y":19,"t":0,"v":0}],"shops":{"weapon":{"x":26,"y":25},"armor":{"x":18,"y":24},"potion":{"x":27,"y":9},"jewel":{"x":18,"y":9}},"church":{"x":21,"y":14},"tower":{"x":21,"y":20},"cave":{"x":4,"y":37},"travel":{"x":5,"y":31},"decor":[{"k":"deadTree","x":2,"y":2},{"k":"deadTree","x":9,"y":2},{"k":"deadTree","x":17,"y":2},{"k":"rock","x":27,"y":2},{"k":"deadTree","x":35,"y":2},{"k":"deadTree","x":39,"y":2},{"k":"deadTree","x":10,"y":3},{"k":"deadTree","x":11,"y":3},{"k":"deadTree","x":12,"y":3},{"k":"rock","x":37,"y":3},{"k":"deadTree","x":6,"y":4},{"k":"rock","x":14,"y":4},{"k":"deadTree","x":10,"y":5},{"k":"deadTree","x":13,"y":5},{"k":"deadTree","x":37,"y":7},{"k":"deadTree","x":3,"y":6},{"k":"fence","x":14,"y":7},{"k":"rock","x":41,"y":7},{"k":"fence","x":12,"y":8},{"k":"deadTree","x":39,"y":9},{"k":"deadTree","x":2,"y":11},{"k":"deadTree","x":3,"y":11},{"k":"rock","x":4,"y":11},{"k":"deadTree","x":6,"y":11},{"k":"deadTree","x":6,"y":16},{"k":"deadTree","x":43,"y":17},{"k":"deadTree","x":6,"y":19},{"k":"deadTree","x":2,"y":21},{"k":"deadTree","x":3,"y":21},{"k":"deadTree","x":5,"y":21},{"k":"deadTree","x":42,"y":21},{"k":"rock","x":41,"y":24},{"k":"deadTree","x":43,"y":28},{"k":"deadTree","x":39,"y":29},{"k":"deadTree","x":36,"y":30},{"k":"deadTree","x":11,"y":31},{"k":"deadTree","x":37,"y":31},{"k":"deadTree","x":13,"y":34},{"k":"deadTree","x":14,"y":34},{"k":"deadTree","x":32,"y":35},{"k":"deadTree","x":33,"y":35},{"k":"deadTree","x":36,"y":35},{"k":"rock","x":40,"y":37},{"k":"deadTree","x":8,"y":40},{"k":"deadTree","x":38,"y":40},{"k":"rock","x":12,"y":41},{"k":"deadTree","x":38,"y":41},{"k":"rock","x":42,"y":41},{"k":"deadTree","x":8,"y":42}],"sprites":{"tower":"data:image/png;base64,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","church":"data:image/png;base64,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"},"paths":"AAAAAAAAAAAAAAAAAAAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAEAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAgAAAAIAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAEAgAAAAAAIAAAAAQACAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAABgAYAAAAAYAGAAAgAEABgAAYACAAQAA/P9/AAAAAwAYAAAAAAAGAAAAAIABAAAAAGAAAAAAABgAAAAAAAYAAAAAAAAAAAAAAAAAAA=="};
 function mirholdLayout() {
   try {
     const local = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null');
@@ -3551,7 +3578,7 @@ const Surface = {
       armor: { x: cx + 8, y: cy - 3 },           // изток
       potion: { x: cx - 6, y: cy + 6 },          // югозапад
       jewel: { x: cx + 1, y: cy - 9 },           // север, при руините
-      exchange: { x: cx + 7, y: cy + 4 },        // югоизток — САРАФИНЪТ (сребро и рядкости)
+      exchange: { x: cx + 7, y: cy + 4 },        // югоизток — мястото на странстващия търговец
       portal: { x: cx + 9, y: cy + 9 },          // югоизток — гробището
       travel: { x: cx - 9, y: cy + 8 },          // югозапад — порталът към МИРХОЛД
     };
@@ -3587,8 +3614,9 @@ const Surface = {
       props.push({ kind: 'stall', vtype: vt, x: s.x + 0.5, y: s.y + 0.5, r: 0.6, solid: true });
       props.push({ kind: 'vendor', vtype: vt, x: s.x + 1.6, y: s.y + 1.1, r: 0.3, solid: true, name: VENDOR_DEFS[vt].name });
     }
-    // САРАФИНЪТ: тезгях с везните — обменя сечено сребро, продава рядкости
-    props.push({ kind: 'stall', vtype: 'exchange', x: spots.exchange.x + 0.5, y: spots.exchange.y + 0.5, r: 0.6, solid: true });
+    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: само в дните, в които е в лагера (в едитора — винаги)
+    G.peddlerHere = peddlerToday('camp') || !!G.editorOn;
+    if (G.peddlerHere) props.push({ kind: 'peddler', vtype: 'peddler', x: spots.exchange.x + 0.5, y: spots.exchange.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
 
     // гробище около портала
     for (let t = 0; t < 7; t++) {
@@ -3707,7 +3735,7 @@ const Surface = {
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
-      exchange: { x: cx + 4, y: cy + 5 }, // сарафинът — югоизточния
+      peddler: { x: cx + 4, y: cy + 5 }, // мястото на странстващия търговец — югоизточно от площада
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
@@ -3715,8 +3743,14 @@ const Surface = {
       if (LAY.tower) spots.tower = { x: LAY.tower.x, y: LAY.tower.y };
       if (LAY.cave) spots.dungeon = { x: LAY.cave.x, y: LAY.cave.y };
       if (LAY.travel) spots.travel = { x: LAY.travel.x, y: LAY.travel.y };
-      for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      for (const vt of ['weapon', 'armor', 'potion', 'jewel']) if (LAY.shops && LAY.shops[vt]) spots[vt] = { x: LAY.shops[vt].x, y: LAY.shops[vt].y };
+      if (LAY.peddler) spots.peddler = { x: LAY.peddler.x, y: LAY.peddler.y };
     }
+    // РЪЧНАТА подредба е ЗАКОН: махнеш ли сграда в едитора, тя вече не се връща
+    const SHOPS_ALL = ['weapon', 'armor', 'potion', 'jewel'];
+    const shopList = (LAY && LAY.shops) ? SHOPS_ALL.filter(vt => LAY.shops[vt]) : SHOPS_ALL;
+    const hasTower = !LAY || !!LAY.tower;
+    const hasChurch = !LAY || !!LAY.church;
     // улици вътре + пътища навън
     const carve = (ax, ay, bx, by) => {
       let x = ax, y = ay;
@@ -3732,7 +3766,7 @@ const Surface = {
       if (Math.hypot(i - cx - 0.5, (j - cy) * 1.1) < 4.9) path[j * w + i] = 1;
     }
     // пътеки от площада до всеки магазин
-    for (const k of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
+    for (const k of shopList) carve(cx, cy + 1, spots[k].x, spots[k].y + 2);
     // ДВЕ околовръстни улици — вътрешна (около площада) и външна (при стените);
     // къщите се редят покрай тях от всички страни
     for (const rr of [7.5, 11]) {
@@ -3763,23 +3797,33 @@ const Surface = {
 
     // ТЪРГОВЦИТЕ — в ПОСТРОЙКИ, пасващи на града (не тараби)
     // блокираме 2x2 клетки (48px) — точно колкото са широки стените, БЕЗ невидими зони
-    for (const vt of ['weapon', 'armor', 'potion', 'jewel', 'exchange']) {
+    for (const vt of shopList) {
       const s = spots[vt];
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(s.x + di, s.y + dj);
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.0, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
     // КУЛАТА на гарнизона: масивен КИЙП върху 2x2 клетки (като къщите)
-    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
-    props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
+    if (hasTower) {
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+      props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
+    }
+    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: идва само в някои дни (в едитора — винаги, за да го наместиш)
+    G.peddlerHere = peddlerToday('mirhold') || !!G.editorOn;
+    if (G.peddlerHere) {
+      props.push({ kind: 'peddler', vtype: 'peddler', x: spots.peddler.x + 0.5, y: spots.peddler.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
+      noProp(spots.peddler.x, spots.peddler.y, 1);
+    }
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
     const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
-    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
-    props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
-    // свещеникът и кутията са премахнати (дизайнерът има друга идея за тях)
-    noProp(ch.x, ch.y + 1, 2);
-    carve(ch.x, ch.y + 2, cx, cy);
+    if (hasChurch) {
+      for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
+      props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
+      // свещеникът и кутията са премахнати (дизайнерът има друга идея за тях)
+      noProp(ch.x, ch.y + 1, 2);
+      carve(ch.x, ch.y + 2, cx, cy);
+    }
     // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
     // ПЛЪТНИ са — героят не минава през скалата на пещерата, нито през камъка
     props.push({ kind: 'portal', dungeon: 'mirhold', x: spots.dungeon.x + 0.5, y: spots.dungeon.y + 0.5, r: 0.7, solid: true });
@@ -3952,10 +3996,10 @@ function genShopStock(vtype) {
   try {
   const def = VENDOR_DEFS[vtype];
   if (vtype === 'jewel') return []; // Мистикът търгува с печати, не със стока
-  const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1;
+  const lvl = vtype === 'peddler' ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[vtype]) || 1);
   // всеки следващ град: ПО-СКЪПА икономика с ПО-ХУБАВИ предмети (нивата на търговците са споделени)
   const cityTier = G.city === 'mirhold' ? 1 : 0;
-  const rare = vtype === 'exchange' ? 1 : 0; // сарафинът: по-редки и по-дълбоки стоки, по-солени цени
+  const rare = vtype === 'peddler' ? 1 : 0; // странникът: по-редки и по-дълбоки стоки, по-солени цени
   const priceMult = (1 + cityTier * 0.35) * (rare ? 1.6 : 1);
   const depthCap = [4, 8, 14, 22, 999][lvl - 1];
   const rarCap = Math.min(4, lvl + (cityTier ? 1 : 0) + rare);
@@ -5155,6 +5199,7 @@ function updateInteract() {
     G.interactHint = { pr: best, txt: 'E — drink (' + price + ' silver, full heal)', price };
   }
   else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
+  else if (best.kind === 'peddler') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS.peddler.name };
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
@@ -5202,7 +5247,7 @@ function doInteract() {
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
-  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse') {
+  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse' || pr.kind === 'peddler') {
     openShop(pr.vtype);
   } else if (pr.kind === 'cityportal') {
     // телепорт между градовете
@@ -5253,7 +5298,7 @@ function openShop(vtype) {
   if (G.shopsDay !== day) { G.shops = {}; G.shopsDay = day; }
   if (!G.shops[shopKey(vtype)]) G.shops[shopKey(vtype)] = genShopStock(vtype);
   G.shopVendor = vtype;
-  G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; // чист старт
+  G.shopScroll = 0; G.selStock = null; G.selItem = null; G.shopDrag = null; G.shopSilver = false; // чист старт
   G.state = 'shop';
   document.body.classList.add('menu');
   Sfx.play('open');
@@ -6521,6 +6566,7 @@ function startSurface(city) {
   G.miniDirty = true;
   // стоката се опреснява при всяко завръщане
   G.shops = {};
+  if (G.peddlerHere) setTimeout(() => toast('A peddler is in town today — rare wares.', '#e8c04a'), 900);
   G.transMsg = G.city === 'mirhold' ? 'MIRHOLD' : 'Camp of the Exiles';
   G.transSub = G.city === 'mirhold' ? 'the last safe crossroads' : 'here the dead take their rest';
   saveProfile();
@@ -7161,9 +7207,10 @@ function drawMinimap() {
     else if (pr.kind === 'chest' && !pr.opened) dot(pr.x, pr.y, '#ffd23b', cell * 1.3);
     else if (pr.kind === 'fountain') dot(pr.x, pr.y, '#4f9cff', cell * 1.3);
     else if (pr.kind === 'stall' || pr.kind === 'shophouse') {
-      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff', exchange: '#d8dee8' };
+      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff' };
       dot(pr.x, pr.y, vc[pr.vtype] || '#ffd23b', cell * 1.8);
     }
+    else if (pr.kind === 'peddler') dot(pr.x, pr.y, '#e8c04a', cell * 1.8); // странстващият търговец
     else if (pr.kind === 'portal') dot(pr.x, pr.y, '#b34fff', cell * 2);
     else if (pr.kind === 'cityportal') dot(pr.x, pr.y, '#5cd6c4', cell * 2);      // хенчстоунът
     else if (pr.kind === 'church') dot(pr.x, pr.y, '#ffd23b', cell * 2);          // църквата
@@ -7689,6 +7736,42 @@ function inventoryDrop(mx, my) {
 }
 
 // ---------- магазин ----------
+function drawSilverScales(zx, zTop, zw, zBot, midX, actBtn) {
+  const S = SCALE, p = G.player;
+
+    // САРАФИНЪТ: кесията със сечено сребро + дневният курс + обмяна
+    const rate = dailyExchangeRate();
+    panel(zx, zTop, zw, zBot - zTop - 24 * S);
+    ctx.font = fontBold(8); ctx.fillStyle = '#d8dee8';
+    ctx.fillText('YOUR HACKSILVER', zx + 8 * S, zTop + 14 * S);
+    ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
+    ctx.fillText('Weight ' + silverWeight(p) + '/' + SILVER_CAP + '   ·   today\'s rate: ' + Math.round(rate * 100) + '%', zx + 8 * S, zTop + 24 * S);
+    // групираме по вид: икона, брой, обща стойност
+    const byKind = {};
+    for (const s of (p.silverBag || [])) { (byKind[s.k] = byKind[s.k] || { n: 0, val: 0, w: 0 }); byKind[s.k].n++; byKind[s.k].val += s.val; byKind[s.k].w += s.w; }
+    let ry = zTop + 32 * S;
+    for (const k in byKind) {
+      const b = byKind[k];
+      blit(ctx, Spr.icons[SILVER_ITEMS[k].icon], zx + 8 * S, ry);
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#e8e4d0';
+      ctx.fillText('×' + b.n + '  ' + SILVER_ITEMS[k].n, zx + 24 * S, ry + 9 * S);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#aab6c8';
+      ctx.fillText(b.val + ' s · ' + b.w + ' wt', zx + zw - 8 * S, ry + 9 * S);
+      ctx.textAlign = 'left';
+      ry += 15 * S;
+      if (ry > zBot - 46 * S) break;
+    }
+    const totalV = silverValue(p), gain = Math.max(1, Math.round(totalV * rate));
+    if (!p.silverBag || !p.silverBag.length) {
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
+      ctx.fillText('The pouch is empty — hacksilver drops in the dungeons.', midX, (zTop + zBot) / 2);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.font = fontBold(7); ctx.fillStyle = '#d8dee8';
+      ctx.fillText('Total: ' + totalV + ' × ' + Math.round(rate * 100) + '% = ' + gain + ' coins', zx + 8 * S, zBot - 32 * S);
+      actBtn('Exchange all — +' + gain + ' s', midX - 55 * S, 110 * S, 'exchange', '#7fd0a0');
+    }
+  }
 function drawShop() {
   const S = SCALE, p = G.player;
   const def = VENDOR_DEFS[G.shopVendor];
@@ -7704,11 +7787,14 @@ function drawShop() {
   const x0 = gm.x0, y0 = gm.y0, pw = gm.pw, ph = gm.ph, cols = gm.cols, gridW = gm.gridW, BORDER = gm.BORDER;
   panel(x0, y0, pw, ph);
 
-  const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1;
+  const isPeddler = G.shopVendor === 'peddler';
+  const canExch = G.shopVendor === 'weapon'; // ОБМЯНАТА на сечено сребро е при ковача
+  if (!canExch) G.shopSilver = false;
+  const lvl = isPeddler ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1);
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#ffd23b';
-  ctx.fillText(def.name + (isMystic ? '' : '  ·  ' + STALL_NAMES[lvl - 1]), x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText(def.name + (isMystic ? '' : isPeddler ? '  ·  passing through' : '  ·  ' + STALL_NAMES[lvl - 1]), x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
@@ -7733,6 +7819,16 @@ function drawShop() {
       ctx.fillText(String(G.meta.seals), ix + 14 * S, iy + 9 * S);
     }
   }
+  // КОВАЧЪТ мери и сеченото сребро: превключвател към кантара
+  if (canExch) {
+    const bw = 74 * S, bx3 = x0 + 10 * S, by3 = y0 + 26 * S;
+    panel(bx3, by3, bw, 12 * S);
+    strokeRect(bx3, by3, bw, 12 * S, G.shopSilver ? '#7fd0a0' : '#3a4456', S);
+    blit(ctx, Spr.icons.sv_bag, bx3 + 3 * S, by3 + 1 * S);
+    ctx.font = fontBold(6); ctx.fillStyle = G.shopSilver ? '#7fd0a0' : '#a8b2c4';
+    ctx.fillText(G.shopSilver ? 'BACK TO WARES' : 'WEIGH HACKSILVER', bx3 + 17 * S, by3 + 8.5 * S);
+    UI.shopActRects.push({ x: bx3, y: by3, w: bw, h: 12 * S, act: 'silvertab' });
+  }
   // ✕ за затваряне (важно за тъч — там няма E/ESC)
   const cxr = { x: x0 + pw - 22 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -7746,14 +7842,14 @@ function drawShop() {
   // === ЛЯВА КОЛОНА: плъзгащ се списък на търговеца (на мястото на екипировката/статистиките) ===
   const rowW = 128 * S, rowH = 18 * S, rowStride = rowH + 2 * S;
   const listX = x0 + 8 * S;
-  const listTop = y0 + 34 * S, listBottom = y0 + ph - 8 * S;
+  const listTop = y0 + (canExch ? 50 : 34) * S, listBottom = y0 + ph - 8 * S;
   ctx.font = fontBold(6.5);
   ctx.fillStyle = isMystic ? '#c84fff' : '#a8b2c4';
-  ctx.fillText(isMystic ? 'SEALS & POTIONS (tap to pick)' : 'WARES (tap to pick)', listX, y0 + 30 * S);
+  ctx.fillText(isMystic ? 'SEALS & POTIONS (tap to pick)' : 'WARES (tap to pick)', listX, y0 + (canExch ? 46 : 30) * S);
   const offers = isMystic ? mysticOffers() : null;
   const ownedP = isMystic ? POTION_KEYS.filter(k => p.potionsOwned && p.potionsOwned[k]) : null;
   const nRows = isMystic ? ((offers.length || 1) + 1 + ownedP.length)
-                         : ((stock.length || 1) + (lvl < 5 ? 1 : 0));
+                         : ((stock.length || 1) + (lvl < 5 && !isPeddler ? 1 : 0));
   const maxScroll = Math.max(0, nRows * rowStride - (listBottom - listTop));
   G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
   UI.shopListRect = { x: x0 + 6 * S, y: listTop, w: rowW + 8 * S, h: listBottom - listTop, maxScroll };
@@ -7844,8 +7940,8 @@ function drawShop() {
       if (rowVisible()) { ctx.fillStyle = '#5a677f'; ctx.font = fontPx(6.5); ctx.fillText('Sold out for today.', listX, ry + 10 * S); }
       ry += rowStride;
     }
-    // ред за надграждане на сергията (скролва заедно със списъка)
-    if (lvl < 5) {
+    // ред за надграждане на сергията (скролва заедно със списъка) — не и при странника
+    if (lvl < 5 && !isPeddler) {
       if (rowVisible()) {
         const cost = VENDOR_UP_COST[lvl];
         const hovU = G.mouse.x >= listX && G.mouse.x < listX + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
@@ -7948,7 +8044,9 @@ function drawShop() {
     if (it.slot === 'ring') return (p.equip.ring && p.equip.ring2) ? p.equip.ring : (p.equip.ring || p.equip.ring2);
     return p.equip[it.slot] || null;
   };
-  if (G.selStock) {
+  if (G.shopSilver && canExch) {
+    drawSilverScales(zx, zTop, zw, zBot, midX, actBtn);
+  } else if (G.selStock) {
     const e = G.selStock;
     if (e.item) {
       // стока-предмет: носеният ГОРЕ, новият ДОЛУ (с cmp редове)
@@ -8018,45 +8116,13 @@ function drawShop() {
         }
       }
     }
-  } else if (G.shopVendor === 'exchange') {
-    // САРАФИНЪТ: кесията със сечено сребро + дневният курс + обмяна
-    const rate = dailyExchangeRate();
-    panel(zx, zTop, zw, zBot - zTop - 24 * S);
-    ctx.font = fontBold(8); ctx.fillStyle = '#d8dee8';
-    ctx.fillText('YOUR HACKSILVER', zx + 8 * S, zTop + 14 * S);
-    ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
-    ctx.fillText('Weight ' + silverWeight(p) + '/' + SILVER_CAP + '   ·   today\'s rate: ' + Math.round(rate * 100) + '%', zx + 8 * S, zTop + 24 * S);
-    // групираме по вид: икона, брой, обща стойност
-    const byKind = {};
-    for (const s of (p.silverBag || [])) { (byKind[s.k] = byKind[s.k] || { n: 0, val: 0, w: 0 }); byKind[s.k].n++; byKind[s.k].val += s.val; byKind[s.k].w += s.w; }
-    let ry = zTop + 32 * S;
-    for (const k in byKind) {
-      const b = byKind[k];
-      blit(ctx, Spr.icons[SILVER_ITEMS[k].icon], zx + 8 * S, ry);
-      ctx.font = fontPx(6.5); ctx.fillStyle = '#e8e4d0';
-      ctx.fillText('×' + b.n + '  ' + SILVER_ITEMS[k].n, zx + 24 * S, ry + 9 * S);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#aab6c8';
-      ctx.fillText(b.val + ' s · ' + b.w + ' wt', zx + zw - 8 * S, ry + 9 * S);
-      ctx.textAlign = 'left';
-      ry += 15 * S;
-      if (ry > zBot - 46 * S) break;
-    }
-    const totalV = silverValue(p), gain = Math.max(1, Math.round(totalV * rate));
-    if (!p.silverBag || !p.silverBag.length) {
-      ctx.font = fontPx(6.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
-      ctx.fillText('The pouch is empty — hacksilver drops in the dungeons.', midX, (zTop + zBot) / 2);
-      ctx.textAlign = 'left';
-    } else {
-      ctx.font = fontBold(7); ctx.fillStyle = '#d8dee8';
-      ctx.fillText('Total: ' + totalV + ' × ' + Math.round(rate * 100) + '% = ' + gain + ' coins', zx + 8 * S, zBot - 32 * S);
-      actBtn('Exchange all — +' + gain + ' s', midX - 55 * S, 110 * S, 'exchange', '#7fd0a0');
-    }
   } else {
     // нищо избрано — подсказка по средата
     ctx.font = fontPx(7); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
     ctx.fillText(isMystic ? 'Pick an item, a seal power or a potion.' : 'Pick a ware on the left or your item on the right.', midX, (zTop + zBot) / 2);
     ctx.textAlign = 'left';
   }
+
 
   // ПОТВЪРЖДЕНИЕ за всяка покупка/ъпгрейд/отключване (и омагьосването)
   if (G.shopConfirm) {
@@ -8133,6 +8199,7 @@ function shopClick(mx, my) {
   for (const r of UI.shopActRects || []) if (hit(r)) {
     const sit = G.selItem;
     if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
+    if (r.act === 'silvertab') { G.shopSilver = !G.shopSilver; G.selStock = null; G.selItem = null; Sfx.play('open'); return; }
     if (r.act === 'exchange') { G.shopConfirm = { kind: 'exchange' }; return; }
     if (r.act === 'sell') { if (sit) G.shopConfirm = { kind: 'sell', item: sit }; } // цената се вижда в потвърждението
     else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }
@@ -10971,6 +11038,7 @@ function renderWorld() {
       else spr = Spr.surf.stallTiers[pr.vtype][clamp(((G.meta.vendorLvl && G.meta.vendorLvl[pr.vtype]) || 1) - 1, 0, 4)];
     }
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
+    else if (pr.kind === 'peddler') spr = Spr.surf.vendors.peddler; // странстващият търговец
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал.
@@ -11470,6 +11538,7 @@ const BLD_DEFS = {
   fence2:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -11571,6 +11640,7 @@ function saveCityLayout() {
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
     else if (pr.kind === 'wallseg') (L.walls = L.walls || []).push({ x: bx, y: by });
     else if (pr.kind === 'gatetower') (L.gates = L.gates || []).push({ x: bx, y: by });
+    else if (pr.kind === 'peddler') L.peddler = { x: bx, y: by };
     else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
     else if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: bx, y: by });
@@ -11893,7 +11963,6 @@ function drawCityEditOverlay() {
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
       ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
-      ['b_shop_exchange', Spr.surf.shophouses.exchange],
       ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
       ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
     );
@@ -12134,7 +12203,7 @@ function spriteByKey(key) {
     menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],
     house_0_0: S2.houses[0], house_0_1: S2.houses[1], house_1_0: S2.houses2[0], house_1_1: S2.houses2[1],
     shop_weapon: S2.shophouses.weapon, shop_armor: S2.shophouses.armor,
-    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel, shop_exchange: S2.shophouses.exchange,
+    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel,
   };
   return map[key] || null;
 }

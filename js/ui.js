@@ -596,9 +596,10 @@ function drawMinimap() {
     else if (pr.kind === 'chest' && !pr.opened) dot(pr.x, pr.y, '#ffd23b', cell * 1.3);
     else if (pr.kind === 'fountain') dot(pr.x, pr.y, '#4f9cff', cell * 1.3);
     else if (pr.kind === 'stall' || pr.kind === 'shophouse') {
-      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff', exchange: '#d8dee8' };
+      const vc = { weapon: '#d84a5a', armor: '#4f9cff', potion: '#5fd97a', jewel: '#b34fff' };
       dot(pr.x, pr.y, vc[pr.vtype] || '#ffd23b', cell * 1.8);
     }
+    else if (pr.kind === 'peddler') dot(pr.x, pr.y, '#e8c04a', cell * 1.8); // странстващият търговец
     else if (pr.kind === 'portal') dot(pr.x, pr.y, '#b34fff', cell * 2);
     else if (pr.kind === 'cityportal') dot(pr.x, pr.y, '#5cd6c4', cell * 2);      // хенчстоунът
     else if (pr.kind === 'church') dot(pr.x, pr.y, '#ffd23b', cell * 2);          // църквата
@@ -1124,6 +1125,42 @@ function inventoryDrop(mx, my) {
 }
 
 // ---------- магазин ----------
+function drawSilverScales(zx, zTop, zw, zBot, midX, actBtn) {
+  const S = SCALE, p = G.player;
+
+    // САРАФИНЪТ: кесията със сечено сребро + дневният курс + обмяна
+    const rate = dailyExchangeRate();
+    panel(zx, zTop, zw, zBot - zTop - 24 * S);
+    ctx.font = fontBold(8); ctx.fillStyle = '#d8dee8';
+    ctx.fillText('YOUR HACKSILVER', zx + 8 * S, zTop + 14 * S);
+    ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
+    ctx.fillText('Weight ' + silverWeight(p) + '/' + SILVER_CAP + '   ·   today\'s rate: ' + Math.round(rate * 100) + '%', zx + 8 * S, zTop + 24 * S);
+    // групираме по вид: икона, брой, обща стойност
+    const byKind = {};
+    for (const s of (p.silverBag || [])) { (byKind[s.k] = byKind[s.k] || { n: 0, val: 0, w: 0 }); byKind[s.k].n++; byKind[s.k].val += s.val; byKind[s.k].w += s.w; }
+    let ry = zTop + 32 * S;
+    for (const k in byKind) {
+      const b = byKind[k];
+      blit(ctx, Spr.icons[SILVER_ITEMS[k].icon], zx + 8 * S, ry);
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#e8e4d0';
+      ctx.fillText('×' + b.n + '  ' + SILVER_ITEMS[k].n, zx + 24 * S, ry + 9 * S);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#aab6c8';
+      ctx.fillText(b.val + ' s · ' + b.w + ' wt', zx + zw - 8 * S, ry + 9 * S);
+      ctx.textAlign = 'left';
+      ry += 15 * S;
+      if (ry > zBot - 46 * S) break;
+    }
+    const totalV = silverValue(p), gain = Math.max(1, Math.round(totalV * rate));
+    if (!p.silverBag || !p.silverBag.length) {
+      ctx.font = fontPx(6.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
+      ctx.fillText('The pouch is empty — hacksilver drops in the dungeons.', midX, (zTop + zBot) / 2);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.font = fontBold(7); ctx.fillStyle = '#d8dee8';
+      ctx.fillText('Total: ' + totalV + ' × ' + Math.round(rate * 100) + '% = ' + gain + ' coins', zx + 8 * S, zBot - 32 * S);
+      actBtn('Exchange all — +' + gain + ' s', midX - 55 * S, 110 * S, 'exchange', '#7fd0a0');
+    }
+  }
 function drawShop() {
   const S = SCALE, p = G.player;
   const def = VENDOR_DEFS[G.shopVendor];
@@ -1139,11 +1176,14 @@ function drawShop() {
   const x0 = gm.x0, y0 = gm.y0, pw = gm.pw, ph = gm.ph, cols = gm.cols, gridW = gm.gridW, BORDER = gm.BORDER;
   panel(x0, y0, pw, ph);
 
-  const lvl = (G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1;
+  const isPeddler = G.shopVendor === 'peddler';
+  const canExch = G.shopVendor === 'weapon'; // ОБМЯНАТА на сечено сребро е при ковача
+  if (!canExch) G.shopSilver = false;
+  const lvl = isPeddler ? PEDDLER_LVL : ((G.meta.vendorLvl && G.meta.vendorLvl[G.shopVendor]) || 1);
   ctx.textAlign = 'left';
   ctx.font = fontBold(9);
   ctx.fillStyle = '#ffd23b';
-  ctx.fillText(def.name + (isMystic ? '' : '  ·  ' + STALL_NAMES[lvl - 1]), x0 + 10 * S, y0 + 14 * S);
+  ctx.fillText(def.name + (isMystic ? '' : isPeddler ? '  ·  passing through' : '  ·  ' + STALL_NAMES[lvl - 1]), x0 + 10 * S, y0 + 14 * S);
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('"' + def.flavor + '"   |   E / ESC — close', x0 + 10 * S, y0 + 23 * S);
@@ -1168,6 +1208,16 @@ function drawShop() {
       ctx.fillText(String(G.meta.seals), ix + 14 * S, iy + 9 * S);
     }
   }
+  // КОВАЧЪТ мери и сеченото сребро: превключвател към кантара
+  if (canExch) {
+    const bw = 74 * S, bx3 = x0 + 10 * S, by3 = y0 + 26 * S;
+    panel(bx3, by3, bw, 12 * S);
+    strokeRect(bx3, by3, bw, 12 * S, G.shopSilver ? '#7fd0a0' : '#3a4456', S);
+    blit(ctx, Spr.icons.sv_bag, bx3 + 3 * S, by3 + 1 * S);
+    ctx.font = fontBold(6); ctx.fillStyle = G.shopSilver ? '#7fd0a0' : '#a8b2c4';
+    ctx.fillText(G.shopSilver ? 'BACK TO WARES' : 'WEIGH HACKSILVER', bx3 + 17 * S, by3 + 8.5 * S);
+    UI.shopActRects.push({ x: bx3, y: by3, w: bw, h: 12 * S, act: 'silvertab' });
+  }
   // ✕ за затваряне (важно за тъч — там няма E/ESC)
   const cxr = { x: x0 + pw - 22 * S, y: y0 + 4 * S, w: 16 * S, h: 16 * S };
   panel(cxr.x, cxr.y, cxr.w, cxr.h);
@@ -1181,14 +1231,14 @@ function drawShop() {
   // === ЛЯВА КОЛОНА: плъзгащ се списък на търговеца (на мястото на екипировката/статистиките) ===
   const rowW = 128 * S, rowH = 18 * S, rowStride = rowH + 2 * S;
   const listX = x0 + 8 * S;
-  const listTop = y0 + 34 * S, listBottom = y0 + ph - 8 * S;
+  const listTop = y0 + (canExch ? 50 : 34) * S, listBottom = y0 + ph - 8 * S;
   ctx.font = fontBold(6.5);
   ctx.fillStyle = isMystic ? '#c84fff' : '#a8b2c4';
-  ctx.fillText(isMystic ? 'SEALS & POTIONS (tap to pick)' : 'WARES (tap to pick)', listX, y0 + 30 * S);
+  ctx.fillText(isMystic ? 'SEALS & POTIONS (tap to pick)' : 'WARES (tap to pick)', listX, y0 + (canExch ? 46 : 30) * S);
   const offers = isMystic ? mysticOffers() : null;
   const ownedP = isMystic ? POTION_KEYS.filter(k => p.potionsOwned && p.potionsOwned[k]) : null;
   const nRows = isMystic ? ((offers.length || 1) + 1 + ownedP.length)
-                         : ((stock.length || 1) + (lvl < 5 ? 1 : 0));
+                         : ((stock.length || 1) + (lvl < 5 && !isPeddler ? 1 : 0));
   const maxScroll = Math.max(0, nRows * rowStride - (listBottom - listTop));
   G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
   UI.shopListRect = { x: x0 + 6 * S, y: listTop, w: rowW + 8 * S, h: listBottom - listTop, maxScroll };
@@ -1279,8 +1329,8 @@ function drawShop() {
       if (rowVisible()) { ctx.fillStyle = '#5a677f'; ctx.font = fontPx(6.5); ctx.fillText('Sold out for today.', listX, ry + 10 * S); }
       ry += rowStride;
     }
-    // ред за надграждане на сергията (скролва заедно със списъка)
-    if (lvl < 5) {
+    // ред за надграждане на сергията (скролва заедно със списъка) — не и при странника
+    if (lvl < 5 && !isPeddler) {
       if (rowVisible()) {
         const cost = VENDOR_UP_COST[lvl];
         const hovU = G.mouse.x >= listX && G.mouse.x < listX + rowW && G.mouse.y >= ry && G.mouse.y < ry + rowH;
@@ -1383,7 +1433,9 @@ function drawShop() {
     if (it.slot === 'ring') return (p.equip.ring && p.equip.ring2) ? p.equip.ring : (p.equip.ring || p.equip.ring2);
     return p.equip[it.slot] || null;
   };
-  if (G.selStock) {
+  if (G.shopSilver && canExch) {
+    drawSilverScales(zx, zTop, zw, zBot, midX, actBtn);
+  } else if (G.selStock) {
     const e = G.selStock;
     if (e.item) {
       // стока-предмет: носеният ГОРЕ, новият ДОЛУ (с cmp редове)
@@ -1453,45 +1505,13 @@ function drawShop() {
         }
       }
     }
-  } else if (G.shopVendor === 'exchange') {
-    // САРАФИНЪТ: кесията със сечено сребро + дневният курс + обмяна
-    const rate = dailyExchangeRate();
-    panel(zx, zTop, zw, zBot - zTop - 24 * S);
-    ctx.font = fontBold(8); ctx.fillStyle = '#d8dee8';
-    ctx.fillText('YOUR HACKSILVER', zx + 8 * S, zTop + 14 * S);
-    ctx.font = fontPx(6); ctx.fillStyle = '#7d8899';
-    ctx.fillText('Weight ' + silverWeight(p) + '/' + SILVER_CAP + '   ·   today\'s rate: ' + Math.round(rate * 100) + '%', zx + 8 * S, zTop + 24 * S);
-    // групираме по вид: икона, брой, обща стойност
-    const byKind = {};
-    for (const s of (p.silverBag || [])) { (byKind[s.k] = byKind[s.k] || { n: 0, val: 0, w: 0 }); byKind[s.k].n++; byKind[s.k].val += s.val; byKind[s.k].w += s.w; }
-    let ry = zTop + 32 * S;
-    for (const k in byKind) {
-      const b = byKind[k];
-      blit(ctx, Spr.icons[SILVER_ITEMS[k].icon], zx + 8 * S, ry);
-      ctx.font = fontPx(6.5); ctx.fillStyle = '#e8e4d0';
-      ctx.fillText('×' + b.n + '  ' + SILVER_ITEMS[k].n, zx + 24 * S, ry + 9 * S);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#aab6c8';
-      ctx.fillText(b.val + ' s · ' + b.w + ' wt', zx + zw - 8 * S, ry + 9 * S);
-      ctx.textAlign = 'left';
-      ry += 15 * S;
-      if (ry > zBot - 46 * S) break;
-    }
-    const totalV = silverValue(p), gain = Math.max(1, Math.round(totalV * rate));
-    if (!p.silverBag || !p.silverBag.length) {
-      ctx.font = fontPx(6.5); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
-      ctx.fillText('The pouch is empty — hacksilver drops in the dungeons.', midX, (zTop + zBot) / 2);
-      ctx.textAlign = 'left';
-    } else {
-      ctx.font = fontBold(7); ctx.fillStyle = '#d8dee8';
-      ctx.fillText('Total: ' + totalV + ' × ' + Math.round(rate * 100) + '% = ' + gain + ' coins', zx + 8 * S, zBot - 32 * S);
-      actBtn('Exchange all — +' + gain + ' s', midX - 55 * S, 110 * S, 'exchange', '#7fd0a0');
-    }
   } else {
     // нищо избрано — подсказка по средата
     ctx.font = fontPx(7); ctx.fillStyle = '#5a677f'; ctx.textAlign = 'center';
     ctx.fillText(isMystic ? 'Pick an item, a seal power or a potion.' : 'Pick a ware on the left or your item on the right.', midX, (zTop + zBot) / 2);
     ctx.textAlign = 'left';
   }
+
 
   // ПОТВЪРЖДЕНИЕ за всяка покупка/ъпгрейд/отключване (и омагьосването)
   if (G.shopConfirm) {
@@ -1568,6 +1588,7 @@ function shopClick(mx, my) {
   for (const r of UI.shopActRects || []) if (hit(r)) {
     const sit = G.selItem;
     if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
+    if (r.act === 'silvertab') { G.shopSilver = !G.shopSilver; G.selStock = null; G.selItem = null; Sfx.play('open'); return; }
     if (r.act === 'exchange') { G.shopConfirm = { kind: 'exchange' }; return; }
     if (r.act === 'sell') { if (sit) G.shopConfirm = { kind: 'sell', item: sit }; } // цената се вижда в потвърждението
     else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }

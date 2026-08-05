@@ -929,6 +929,7 @@ function renderWorld() {
       else spr = Spr.surf.stallTiers[pr.vtype][clamp(((G.meta.vendorLvl && G.meta.vendorLvl[pr.vtype]) || 1) - 1, 0, 4)];
     }
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
+    else if (pr.kind === 'peddler') spr = Spr.surf.vendors.peddler; // странстващият търговец
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал.
@@ -1428,6 +1429,7 @@ const BLD_DEFS = {
   fence2:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -1529,6 +1531,7 @@ function saveCityLayout() {
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
     else if (pr.kind === 'wallseg') (L.walls = L.walls || []).push({ x: bx, y: by });
     else if (pr.kind === 'gatetower') (L.gates = L.gates || []).push({ x: bx, y: by });
+    else if (pr.kind === 'peddler') L.peddler = { x: bx, y: by };
     else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
     else if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: bx, y: by });
@@ -1851,7 +1854,6 @@ function drawCityEditOverlay() {
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
       ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
-      ['b_shop_exchange', Spr.surf.shophouses.exchange],
       ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
       ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
     );
@@ -2092,7 +2094,7 @@ function spriteByKey(key) {
     menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],
     house_0_0: S2.houses[0], house_0_1: S2.houses[1], house_1_0: S2.houses2[0], house_1_1: S2.houses2[1],
     shop_weapon: S2.shophouses.weapon, shop_armor: S2.shophouses.armor,
-    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel, shop_exchange: S2.shophouses.exchange,
+    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel,
   };
   return map[key] || null;
 }

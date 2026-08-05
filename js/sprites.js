@@ -1608,6 +1608,22 @@ function genVendor(type) {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
+function genPeddler() {
+  const g = mk(16, 20);
+  const skin = '#d9a878';
+  rc(g, 11, 6, 5, 8, '#5a4a32'); rc(g, 12, 7, 3, 5, '#6b5a3e'); // вързопът на гърба
+  px(g, 11, 6, '#3d3122'); px(g, 15, 13, '#3d3122');
+  rc(g, 4, 8, 8, 11, '#4a3f2e'); rc(g, 4, 8, 8, 2, '#5c503b'); // пътен плащ
+  rc(g, 5, 1, 6, 6, '#5c503b');                                 // качулка
+  rc(g, 6, 4, 4, 3, skin);
+  px(g, 6, 5, '#1a1d26'); px(g, 9, 5, '#1a1d26');
+  rc(g, 3, 2, 1, 16, '#6b5636'); px(g, 3, 1, '#8a7048');        // тоягата
+  rc(g, 6, 12, 4, 1, '#8a7048');                                // колан
+  px(g, 10, 13, '#c6c9d1'); px(g, 10, 14, '#9aa0ad');           // сребърна кесия
+  rc(g, 5, 18, 2, 2, '#3a3040'); rc(g, 9, 18, 2, 2, '#3a3040');
+  outlineSprite(g, '#10141c');
+  return g.canvas;
+}
 function genPortal() {
   const frames = [];
   for (let f = 0; f < 3; f++) {
@@ -2350,6 +2366,7 @@ function initSurfaceSprites() {
       armor: genVendor('armor'),
       potion: genVendor('potion'),
       jewel: genVendor('jewel'),
+      peddler: genPeddler(), // странстващият търговец
     },
     portal: genPortal(),
     // МИРХОЛД (2.5D изометрични сгради)
@@ -2360,7 +2377,6 @@ function initSurfaceSprites() {
       armor: genMirShopHouse('armor', R),
       potion: genMirShopHouse('potion', R),
       jewel: genMirShopHouse('jewel', R),
-      exchange: genMirShopHouse('exchange', R),
     },
     exchange: genExchangeStand(),
     tree2: genTree2(R),
