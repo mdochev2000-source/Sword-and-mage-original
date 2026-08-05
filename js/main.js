@@ -1773,7 +1773,15 @@ function drawCityEditOverlay() {
     const code = JSON.stringify(saveCityLayout());
     try { navigator.clipboard.writeText(code); } catch (e) {}
     console.log('MIRHOLD_LAYOUT =', code);
-    toast('Layout copied — send it to Claude to bake it into the game.', '#7fd0a0');
+    // и като ФАЙЛ: дългите кодове (с PNG рисунки) се развалят при копиране през чат
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([code], { type: 'application/json' }));
+      a.download = 'mirhold_layout.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (e) {}
+    toast('Layout copied + saved as a FILE — send the file to Claude.', '#7fd0a0');
   });
   btn('RESET', CW / 2 - 8 * S, 44 * S, '#ff6b7a', () => {
     try { localStorage.removeItem('sm_layout_mirhold'); } catch (e) {}
@@ -2142,6 +2150,13 @@ function pixSaveOverride() {
     if (G.customDefs && G.customDefs[id]) { try { G.customDefs[id].png = e.spr.toDataURL('image/png'); saveCityLayout(); } catch (err) {} }
     return;
   }
+  // изцяло ИЗТРИТ базов спрайт не се записва — само би направил сградата невидима
+  try {
+    const dd = e.spr.getContext('2d').getImageData(0, 0, e.spr.width, e.spr.height).data;
+    let opq = false;
+    for (let i = 3; i < dd.length; i += 4) if (dd[i] > 0) { opq = true; break; }
+    if (!opq) { toast('Fully erased — not saved. Use RST or UND to bring it back.', '#ff6b7a'); return; }
+  } catch (err) {}
   G.spriteOverrides = G.spriteOverrides || {};
   try { G.spriteOverrides[e.key] = e.spr.toDataURL('image/png'); saveCityLayout(); } catch (err) {}
 }
@@ -2413,19 +2428,34 @@ function applySpriteOverrides() {
   let loc = null;
   try { const L = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null'); if (L && L.sprites) loc = L.sprites; } catch (e) {}
   const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
-  const merged = Object.assign({}, baked, loc || {});
   G.spriteOverrides = Object.assign({}, loc || {});
-  for (const key in merged) {
+  const applyOne = (k, src, isLocal) => {
     const img = new Image();
-    img.onload = (function (k, im) {
-      return function () {
-        const cv3 = spriteByKey(k);
-        if (!cv3 || cv3.width !== im.width || cv3.height !== im.height) return;
-        const c = cv3.getContext('2d');
-        c.clearRect(0, 0, cv3.width, cv3.height);
-        c.drawImage(im, 0, 0);
-      };
-    })(key, img);
-    img.src = merged[key];
-  }
+    img.onload = function () {
+      const cv3 = spriteByKey(k);
+      if (!cv3 || cv3.width !== img.width || cv3.height !== img.height) return;
+      // ПРАЗНА (или повредена) корекция не се прилага — тя прави сградата
+      // невидима („прозрачната църква“). Локална такава се чисти завинаги,
+      // а отдолу излиза вградената рисунка.
+      const t = document.createElement('canvas'); t.width = img.width; t.height = img.height;
+      const tg = t.getContext('2d'); tg.drawImage(img, 0, 0);
+      const dd = tg.getImageData(0, 0, t.width, t.height).data;
+      let opaque = false;
+      for (let i = 3; i < dd.length; i += 4) if (dd[i] > 0) { opaque = true; break; }
+      if (!opaque) {
+        if (isLocal) {
+          delete G.spriteOverrides[k];
+          try { const L2 = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null'); if (L2 && L2.sprites) { delete L2.sprites[k]; localStorage.setItem('sm_layout_mirhold', JSON.stringify(L2)); } } catch (e2) {}
+          if (baked[k]) applyOne(k, baked[k], false);
+        }
+        return;
+      }
+      const c = cv3.getContext('2d');
+      c.clearRect(0, 0, cv3.width, cv3.height);
+      c.drawImage(img, 0, 0);
+    };
+    img.src = src;
+  };
+  for (const k in baked) if (!loc || !loc[k]) applyOne(k, baked[k], false);
+  if (loc) for (const k in loc) applyOne(k, loc[k], true);
 }
