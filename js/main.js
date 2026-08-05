@@ -1427,6 +1427,7 @@ const BLD_DEFS = {
   rock3:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence2:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -1444,6 +1445,7 @@ const DECOR_KINDS = {
   rock3:    { r: 0.45, solid: true },
   fence2:   { r: 0.35, solid: true },
   fence3:   { r: 0.35, solid: true },
+  puddle:   { r: 0, solid: false, flat: true }, // ляга НА земята, под всичко
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -1607,7 +1609,7 @@ function placeDecorAt(cellX, cellY, loud) {
     if (clash && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
   }
   const d = DECOR_KINDS[kind];
-  G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
+  G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid, flat: !!d.flat });
   if (FENCE_SET[kind] !== undefined) G.fenceDirty = true;
   G.editDecorDirty = true;
   if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
@@ -1841,6 +1843,7 @@ function drawCityEditOverlay() {
       ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
+      ['puddle', Spr.surf.puddle],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     items.push(
@@ -2082,6 +2085,7 @@ function spriteByKey(key) {
     tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
     rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
     bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
+    puddle: S2.puddle,
     // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,

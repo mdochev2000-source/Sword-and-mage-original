@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 20:33 UTC";
+window.__BUILD__ = "2026-08-05 20:44 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -3834,8 +3834,10 @@ const Surface = {
       placed++;
     }
     } // край на автоматичното разположение (без ръчна подредба)
-    // ЛОКВИ — по калните пътища и из града
-    for (let t = 0; t < 30; t++) {
+    // ЛОКВИ — по калните пътища и из града (само докато дизайнерът не е
+    // записал свои: първият запис ги замразява като редактируеми елементи)
+    const layHasPud = LAY && Array.isArray(LAY.decor) && LAY.decor.some(d2 => d2.k === 'puddle');
+    if (!layHasPud) for (let t = 0; t < 30; t++) {
       const x = ri(B + 1, w - B - 2), y = ri(B + 1, h - B - 2);
       const idx = y * w + x;
       if (cells[idx] !== FLOOR || used.has(idx)) continue;
@@ -3849,7 +3851,7 @@ const Surface = {
     // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
     // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
     if (LAY && Array.isArray(LAY.decor)) {
-      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35 };
+      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
       for (const d2 of LAY.decor) {
         if (d2.k === 'custom') {
           const cd = G.customDefs[d2.id];
@@ -3857,7 +3859,7 @@ const Surface = {
           props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
           continue;
         }
-        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' });
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
       }
     } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
@@ -11456,6 +11458,7 @@ const BLD_DEFS = {
   rock3:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence2:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -11473,6 +11476,7 @@ const DECOR_KINDS = {
   rock3:    { r: 0.45, solid: true },
   fence2:   { r: 0.35, solid: true },
   fence3:   { r: 0.35, solid: true },
+  puddle:   { r: 0, solid: false, flat: true }, // ляга НА земята, под всичко
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -11636,7 +11640,7 @@ function placeDecorAt(cellX, cellY, loud) {
     if (clash && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
   }
   const d = DECOR_KINDS[kind];
-  G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
+  G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid, flat: !!d.flat });
   if (FENCE_SET[kind] !== undefined) G.fenceDirty = true;
   G.editDecorDirty = true;
   if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
@@ -11870,6 +11874,7 @@ function drawCityEditOverlay() {
       ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
+      ['puddle', Spr.surf.puddle],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     items.push(
@@ -12111,6 +12116,7 @@ function spriteByKey(key) {
     tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
     rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
     bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
+    puddle: S2.puddle,
     // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,

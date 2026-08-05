@@ -340,8 +340,10 @@ const Surface = {
       placed++;
     }
     } // край на автоматичното разположение (без ръчна подредба)
-    // ЛОКВИ — по калните пътища и из града
-    for (let t = 0; t < 30; t++) {
+    // ЛОКВИ — по калните пътища и из града (само докато дизайнерът не е
+    // записал свои: първият запис ги замразява като редактируеми елементи)
+    const layHasPud = LAY && Array.isArray(LAY.decor) && LAY.decor.some(d2 => d2.k === 'puddle');
+    if (!layHasPud) for (let t = 0; t < 30; t++) {
       const x = ri(B + 1, w - B - 2), y = ri(B + 1, h - B - 2);
       const idx = y * w + x;
       if (cells[idx] !== FLOOR || used.has(idx)) continue;
@@ -355,7 +357,7 @@ const Surface = {
     // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
     // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
     if (LAY && Array.isArray(LAY.decor)) {
-      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35 };
+      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
       for (const d2 of LAY.decor) {
         if (d2.k === 'custom') {
           const cd = G.customDefs[d2.id];
@@ -363,7 +365,7 @@ const Surface = {
           props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
           continue;
         }
-        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' });
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
       }
     } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
