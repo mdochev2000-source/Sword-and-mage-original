@@ -2091,6 +2091,10 @@ function spriteByKey(key) {
     rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
     bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
     puddle: S2.puddle,
+    // хората: странстващият търговец и продавачите зад сергиите
+    peddler: S2.vendors.peddler,
+    vendor_weapon: S2.vendors.weapon, vendor_armor: S2.vendors.armor,
+    vendor_potion: S2.vendors.potion, vendor_jewel: S2.vendors.jewel,
     // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,
@@ -2110,6 +2114,8 @@ function propSpriteKey(pr) {
     case 'cityportal': return 'hearth';
     case 'menhir': return 'menhir' + ((pr.v || 0) % 3);
     case 'custom': return 'cust_' + pr.cid;
+    case 'peddler': return 'peddler';
+    case 'vendor': return 'vendor_' + pr.vtype;
     default: return spriteByKey(pr.kind) ? pr.kind : null;
   }
 }
