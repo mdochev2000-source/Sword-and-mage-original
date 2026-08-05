@@ -1011,7 +1011,7 @@ function renderWorld() {
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
       const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната е по-висока
       const chx = sx + (pr.kind === 'house' ? 14 : -10) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? (h2 ? 46 : 34) : 38) * S;
+      const base = sy - (pr.kind === 'house' ? (h2 ? 44 : 32) : 38) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);

@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 09:11 UTC";
+window.__BUILD__ = "2026-08-05 09:29 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1918,17 +1918,12 @@ function genMirHouse(R, v, twoStory) {
     iso2Win(g, oy, 22, 5, 5, 4, false);
     iso2Win(g, oy, 38, 5, 5, 4, true);
   }
-  // комин: каменен, слят със ската — основата следва наклона на покрива
-  for (let cxx = 0; cxx < 4; cxx++) {
-    const bot = 24 - (cxx >> 1);
-    for (let y = 10; y <= bot; y++) {
-      let col = cxx === 0 ? '#6d7280' : cxx === 3 ? '#4a4e56' : '#565a62';
-      if (y % 4 === 1 && y > 10) col = '#3a3e46';
-      px(g, 44 + cxx, y, col);
-    }
-  }
-  rc(g, 43, 9, 6, 2, '#4a4e56'); rc(g, 43, 9, 6, 1, '#6d7280'); // капак-плоча
-  rc(g, 45, 8, 2, 1, '#171310'); px(g, 44, 8, '#2b2f36');       // отворът и саждите
+  // комин: малък, ЗАД билото — вижда се само върхът, шевът е скрит от покрива
+  rc(g, 44, 14, 4, 7, '#565a62');                                // тялото (до билото на y=20)
+  rc(g, 44, 14, 1, 7, '#6d7280'); rc(g, 47, 14, 1, 7, '#4a4e56');
+  px(g, 45, 16, '#3a3e46'); px(g, 46, 18, '#3a3e46');            // фуги
+  rc(g, 43, 13, 6, 2, '#4a4e56'); rc(g, 43, 13, 6, 1, '#6d7280'); // капак-плоча
+  rc(g, 45, 12, 2, 1, '#171310'); px(g, 44, 12, '#2b2f36');      // отворът и саждите
   if (v) for (let x = 1; x < 31; x += 3) px(g, x + 1, iso2EdgeY(oy, x) + 1, pal.rB); // рошав край на сламата
   outlineSprite(g, '#10131c');
   return g.canvas;
@@ -2051,10 +2046,12 @@ function genMirTower(R) {
   for (const [mx, my] of [[14, oy - 4], [4, oy + 1], [24, oy + 1], [0, oy + 6], [28, oy + 6]]) {
     rc(g, mx, my, 4, 6, st); px(g, mx, my, stL); px(g, mx + 3, my + 1, stD);
   }
-  // фенерът на стълб (мъждука — светлинният кръг е в рендера)
-  rc(g, 15, 8, 2, 8, '#382d20');
-  rc(g, 13, 4, 6, 1, '#241f1a'); rc(g, 13, 9, 6, 1, '#241f1a'); rc(g, 13, 4, 1, 6, '#241f1a'); rc(g, 18, 4, 1, 6, '#241f1a');
-  rc(g, 14, 5, 3, 4, '#ffcf6a'); px(g, 14, 5, '#fff2c0');
+  // фенерът: златен капак, ковано тяло, топъл пламък (мъждука в рендера)
+  px(g, 15, 2, '#e8c04a'); rc(g, 13, 3, 6, 1, '#c9a23b');       // връх + златен капак
+  rc(g, 12, 4, 8, 6, '#241f1a');                                 // тялото
+  rc(g, 14, 5, 4, 4, '#ffcf6a'); px(g, 14, 5, '#fff2c0'); px(g, 17, 8, '#e8a84d'); // пламъкът
+  px(g, 12, 6, '#382d20'); px(g, 19, 6, '#382d20');              // рамка
+  rc(g, 15, 10, 2, 5, '#382d20');                                // столче към площадката
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -2100,7 +2097,7 @@ function genMirWallBlock(R) {
 function genGateTower(R) {
   const g = mk(32, 64);
   const st = '#5a5f67', stD = '#4a4e56', stL = '#6d7280', mort = '#2b2f36';
-  const FH = 46, oy = 14; // мерлони 0..13, диамант 14..29, лица 30..75 (+1 блок)
+  const FH = 58, oy = 14; // мерлони 0..13, диамант 14..29, лица 30..87 (+2 блока)
   // капак
   for (let y = 0; y < 16; y++) { const [x0, w2] = diamondSpan(y); rc(g, x0, oy + y, w2, 1, st); }
   for (let i = 0; i < 30; i++) { const x = (R() * 32) | 0, y = (R() * 16) | 0; if (inDiamond(x, y)) px(g, x, oy + y, R() < 0.5 ? stD : stL); }
@@ -2115,7 +2112,9 @@ function genGateTower(R) {
       let col = left ? '#454952' : '#383c44';
       if (k % 5 === 4) col = mort;
       else if (((x + ((k / 5) | 0) * 4) % 8) === 0) col = mort;
-      if (k >= FH - 2) col = mort;
+      if (k === FH - 3) col = mort;
+      else if (k === FH - 2) col = '#2b2f36';       // тъмна основа —
+      else if (k === FH - 1) col = '#20242b';       // кулата стъпва на земята
       px(g, x, y, col);
     }
     px(g, x, yb, left ? stL : stD);
@@ -2166,6 +2165,14 @@ function genChurch(R) {
     beam: '#3a3e46', stone: '#44484f', stoneD: '#33373d',
     rA: '#2d333c', rB: '#232830', rC: '#39404a', rD: '#1c2128',
   };
+  // КАМБАНАРИЯТА: рисува се ПРЕДИ покрива -> той скрива основата ѝ (никакъв шев)
+  rc(g, 34, 14, 12, 24, '#565a62');
+  rc(g, 34, 14, 2, 24, '#6d7280'); rc(g, 44, 14, 2, 24, '#4a4e56');
+  for (let y = 18; y < 36; y += 4) rc(g, 35, y, 10, 1, '#3a3e46');
+  rc(g, 37, 20, 6, 7, '#12100c'); px(g, 39, 22, '#8a8d95'); px(g, 39, 23, '#6a6d75'); // камбаната
+  px(g, 37, 19, '#4a4e56'); px(g, 42, 19, '#4a4e56');
+  for (let i = 0; i < 5; i++) rc(g, 35 + i, 13 - i * 2, 10 - i * 2, 2, i % 2 ? '#232830' : '#2d333c'); // шпилът
+  rc(g, 39, 0, 2, 8, '#c9a23b'); rc(g, 37, 2, 6, 2, '#c9a23b'); px(g, 39, 0, '#e8c04a');   // КРЪСТЪТ
   iso2Body(g, R, oy, wallH, roofH, pal);
   // контрафорси по фасадата
   for (const cx2 of [6, 24]) { const ey = iso2EdgeY(oy, cx2); for (let k = 2; k <= wallH - 2; k++) { px(g, cx2, ey + k, '#6d7280'); px(g, cx2 + 1, ey + k, '#4a4e56'); } }
@@ -2182,14 +2189,6 @@ function genChurch(R) {
     for (let x = wx; x < wx + 3; x++) { const ey = iso2EdgeY(oy, x); for (let k = 6; k < 15; k++) px(g, x, ey + k, '#171310'); }
     const ey2 = iso2EdgeY(oy, wx + 1); px(g, wx + 1, ey2 + 8, '#e8a84d'); px(g, wx + 1, ey2 + 11, '#8a6420');
   }
-  // КАМБАНАРИЯТА: по-висока, стъпила ОТЗАД върху билото (основата потъва в ската)
-  rc(g, 36, 12, 12, 26, '#565a62');
-  rc(g, 36, 12, 2, 26, '#6d7280'); rc(g, 46, 12, 2, 26, '#4a4e56');
-  for (let y = 16; y < 36; y += 4) rc(g, 37, y, 10, 1, '#3a3e46');
-  rc(g, 39, 18, 6, 7, '#12100c'); px(g, 41, 20, '#8a8d95'); px(g, 41, 21, '#6a6d75'); // камбаната
-  px(g, 39, 17, '#4a4e56'); px(g, 44, 17, '#4a4e56');
-  for (let i = 0; i < 5; i++) rc(g, 37 + i, 11 - i * 2, 10 - i * 2, 2, i % 2 ? '#232830' : '#2d333c'); // шпилът
-  rc(g, 41, 0, 2, 8, '#c9a23b'); rc(g, 39, 2, 6, 2, '#c9a23b'); px(g, 41, 0, '#e8c04a');   // КРЪСТЪТ (дълго долно рамо)
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -10761,7 +10760,7 @@ function renderWorld() {
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
       const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната е по-висока
       const chx = sx + (pr.kind === 'house' ? 14 : -10) * S; // над комина
-      const base = sy - (pr.kind === 'house' ? (h2 ? 46 : 34) : 38) * S;
+      const base = sy - (pr.kind === 'house' ? (h2 ? 44 : 32) : 38) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
