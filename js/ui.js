@@ -577,7 +577,7 @@ function drawMinimap() {
       const idx = j * m.w + i;
       if (!G.explored[idx]) continue;
       const c = m.cells[idx];
-      if (G.onSurface) mg.fillStyle = c !== FLOOR ? '#131b15' : (m.path && m.path[idx] ? '#54473a' : '#2c3a2e');
+      if (G.onSurface) mg.fillStyle = c !== FLOOR ? '#131b15' : (m.path && m.path[idx] ? '#54473a' : '#424023');
       else mg.fillStyle = c === FLOOR ? '#3a4456' : '#1a202e';
       mg.fillRect(i, j, 1, 1);
     }

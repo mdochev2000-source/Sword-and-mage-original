@@ -1257,9 +1257,10 @@ function initSprites(themeIdx) {
 
 // ---------- повърхността: тъмно фентъзи здрач ----------
 const SURF_PAL = {
-  grass: '#2c3a2e', grassD: '#25312a', grassL: '#37473a', moss: '#42583f',
+  // тревата: тъмна маслинена (#424023 по избор на дизайнера); пътеките остават кафяви
+  grass: '#424023', grassD: '#36341a', grassL: '#4e4c2e', moss: '#585a32',
   dirt: '#453a2d', dirtD: '#392f24', dirtL: '#544737', pebble: '#5c5648',
-  edge: '#1e2822',
+  edge: '#282816',
 };
 function genGrass(R, path) {
   const t = SURF_PAL;

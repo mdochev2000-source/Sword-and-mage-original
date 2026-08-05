@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 10:15 UTC";
+window.__BUILD__ = "2026-08-05 10:22 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1506,9 +1506,10 @@ function initSprites(themeIdx) {
 
 // ---------- повърхността: тъмно фентъзи здрач ----------
 const SURF_PAL = {
-  grass: '#2c3a2e', grassD: '#25312a', grassL: '#37473a', moss: '#42583f',
+  // тревата: тъмна маслинена (#424023 по избор на дизайнера); пътеките остават кафяви
+  grass: '#424023', grassD: '#36341a', grassL: '#4e4c2e', moss: '#585a32',
   dirt: '#453a2d', dirtD: '#392f24', dirtL: '#544737', pebble: '#5c5648',
-  edge: '#1e2822',
+  edge: '#282816',
 };
 function genGrass(R, path) {
   const t = SURF_PAL;
@@ -6855,7 +6856,7 @@ function drawMinimap() {
       const idx = j * m.w + i;
       if (!G.explored[idx]) continue;
       const c = m.cells[idx];
-      if (G.onSurface) mg.fillStyle = c !== FLOOR ? '#131b15' : (m.path && m.path[idx] ? '#54473a' : '#2c3a2e');
+      if (G.onSurface) mg.fillStyle = c !== FLOOR ? '#131b15' : (m.path && m.path[idx] ? '#54473a' : '#424023');
       else mg.fillStyle = c === FLOOR ? '#3a4456' : '#1a202e';
       mg.fillRect(i, j, 1, 1);
     }
