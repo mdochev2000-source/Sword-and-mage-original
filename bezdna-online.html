@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 10:40 UTC";
+window.__BUILD__ = "2026-08-05 10:48 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -2055,14 +2055,27 @@ function genMirTower(R) {
     const k = 2 + ((R() * (FH - 8)) | 0);
     px(g, x, ey + k, R() < 0.5 ? '#454952' : '#565a62');
   }
-  // ПРОЗОРЦИ: бойници и топли прозорчета, разхвърляни по двете лица
-  const slit = (x0, top) => { for (let x = x0; x < x0 + 2; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 9; k++) px(g, x, ey + k, '#12100c'); } };
-  const warm = (x0, top, lit) => {
-    for (let x = x0; x < x0 + 6; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 6; k++) px(g, x, ey + k, '#171310'); }
-    if (lit) { const ey = iso2EdgeY(oy, x0 + 1); px(g, x0 + 1, ey + top + 2, '#e8a84d'); px(g, x0 + 3, ey + top + 3, '#c98a3b'); }
+  // ПРОЗОРЦИ: бойници с рамка и топли прозорци, подредени по ЕТАЖИ в колони
+  const slit = (x0, top) => {
+    for (let x = x0; x < x0 + 3; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 10; k++) px(g, x, ey + k, '#12100c'); }
+    const em = iso2EdgeY(oy, x0 + 1);
+    rc(g, x0 - 1, em + top - 1, 5, 1, stD);            // трегер отгоре
+    rc(g, x0 - 1, em + top + 10, 5, 1, stL);           // перваз отдолу
+    px(g, x0 + 1, em + top + 2, '#242830');            // дълбочина
   };
-  slit(10, 16); slit(22, 44); slit(6, 62); warm(14, 78, true);
-  slit(44, 26); warm(48, 54, true); slit(56, 84);
+  const warm = (x0, top) => {
+    for (let x = x0; x < x0 + 6; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 7; k++) px(g, x, ey + k, '#171310'); }
+    const em = iso2EdgeY(oy, x0 + 2);
+    rc(g, x0 - 1, em + top - 1, 8, 1, stD);
+    rc(g, x0 - 1, em + top + 7, 8, 1, stL);
+    px(g, x0 + 1, em + top + 2, '#e8a84d'); px(g, x0 + 3, em + top + 3, '#c98a3b'); px(g, x0 + 4, em + top + 2, '#8a6420');
+  };
+  // фасада (СЗ): колона бойници на 3 етажа + топъл прозорец на 3-тия
+  slit(8, 18); slit(8, 46); slit(8, 74);
+  warm(16, 74);
+  // страница (СИ): колона бойници на 2 етажа + топъл прозорец
+  slit(46, 32); slit(46, 60);
+  warm(52, 88);
   // ВРАТАТА: арка със стъпала на фасадата
   for (let x = 11; x < 22; x++) {
     const ey = iso2EdgeY(oy, x);
@@ -2071,12 +2084,22 @@ function genMirTower(R) {
   { const ey = iso2EdgeY(oy, 12); rc(g, 12, ey + FH - 19, 9, 2, stD); px(g, 20, ey + FH - 9, '#9a9da5'); }
   // факла до вратата
   { const ey = iso2EdgeY(oy, 24); px(g, 24, ey + FH - 14, '#241f1a'); px(g, 24, ey + FH - 15, '#ffb84d'); px(g, 24, ey + FH - 16, '#c98a3b'); }
-  // КОРОНАТА: зъбери по ръбовете на площадката
-  for (const [mx, my] of [[29, 0], [10, 7], [47, 7], [0, 17], [58, 17], [20, 3], [38, 3]]) {
-    rc(g, mx, my, 6, 9, st);
-    px(g, mx, my, stL); rc(g, mx + 5, my + 1, 1, 8, stD);
-    px(g, mx + 1, my + 8, stD); px(g, mx + 3, my + 2, mort);
-  }
+  // КОРОНАТА: зъбери, стъпили ТОЧНО на ръбовете на площадката, по целия периметър
+  const merlon = (mx, edgeYv) => {
+    rc(g, mx, edgeYv - 6, 4, 6, st);
+    px(g, mx, edgeYv - 6, stL); rc(g, mx + 3, edgeYv - 5, 1, 5, stD);
+    px(g, mx + 1, edgeYv - 1, stD);
+  };
+  // задните ръбове (СЗ и СИ на ромба): y = oy + 16 -/+ ...
+  for (const mx of [2, 10, 18, 26]) merlon(mx, oy + 16 - (mx >> 1));        // заден ляв ръб
+  merlon(30, oy + 1);                                                        // северният ъгъл
+  for (const mx of [36, 44, 52]) merlon(mx, oy + ((mx + 4 - 32) >> 1) + 1); // заден десен ръб
+  merlon(59, oy + 15);                                                       // източният ъгъл
+  // предните ръбове (парапетът пред площадката)
+  for (const mx of [4, 12, 20]) merlon(mx, iso2EdgeY(oy, mx + 2) + 1);      // преден ляв
+  merlon(29, oy + 32);                                                       // южният ъгъл
+  for (const mx of [38, 46, 54]) merlon(mx, iso2EdgeY(oy, mx + 2) + 1);     // преден десен
+  merlon(0, oy + 16);                                                        // западният ъгъл
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
