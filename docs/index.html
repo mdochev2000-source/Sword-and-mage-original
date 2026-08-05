@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 22:14 UTC";
+window.__BUILD__ = "2026-08-05 22:16 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -7915,12 +7915,16 @@ function drawShop() {
   }
   // КОВАЧЪТ мери и сеченото сребро: превключвател към кантара
   if (canExch) {
-    const bw = 74 * S, bx3 = x0 + 10 * S, by3 = y0 + 26 * S;
+    const label = G.shopSilver ? 'BACK TO WARES' : 'WEIGH HACKSILVER';
+    ctx.font = fontBold(5); // надписът трябва да СЕ СЪБИРА в рамката
+    const bw = Math.max(70 * S, ctx.measureText(label).width + 24 * S);
+    const bx3 = x0 + 10 * S, by3 = y0 + 26 * S;
     panel(bx3, by3, bw, 12 * S);
     strokeRect(bx3, by3, bw, 12 * S, G.shopSilver ? '#7fd0a0' : '#3a4456', S);
     blit(ctx, Spr.icons.sv_bag, bx3 + 3 * S, by3 + 1 * S);
-    ctx.font = fontBold(6); ctx.fillStyle = G.shopSilver ? '#7fd0a0' : '#a8b2c4';
-    ctx.fillText(G.shopSilver ? 'BACK TO WARES' : 'WEIGH HACKSILVER', bx3 + 17 * S, by3 + 8.5 * S);
+    ctx.font = fontBold(5); ctx.fillStyle = G.shopSilver ? '#7fd0a0' : '#a8b2c4';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, bx3 + 16 * S, by3 + 8 * S);
     UI.shopActRects.push({ x: bx3, y: by3, w: bw, h: 12 * S, act: 'silvertab' });
   }
   // ✕ за затваряне (важно за тъч — там няма E/ESC)
