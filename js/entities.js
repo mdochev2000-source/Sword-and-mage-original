@@ -1143,7 +1143,7 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7, peddler: 1.5 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
@@ -2527,8 +2527,11 @@ function startSurface(city) {
   p.hp = p.st.maxhp; p.mp = p.st.maxmp;
   G.camInit = false;
   G.miniDirty = true;
-  // стоката се опреснява при всяко завръщане
-  G.shops = {};
+  // стоката е ДНЕВНА (openShop сменя при нов ден) — не се пълни наново при всяко
+  // влизане в града, иначе купеното от търговеца се връща на щанда
+  if (G.city !== 'mirhold' && G.cityEdit) { // едиторът е само за Мирхолд
+    G.cityEdit = false; G.pixEdit = null; G.pixPaint = false; G.createSt = null; G.editSelBld = null;
+  }
   if (G.peddlerHere) setTimeout(() => toast('A peddler is in town today — rare wares.', '#e8c04a'), 900);
   G.transMsg = G.city === 'mirhold' ? 'MIRHOLD' : 'Camp of the Exiles';
   G.transSub = G.city === 'mirhold' ? 'the last safe crossroads' : 'here the dead take their rest';

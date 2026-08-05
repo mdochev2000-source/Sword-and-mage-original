@@ -1520,6 +1520,7 @@ function moveBuilding(pr, bx, by) {
   Sfx.play('open');
 }
 function saveCityLayout() {
+  if (G.city !== 'mirhold') return null; // подредбата е само на Мирхолд — друг град не я пипа
   const L = { houses: [], shops: {}, church: null, tower: null, cave: null, travel: null, decor: [] };
   for (const pr of G.props) {
     if (pr.kind === 'custom') { L.decor.push({ k: 'custom', id: pr.cid, x: pr.bx, y: pr.by }); continue; }
@@ -1798,7 +1799,9 @@ function drawCityEditOverlay() {
     UI.cityEditBtns.push({ x, y: 9 * S, w: wpx, h: 12 * S, act });
   };
   btn('COPY LAYOUT', CW / 2 - 76 * S, 62 * S, '#7fd0a0', () => {
-    const code = JSON.stringify(saveCityLayout());
+    const lay = saveCityLayout();
+    if (!lay) { toast('The layout is Mirhold only.', '#ff6b7a'); return; }
+    const code = JSON.stringify(lay);
     try { navigator.clipboard.writeText(code); } catch (e) {}
     console.log('MIRHOLD_LAYOUT =', code);
     // и като ФАЙЛ: дългите кодове (с PNG рисунки) се развалят при копиране през чат

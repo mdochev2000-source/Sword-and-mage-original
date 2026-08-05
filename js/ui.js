@@ -1589,6 +1589,7 @@ function shopClick(mx, my) {
     const sit = G.selItem;
     if (r.act === 'buy') { if (G.selStock) G.shopConfirm = { kind: 'buy', entry: G.selStock }; return; }
     if (r.act === 'silvertab') { G.shopSilver = !G.shopSilver; G.selStock = null; G.selItem = null; Sfx.play('open'); return; }
+    if (r.act === 'wares') { G.shopSilver = false; Sfx.play('open'); return; }
     if (r.act === 'exchange') { G.shopConfirm = { kind: 'exchange' }; return; }
     if (r.act === 'sell') { if (sit) G.shopConfirm = { kind: 'sell', item: sit }; } // цената се вижда в потвърждението
     else if (r.act === 'levelup') { if (sit) G.shopConfirm = { kind: 'levelup', item: sit }; }
@@ -1601,7 +1602,7 @@ function shopClick(mx, my) {
     for (const r of UI.shopRects) if (hit(r)) {
       if (r.entry.upgrade) G.shopConfirm = { kind: 'stall' };
       else if (r.entry.unlock) G.shopConfirm = { kind: 'unlock', unlock: r.entry.unlock };
-      else { G.selStock = r.entry; G.selItem = null; Sfx.play('pickup'); }
+      else { G.selStock = r.entry; G.selItem = null; G.shopSilver = false; Sfx.play('pickup'); } // изборът затваря кантара
       return;
     }
   }
@@ -1609,7 +1610,7 @@ function shopClick(mx, my) {
   // афикс редове (Захари) — с потвърждение
   for (const r of UI.enchAffixRects || []) if (hit(r)) { G.shopConfirm = { kind: 'affix', ai: r.ai }; return; }
   // избор на предмет от грида (моите предмети)
-  for (const r of UI.shopInvRects) if (hit(r)) { G.selItem = r.item; G.selStock = null; Sfx.play('pickup'); return; }
+  for (const r of UI.shopInvRects) if (hit(r)) { G.selItem = r.item; G.selStock = null; G.shopSilver = false; Sfx.play('pickup'); return; }
 }
 
 // ---------- КНИГА С МАГИИ: колекцията е завинаги, избираш 3 активни ----------

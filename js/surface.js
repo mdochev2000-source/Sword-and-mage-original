@@ -214,7 +214,7 @@ const Surface = {
       weapon: { x: cx - 9, y: cy - 1 },   // ковачницата — западния
       armor: { x: cx + 7, y: cy - 1 },    // бронетворецът — източния
       potion: { x: cx - 6, y: cy + 5 },   // алхимикът — югозападния
-      peddler: { x: cx + 4, y: cy + 5 }, // мястото на странстващия търговец — югоизточно от площада
+      peddler: { x: cx, y: cy + 4 }, // мястото на странстващия търговец — южно на площада, на открито
       dungeon: { x: gateX + 5, y: gY + 3 },  // порталът към тъмницата — ИЗВЪН стените, източно от пътя
       travel: { x: gateX - 5, y: gY + 3 },   // хенчстоунът — ИЗВЪН стените, западно от пътя
     };
@@ -287,12 +287,7 @@ const Surface = {
       for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
       props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
     }
-    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: идва само в някои дни (в едитора — винаги, за да го наместиш)
     G.peddlerHere = peddlerToday('mirhold') || !!G.editorOn;
-    if (G.peddlerHere) {
-      props.push({ kind: 'peddler', vtype: 'peddler', x: spots.peddler.x + 0.5, y: spots.peddler.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
-      noProp(spots.peddler.x, spots.peddler.y, 1);
-    }
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
     const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
@@ -317,7 +312,7 @@ const Surface = {
 
     // ЖИЛИЩНИ КЪЩИ: гъсто и естествено НАВСЯКЪДЕ около площада — от ръба му до
     // стените, с врата към улица. Площадът остава открит. 2x2 клетки колизия.
-    if (LAY && LAY.houses && LAY.houses.length) {
+    if (LAY && Array.isArray(LAY.houses)) {
       // РЪЧНАТА подредба от едитора: къщите са точно където са оставени
       for (const hh of LAY.houses) {
         for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(hh.x + di, hh.y + dj);
@@ -368,6 +363,33 @@ const Surface = {
       placed++;
     }
     } // край на автоматичното разположение (без ръчна подредба)
+    // СТРАНСТВАЩИЯТ ТЪРГОВЕЦ: идва само в някои дни (в едитора — винаги, за да го
+    // наместиш). Слага се СЛЕД сградите и на ПРОВЕРЕНО свободна клетка — иначе би
+    // могъл да се озове в стена; до него се прокарва и пътека.
+    if (G.peddlerHere) {
+      // свободна клетка, при това НЕ долепена до сграда — иначе подсказката му
+      // се бие с тази на съседния търговец
+      const clear = (x, y) => !props.some(q => (q.kind === 'shophouse' || q.kind === 'church' || q.kind === 'tower' || q.kind === 'house')
+        && Math.abs(q.x - (x + 0.5)) < 2.4 && Math.abs(q.y - (y + 0.5)) < 2.4);
+      const freeCell = (sx, sy, strict) => {
+        const ok = (x, y) => x > B && y > B && x < w - B && y < h - B && cells[y * w + x] === FLOOR && (!strict || clear(x, y));
+        if (ok(sx, sy)) return { x: sx, y: sy };
+        for (let rad = 1; rad <= 6; rad++) {
+          for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+            if (ok(sx + dx, sy + dy)) return { x: sx + dx, y: sy + dy };
+          }
+        }
+        return null;
+      };
+      const ps = freeCell(spots.peddler.x, spots.peddler.y, true) || freeCell(spots.peddler.x, spots.peddler.y, false);
+      if (ps) {
+        props.push({ kind: 'peddler', vtype: 'peddler', x: ps.x + 0.5, y: ps.y + 0.5, r: 0.3, solid: true, name: VENDOR_DEFS.peddler.name });
+        noProp(ps.x, ps.y, 1);
+        carve(cx, cy + 1, ps.x, ps.y); // пътека от площада до него
+      } else G.peddlerHere = false;
+    }
+
     // ЛОКВИ — по калните пътища и из града (само докато дизайнерът не е
     // записал свои: първият запис ги замразява като редактируеми елементи)
     const layHasPud = LAY && Array.isArray(LAY.decor) && LAY.decor.some(d2 => d2.k === 'puddle');
