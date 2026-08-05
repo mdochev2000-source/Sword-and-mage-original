@@ -150,7 +150,10 @@ function setupInput() {
   window.addEventListener('mouseup', e => {
     if (e.button === 0) {
       G.mouse.down = false; G.editDrag = null; G.setDrag = false;
-      if (G.editPaint) { G.editPaint = false; if (G.editPathDirty) { G.editPathDirty = false; saveCityLayout(); } }
+      if (G.editPaint) {
+        G.editPaint = false;
+        if (G.editPathDirty || G.editDecorDirty) { G.editPathDirty = false; G.editDecorDirty = false; saveCityLayout(); }
+      }
     }
     if (e.button === 2) G.mouse.rdown = false;
   });
@@ -933,6 +936,10 @@ function renderWorld() {
     else if (pr.kind === 'bush2') spr = Spr.surf.bushes[1];
     else if (pr.kind === 'tuft') spr = Spr.surf.tufts[0];
     else if (pr.kind === 'tuft2') spr = Spr.surf.tufts[1];
+    else if (pr.kind === 'deadTree2') spr = Spr.surf.deadTree2;
+    else if (pr.kind === 'rock3') spr = Spr.surf.rock3;
+    else if (pr.kind === 'fence2') spr = Spr.surf.fence2;
+    else if (pr.kind === 'fence3') spr = Spr.surf.fence3;
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
@@ -1369,6 +1376,10 @@ const BLD_DEFS = {
   tuft:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   tuft2:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   fence:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  deadTree2: { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  rock3:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  fence2:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -1382,6 +1393,10 @@ const DECOR_KINDS = {
   tuft:     { r: 0, solid: false },
   tuft2:    { r: 0, solid: false },
   fence:    { r: 0.35, solid: true },
+  deadTree2:{ r: 0.38, solid: true },
+  rock3:    { r: 0.45, solid: true },
+  fence2:   { r: 0.35, solid: true },
+  fence3:   { r: 0.35, solid: true },
 };
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
@@ -1448,6 +1463,29 @@ function saveCityLayout() {
   try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
   return L;
 }
+function placeDecorAt(cellX, cellY, loud) {
+  const m = G.map, idx = cellY * m.w + cellX;
+  const kind = G.editPlaceKind || 'tree';
+  if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
+  // не дублираме същия вид върху същата клетка (моливът минава много пъти)
+  for (const pr of G.props) if (pr.kind === kind && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
+  const d = DECOR_KINDS[kind];
+  G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
+  G.editDecorDirty = true;
+  if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
+}
+function eraseDecorAt(cellX, cellY) {
+  const kind = G.editPlaceKind || 'tree';
+  for (let i = G.props.length - 1; i >= 0; i--) {
+    const pr = G.props[i];
+    if (pr.kind !== kind) continue;                       // гумата пипа САМО избрания вид
+    if (Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) {
+      G.props.splice(i, 1);
+      G.editDecorDirty = true;
+      return;
+    }
+  }
+}
 function paintPathCell(v) {
   const m = G.map;
   const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
@@ -1468,28 +1506,16 @@ function cityEditClick(mx, my) {
     paintPathCell(tool === 'path' ? 1 : 0);
     return true;
   }
-  // ДОБАВЯНЕ на елемент от палитрата
-  if (tool === 'place') {
-    const m = G.map, idx = cellY * m.w + cellX;
-    if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); return true; }
-    const d = DECOR_KINDS[G.editPlaceKind || 'tree'];
-    G.props.push({ kind: G.editPlaceKind || 'tree', x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
-    saveCityLayout();
-    Sfx.play('coin');
+  // ДОБАВЯНЕ (клик) и МОЛИВ (влачене) — поставят избрания от палитрата елемент
+  if (tool === 'place' || tool === 'pencil') {
+    if (tool === 'pencil') G.editPaint = true; // моливът продължава при влачене
+    placeDecorAt(cellX, cellY, tool === 'place');
     return true;
   }
-  // ТРИЕНЕ на декор
+  // ГУМАТА: трие САМО избрания вид (с влачене) — да не стават грешки
   if (tool === 'erase') {
-    for (let i = G.props.length - 1; i >= 0; i--) {
-      const pr = G.props[i];
-      if (!DECOR_KINDS[pr.kind]) continue;
-      if (Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) {
-        G.props.splice(i, 1);
-        saveCityLayout();
-        Sfx.play('deny');
-        return true;
-      }
-    }
+    G.editPaint = true;
+    eraseDecorAt(cellX, cellY);
     return true;
   }
   // избор на сграда (клик върху някоя от клетките ѝ; свободните — по собствената им клетка)
@@ -1561,19 +1587,20 @@ function drawCityEditOverlay() {
     ctx.fillText(label, x + wpx / 2, 31.5 * S);
     UI.cityEditBtns.push({ x, y: 23 * S, w: wpx, h: 12 * S, act: () => { G.editTool = id; G.editSelBld = null; } });
   };
-  tbtn('MOVE', CW / 2 - 118 * S, 40 * S, 'move');
-  tbtn('ADD', CW / 2 - 74 * S, 34 * S, 'place');
-  tbtn('ERASE', CW / 2 - 36 * S, 40 * S, 'erase');
-  tbtn('PATH', CW / 2 + 8 * S, 36 * S, 'path');
-  tbtn('GRASS', CW / 2 + 48 * S, 42 * S, 'grass');
-  // ПАЛИТРАТА (при ADD): елементите за поставяне с мини-иконки
-  if (tool === 'place') {
+  tbtn('MOVE', CW / 2 - 140 * S, 38 * S, 'move');
+  tbtn('ADD', CW / 2 - 100 * S, 30 * S, 'place');
+  tbtn('PENCIL', CW / 2 - 68 * S, 42 * S, 'pencil');
+  tbtn('ERASE', CW / 2 - 24 * S, 38 * S, 'erase');
+  tbtn('PATH', CW / 2 + 16 * S, 34 * S, 'path');
+  tbtn('GRASS', CW / 2 + 52 * S, 40 * S, 'grass');
+  // ПАЛИТРАТА (при ADD/PENCIL/ERASE): моливът и гумата работят САМО по избрания елемент
+  if (tool === 'place' || tool === 'pencil' || tool === 'erase') {
     const items = [
-      ['tree', Spr.surf.tree], ['tree2', Spr.surf.tree2], ['deadTree', Spr.surf.deadTree],
-      ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2],
+      ['tree', Spr.surf.tree], ['tree2', Spr.surf.tree2], ['deadTree', Spr.surf.deadTree], ['deadTree2', Spr.surf.deadTree2],
+      ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2], ['rock3', Spr.surf.rock3],
       ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
-      ['fence', Spr.surf.fence],
+      ['fence', Spr.surf.fence], ['fence2', Spr.surf.fence2], ['fence3', Spr.surf.fence3],
     ];
     const cw2 = 20 * S, x0 = CW / 2 - items.length * (cw2 + 2 * S) / 2;
     if (!G.editPlaceKind) G.editPlaceKind = 'tree';
@@ -1588,8 +1615,10 @@ function drawCityEditOverlay() {
       UI.cityEditBtns.push({ x: bx2, y: by2, w: cw2, h: cw2, act: () => { G.editPlaceKind = k; } });
     });
   }
-  // влаченето на четката за път/трева
+  // влаченето: четките за път/трева + моливът + гумата
   if (G.editPaint && (tool === 'path' || tool === 'grass')) paintPathCell(tool === 'path' ? 1 : 0);
+  if (G.editPaint && tool === 'pencil') placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
+  if (G.editPaint && tool === 'erase') eraseDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy));
   // курсорната клетка при четка/добавяне/триене
   if (tool !== 'move') {
     const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
