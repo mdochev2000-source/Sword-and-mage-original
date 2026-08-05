@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 15:49 UTC";
+window.__BUILD__ = "2026-08-05 15:58 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -11649,7 +11649,7 @@ function drawCityEditOverlay() {
   rcx(0, 0, CW, 17 * S, 'rgba(4,6,11,0.85)');
   ctx.font = fontBold(6.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
   const toolH = G.editTool || 'move';
-  const hint = toolH === 'move' ? 'tap a building, then a tile' : toolH === 'pencil' ? (G.pixEdit ? 'pixel editing: ' + G.pixEdit.key : 'click an object to PIXEL-EDIT its sprite') : toolH === 'place' ? (G.editPlaceKind ? 'placing: ' + G.editPlaceKind : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + G.editPlaceKind + ' only' : 'PICK an element to erase') : toolH === 'create' ? 'create your own sprite — pick cells & height' : 'paint the ground';
+  const hint = toolH === 'move' ? 'tap a building, then a tile' : toolH === 'pencil' ? (G.pixEdit ? 'pixel editing: ' + editKindLabel(G.pixEdit.key) : 'click an object to PIXEL-EDIT its sprite') : toolH === 'place' ? (G.editPlaceKind ? 'placing: ' + editKindLabel(G.editPlaceKind) : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + editKindLabel(G.editPlaceKind) + ' only' : 'PICK an element to erase') : toolH === 'create' ? 'create your own sprite — pick cells & height' : 'paint the ground';
   ctx.fillText('CITY EDITOR — ' + hint + ' · F2/ESC exit', CW / 2, 7 * S);
   UI.cityEditBtns = [];
   const btn = (label, x, wpx, col, act) => {
@@ -11726,7 +11726,7 @@ function drawCityEditOverlay() {
       panel(dx, dy, 80 * S, 11 * S);
       strokeRect(dx, dy, 80 * S, 11 * S, armed ? '#ff6b7a' : '#3a4456', S);
       ctx.font = fontBold(5.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ff6b7a';
-      ctx.fillText(armed ? 'SURE? DELETE FOREVER' : 'DEL SPRITE ' + delId, dx + 40 * S, dy + 7.5 * S);
+      ctx.fillText(armed ? 'SURE? DELETE FOREVER' : 'DEL SPRITE: ' + customName(delId).slice(0, 12), dx + 40 * S, dy + 7.5 * S);
       UI.cityEditBtns.push({ x: dx, y: dy, w: 80 * S, h: 11 * S, act: () => {
         if (G.editDelArm !== G.editPlaceKind) { G.editDelArm = G.editPlaceKind; toast('Click again to DELETE the sprite and all its copies.', '#ff6b7a'); return; }
         for (let i = G.props.length - 1; i >= 0; i--) if (G.props[i].kind === 'custom' && G.props[i].cid === delId) G.props.splice(i, 1);
@@ -11782,6 +11782,13 @@ function customCells(def, bx, by) {
   const out = [];
   for (let dy = 0; dy < def.ch; dy++) for (let dx = 0; dx < def.cw; dx++) out.push([bx + dx, by + dy]);
   return out;
+}
+function customName(id) {
+  const d2 = G.customDefs && G.customDefs[id];
+  return (d2 && d2.name) ? d2.name : id;
+}
+function editKindLabel(k) {
+  return k && k.slice(0, 5) === 'cust_' ? customName(k.slice(5)) : k;
 }
 function buildCustomSprites() {
   Spr.custom = Spr.custom || {};
@@ -11857,6 +11864,11 @@ function drawCreatePanel(diamond) {
       let n = 1; while (G.customDefs['c' + n]) n++;
       const id = 'c' + n;
       G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: !!st.solid };
+      // кръщаването: празно = служебното id
+      try {
+        const nm = (window.prompt('Name your sprite:', '') || '').trim().slice(0, 24);
+        if (nm) G.customDefs[id].name = nm;
+      } catch (err) {}
       buildCustomSprites();
       saveCityLayout();
       G.createSt = null;
@@ -12135,7 +12147,23 @@ function drawPixelEditor() {
   UI.pixBtns = [];
   ctx.textAlign = 'left';
   ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
-  ctx.fillText('PIXEL: ' + e.key, r.x + 6 * S, r.y + 10 * S);
+  // (NAME бутонът се регистрира в pixBtns по-долу)
+  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16), r.x + 6 * S, r.y + 10 * S);
+  if (e.key.slice(0, 5) === 'cust_') { // преименуване по всяко време
+    const nx = r.x + r.w - 50 * S, ny = r.y + 2 * S;
+    panel(nx, ny, 26 * S, 10 * S);
+    ctx.font = fontBold(5); ctx.textAlign = 'center'; ctx.fillStyle = '#a8b2c4';
+    ctx.fillText('NAME', nx + 13 * S, ny + 7 * S);
+    UI.pixBtns = UI.pixBtns || [];
+    UI.pixBtns.push({ x: nx, y: ny, w: 26 * S, h: 10 * S, act: () => {
+      const id = e.key.slice(5);
+      try {
+        const nm = (window.prompt('Name your sprite:', customName(id)) || '').trim().slice(0, 24);
+        if (nm && G.customDefs[id]) { G.customDefs[id].name = nm; saveCityLayout(); toast('Named: ' + nm, '#7fd0a0'); }
+      } catch (err) {}
+    } });
+    ctx.textAlign = 'left';
+  }
   // инструменти
   const tb = (label, x, wpx, act, on, row) => {
     const by = r.y + (14 + (row || 0) * 13) * S;
