@@ -216,6 +216,10 @@ function hitsWall(x, y, r, ghost) {
   // плътен реквизит
   for (const pr of G.props) {
     if (!pr.solid) continue;
+    if (pr.cw) { // създадените спрайтове: правоъгълният им футпринт, не кръг
+      if (x > pr.bx - r && x < pr.bx + pr.cw + r && y > pr.by - r && y < pr.by + pr.ch + r) return true;
+      continue;
+    }
     const d2 = (x - pr.x) * (x - pr.x) + (y - pr.y) * (y - pr.y);
     const rr = r + pr.r;
     if (d2 < rr * rr) return true;
@@ -1517,7 +1521,7 @@ function makeEnemy(kind, t, x, y, hpMult, dmgMult) {
 function freeFloorNear(x, y) {
   const solidAt = (i, j) => {
     if (cellAt(i, j) !== FLOOR) return true;
-    for (const pr of G.props) if (pr.solid && !pr.broken && Math.floor(pr.x) === i && Math.floor(pr.y) === j) return true;
+    for (const pr of G.props) if (pr.solid && !pr.broken && (pr.cw ? (i >= pr.bx && i < pr.bx + pr.cw && j >= pr.by && j < pr.by + pr.ch) : (Math.floor(pr.x) === i && Math.floor(pr.y) === j))) return true;
     return false;
   };
   const i0 = Math.floor(x), j0 = Math.floor(y);
