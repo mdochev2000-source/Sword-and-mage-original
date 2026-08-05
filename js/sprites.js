@@ -1610,7 +1610,10 @@ function iso2Body(g, R, oy, wallH, roofH, pal) {
     const ey = iso2EdgeY(oy, x);
     const ph = Math.max(0, Math.round((roofH + 1) * (1 - Math.abs(x - 47.5) / 15.5)));
     for (let k = 0; k < ph; k++) px(g, x, ey - k, pal.wallSE);
-    if (ph > 0) { px(g, x, ey - ph, pal.beam); }                 // ръбът на фронтона
+    if (ph > 0) {
+      px(g, x, ey - ph, pal.rB); px(g, x, ey - ph - 1, pal.rD);  // покривен кант по ската
+      if (ph > 1) px(g, x, ey - ph + 1, pal.beam);               // гредата под стрехата
+    }
   }
   { const mx = 47, ey = iso2EdgeY(oy, mx);                       // таванско прозорче
     rc(g, mx - 1, ey - (roofH >> 1) - 2, 3, 2, '#171310'); px(g, mx, ey - (roofH >> 1) - 1, '#8a6420'); }
