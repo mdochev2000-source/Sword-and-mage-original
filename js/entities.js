@@ -1143,7 +1143,7 @@ function updatePickups(dt) {
 function updateInteract() {
   const p = G.player;
   G.interactHint = null;
-  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7, peddler: 1.5 };
+  const INTERACT = { stairs: 1.25, fountain: 1.25, chest: 1.25, vendor: 1.5, stall: 1.6, portal: 1.7, campfire: 1.4, homeportal: 1.7, vaultdoor: 1.4, arena: 1.7, cityportal: 1.7, shophouse: 1.7, peddler: 1.5, church: 1.7, exitdoor: 1.5 };
   let best = null, bd = 99;
   for (const pr of G.props) {
     if (pr.broken || pr.flat) continue;
@@ -1163,6 +1163,8 @@ function updateInteract() {
   }
   else if (best.kind === 'chest') G.interactHint = { pr: best, txt: 'E — open the chest' };
   else if (best.kind === 'peddler') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS.peddler.name };
+  else if (best.kind === 'exitdoor') G.interactHint = { pr: best, txt: 'E — step outside' };
+  else if (best.kind === 'church') G.interactHint = { pr: best, txt: 'E — enter the church' };
   else if (best.kind === 'vendor' || best.kind === 'stall') {
     G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
   }
@@ -1173,7 +1175,7 @@ function updateInteract() {
     } else G.interactHint = { pr: best, txt: 'E — descend into the Abyss (floor ' + (G.checkpoint > 1 ? G.checkpoint : 1) + ')' };
   }
   else if (best.kind === 'cityportal') G.interactHint = { pr: best, txt: best.city === 'mirhold' ? 'E — travel to MIRHOLD' : 'E — travel to the Camp of the Exiles' };
-  else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — ' + VENDOR_DEFS[best.vtype].name };
+  else if (best.kind === 'shophouse') G.interactHint = { pr: best, txt: 'E — enter: ' + VENDOR_DEFS[best.vtype].name };
   else if (best.kind === 'homeportal') G.interactHint = { pr: best, txt: G.dungeonId === 'mirhold' ? 'E — back to Mirhold (keep your level and skills)' : 'E — to camp (keep your level and skills)' };
   else if (best.kind === 'campfire') G.interactHint = { pr: best, txt: 'E — rest (full heal)' };
   else if (best.kind === 'priest') G.interactHint = { pr: best, txt: 'E — pray (full heal)' };
@@ -1210,7 +1212,13 @@ function doInteract() {
     burst(pr.x, pr.y, ['#ffd23b', '#fff2a0'], 14, 3, 0.6);
   } else if (pr.kind === 'vaultdoor') {
     if (!pr.opened) { toast('Locked. Slay the Key Guardian to open the Vault.', '#ffd23b'); Sfx.play('deny'); }
-  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'shophouse' || pr.kind === 'peddler') {
+  } else if (pr.kind === 'shophouse') {
+    enterInterior(pr.vtype, pr.x, pr.y + 1.6);   // В СГРАДАТА се ВЛИЗА
+  } else if (pr.kind === 'church') {
+    enterInterior('church', pr.x, pr.y + 1.8);
+  } else if (pr.kind === 'exitdoor') {
+    exitInterior();
+  } else if (pr.kind === 'vendor' || pr.kind === 'stall' || pr.kind === 'peddler') {
     if (pr.vtype === 'tavern') { // услугите на хана идват по-нататък
       toast('The inn is not open yet — meals, a bed and a chest are coming.', '#ffd23b');
       Sfx.play('deny');
@@ -2354,6 +2362,15 @@ function startGame(slot, freshName) {
     p.dashCharges = p.st.dashMax;
   }
   startSurface();
+  // ПОСЛЕДНОТО МЯСТО: същата точка в града, а ако си бил вътре в сграда — там
+  if (prof) {
+    const pl = G.player;
+    if (prof.pos && !hitsWall(prof.pos.x, prof.pos.y, 0.3)) { pl.x = prof.pos.x; pl.y = prof.pos.y; G.camInit = false; }
+    if (prof.inside && prof.inside.id && typeof INTERIOR_DEFS !== 'undefined' && INTERIOR_DEFS[prof.inside.id]) {
+      const r = prof.inside.ret || {};
+      enterInterior(prof.inside.id, r.x, r.y);
+    }
+  }
   G.state = 'play';
   document.body.classList.remove('menu');
 }
@@ -2399,6 +2416,9 @@ function saveProfile() {
       mirCheckpoint: G.mirCheckpoint || 1,           // контролна точка на Гарнизонната тъмница
       mirholdCleared: !!G.mirholdCleared,            // финалният бос на Мирхолд е победен
       city: G.city || 'camp',                        // в кой град е героят (пази се при зареждане)
+      // ПОСЛЕДНОТО МЯСТО: стаята, в която си влязъл, и точните координати
+      inside: G.inside ? { id: G.inside.id, ret: G.inside.ret } : null,
+      pos: (G.onSurface && G.player) ? { x: G.player.x, y: G.player.y } : null,
       hero: G.heroBank || null, // ниво/перкове, спасени през портала у дома
     });
     localStorage.setItem(charKey(G.charSlot || 0), data);
@@ -2493,7 +2513,42 @@ function migrateOldProfile() {
 }
 
 // ---------- повърхността ----------
+// ================= ВЛИЗАНЕ В СГРАДА =================
+function enterInterior(id, retX, retY) {
+  if (!INTERIOR_DEFS[id]) return;
+  const ret = { city: G.city || 'mirhold', x: retX !== undefined ? retX : G.player.x, y: retY !== undefined ? retY : G.player.y };
+  G.inside = { id, ret };
+  initInteriorSprites();
+  const gen = Surface.generateInterior(id);
+  G.map = gen.map;
+  G.props = gen.props;
+  G.visible = new Uint8Array(gen.map.w * gen.map.h).fill(1);
+  G.explored = new Uint8Array(gen.map.w * gen.map.h).fill(1);
+  G.enemies = []; G.projectiles = []; G.particles = []; G.texts = []; G.ground = [];
+  G.decals = []; G.explosions = []; G.hazards = []; G.orbitals = []; G.zaps = []; G.novaFx = [];
+  G.slashFx = null; G.bossName = null; G.bossRoom = null; G.bossGates = [];
+  G.player.x = gen.map.start.x; G.player.y = gen.map.start.y;
+  G.player.lastTi = -1; G.player.lastTj = -1;
+  G.camInit = false; G.miniDirty = true;
+  G.interactHint = null;
+  Sfx.play('open');
+  toast(gen.name, '#e8c04a');
+  saveProfile();
+}
+function exitInterior() {
+  if (!G.inside) return;
+  const ret = G.inside.ret;
+  G.inside = null;
+  startSurface(ret.city);
+  // излизаш пред вратата, а не в началото на картата
+  if (ret && !hitsWall(ret.x, ret.y, 0.3)) { G.player.x = ret.x; G.player.y = ret.y; }
+  G.camInit = false;
+  G.interactHint = null;
+  Sfx.play('open');
+  saveProfile();
+}
 function startSurface(city) {
+  G.inside = null; // навън сме
   if (city) G.city = city;
   G.city = G.city || 'camp';
   G.onSurface = true;

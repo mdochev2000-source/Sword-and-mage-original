@@ -151,6 +151,7 @@ const Surface = {
   // ---------- МИРХОЛД: укрепен граничен град на кръстопът (домът на героя) ----------
   // ниска каменна стена с палисада, една порта на юг, кула с фенер в центъра,
   // плътни къщи, кал и локви, голи дървета и изоставени ниви навън, 3 пътя в мъглата
+  generateInterior,
   generateMirhold(seed) {
     const R = mulberry32((seed ^ 0x9e3779b9) >>> 0);
     const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
@@ -452,6 +453,65 @@ const Surface = {
     };
   },
 };
+
+// ================= ИНТЕРИОРИ: стаята вътре в сграда =================
+// Всяка важна сграда се отваря като СТАЯ, в която се влиза. Мебелите се
+// нареждат с градския едитор (собствена подредба за всяка стая).
+const INTERIOR_DEFS = {
+  weapon:  { w: 12, h: 9,  name: 'The Forge' },
+  armor:   { w: 12, h: 9,  name: 'The Armory' },
+  potion:  { w: 12, h: 9,  name: 'The Apothecary' },
+  jewel:   { w: 12, h: 9,  name: 'The Mystic\'s Room' },
+  tavern:  { w: 15, h: 11, name: 'The Inn' },
+  church:  { w: 13, h: 12, name: 'The Church' },
+};
+function interiorLayoutKey(id) { return 'sm_layout_int_' + id; }
+function interiorLayout(id) {
+  try { const L = JSON.parse(localStorage.getItem(interiorLayoutKey(id)) || 'null'); if (L) return L; } catch (e) {}
+  return (typeof INTERIOR_LAYOUTS !== 'undefined' && INTERIOR_LAYOUTS[id]) || null;
+}
+function generateInterior(id) {
+  const def = INTERIOR_DEFS[id] || INTERIOR_DEFS.weapon;
+  const w = def.w + 4, h = def.h + 4;                 // стаята + рамка от стени
+  const cells = new Uint8Array(w * h);
+  const variant = new Uint8Array(w * h);
+  const path = new Uint8Array(w * h);
+  const R = mulberry32((id.charCodeAt(0) * 7919 + w * 31 + h) >>> 0);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const idx = j * w + i;
+    variant[idx] = Math.floor(R() * 3);
+    const inRoom = i >= 2 && j >= 2 && i < w - 2 && j < h - 2;
+    const isWall = i >= 1 && j >= 1 && i < w - 1 && j < h - 1 && !inRoom;
+    cells[idx] = inRoom ? FLOOR : (isWall ? WALL : VOID);
+  }
+  const props = [];
+  // ВРАТАТА навън — на южната стена, по средата
+  const dx = (w >> 1), dy = h - 3;
+  props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false });
+  // стопанинът зад тезгяха (в църквата няма никого — свещеникът идва по-нататък)
+  if (id !== 'church') {
+    props.push({ kind: 'vendor', vtype: id, x: dx + 0.5, y: 3.5, r: 0.3, solid: true, name: VENDOR_DEFS[id].name });
+  }
+  // мебелите на дизайнера
+  G.customDefs = {};
+  const LAY = interiorLayout(id);
+  if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
+  if (typeof buildCustomSprites === 'function') buildCustomSprites();
+  if (LAY && Array.isArray(LAY.decor)) {
+    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
+    for (const d2 of LAY.decor) {
+      if (d2.k === 'custom') {
+        const cd = G.customDefs[d2.id];
+        if (!cd) continue;
+        props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
+        continue;
+      }
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
+    }
+  }
+  G.fenceDirty = true;
+  return { map: { w, h, cells, variant, rooms: [], start: { x: dx + 0.5, y: dy - 0.4 }, path }, props, spots: {}, name: def.name };
+}
 
 // ---------- магазини ----------
 function shopItemPrice(it) {

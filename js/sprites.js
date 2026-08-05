@@ -1148,6 +1148,96 @@ function packFrames(frames) {
   return { frames, white: whiteVersion(frames[0]) };
 }
 
+// ================= ИНТЕРИОРИ (вътре в сградите) =================
+// Дъсчен под и стена от греди и мазилка — същата изометрия като подземието,
+// за да ползват готовия рендер (FLOOR плочки + WALL блокове).
+function genIntFloor(R, v) {
+  const g = mk(32, 16);
+  const base = ['#54432a', '#4c3c25', '#5b4930'][v % 3];
+  fillDiamond(g, 0, base);
+  // фугите между дъските — по посоката на ромба, ясно четими
+  for (let y = 0; y < 16; y++) {
+    const [x0, w] = diamondSpan(y);
+    if ((y + v) % 3 === 0) for (let x = x0; x < x0 + w; x++) px(g, x, y, '#33281a');
+    if ((y + v) % 3 === 1) for (let x = x0; x < x0 + w; x++) if ((x + y) % 7 === 0) px(g, x, y, '#615034');
+  }
+  for (let i = 0; i < 34; i++) {                                   // жилки
+    const x = (R() * 32) | 0, y = (R() * 16) | 0;
+    if (inDiamond(x, y)) px(g, x, y, R() < 0.5 ? '#463726' : '#615034');
+  }
+  for (let i = 0; i < 4; i++) {                                    // чепове
+    const x = 4 + ((R() * 24) | 0), y = 3 + ((R() * 10) | 0);
+    if (inDiamond(x, y)) px(g, x, y, '#2e2416');
+  }
+  return g.canvas;
+}
+function genIntWall(R, v) {
+  const H = WALL_HP;
+  const g = mk(32, 16 + H);
+  fillDiamond(g, 0, '#4a3d29');                                   // горната греда
+  for (let y = 0; y < 8; y++) {
+    const [x0, w] = diamondSpan(y);
+    px(g, x0, y, '#5e4e34'); px(g, x0 + w - 1, y, '#332a1c');
+  }
+  // лицата: мазилка между тъмни греди (лявата стена е осветена)
+  for (let x = 0; x < 32; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    for (let k = 0; k < H; k++) {
+      const y = yb + k;
+      let col = left ? '#8a7a5e' : '#6b5d47';                      // мазилка
+      if (k <= 1) col = left ? '#4a3d29' : '#3a3020';              // горната греда
+      if (k > H - 5) col = left ? '#463a26' : '#372d1d';           // тъмен цокъл
+      if ((x + (v * 3)) % 8 === 0) col = left ? '#3f3320' : '#2f2617'; // вертикални греди
+      if (k === 4 || k === H - 7) col = left ? '#3f3320' : '#2f2617';  // хоризонтални
+      px(g, x, y, col);
+    }
+  }
+  for (let i = 0; i < 30; i++) {                                    // зърнистост на мазилката
+    const x = (R() * 32) | 0, k = 6 + ((R() * (H - 12)) | 0);
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    px(g, x, yb + k, left ? (R() < 0.5 ? '#9a8a6c' : '#7a6b52') : (R() < 0.5 ? '#7a6b52' : '#5c4f3c'));
+  }
+  return g.canvas;
+}
+function genIntDoor() {                                             // вратата навън
+  const g = mk(20, 26);
+  rc(g, 1, 2, 18, 24, '#4a3a24');                                   // каса
+  rc(g, 3, 4, 14, 22, '#6b5231');                                   // крило
+  for (let x = 4; x < 17; x += 4) rc(g, x, 4, 1, 22, '#54401f');    // дъски
+  rc(g, 3, 7, 14, 1, '#3c4046'); rc(g, 3, 20, 14, 1, '#3c4046');    // обков
+  rc(g, 13, 14, 2, 2, '#c9a23b'); px(g, 13, 14, '#e8c04a');         // дръжка
+  rc(g, 3, 4, 14, 1, '#8a6a3a');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genInnkeeper() {                                           // ханджийката
+  const g = mk(16, 20);
+  const skin = '#d9a878';
+  rc(g, 4, 8, 8, 11, '#5e4a6b'); rc(g, 4, 8, 8, 2, '#75608a');      // рокля
+  rc(g, 5, 12, 6, 6, '#d8d2be'); px(g, 5, 12, '#aca691');           // престилка
+  rc(g, 3, 9, 2, 5, '#5e4a6b'); rc(g, 11, 9, 2, 5, '#5e4a6b');      // ръкави
+  px(g, 3, 14, skin); px(g, 12, 14, skin);
+  rc(g, 5, 2, 6, 5, skin);                                          // лице
+  rc(g, 4, 1, 8, 3, '#5a3a24'); px(g, 4, 4, '#5a3a24'); px(g, 11, 4, '#5a3a24'); // коса
+  px(g, 6, 4, '#1a1d26'); px(g, 9, 4, '#1a1d26');
+  px(g, 7, 6, '#a85a5a');
+  rc(g, 13, 10, 1, 5, '#8a7048'); rc(g, 12, 9, 3, 2, '#8a97ad');    // черпак
+  outlineSprite(g, '#10141c');
+  return g.canvas;
+}
+function initInteriorSprites() {
+  if (Spr.int) return;
+  const R = mulberry32(0x1e7a2100 >>> 0);
+  Spr.int = {
+    floor: [0, 1, 2].map(v => genIntFloor(R, v)),
+    wall: [0, 1, 2].map(v => genIntWall(R, v)),
+    door: genIntDoor(),
+    innkeeper: genInnkeeper(),
+  };
+}
+
 function initSprites(themeIdx) {
   if (Spr.themeIdx === themeIdx && Spr.ready) return;
   const t = THEMES[themeIdx];

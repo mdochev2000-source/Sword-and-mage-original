@@ -58,7 +58,7 @@ function setupInput() {
       case 'play': {
         // ГРАДСКИЯТ ЕДИТОР: само с ?editor=1 в адреса (dev), F2 в Мирхолд
         if (G.pixEdit && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { pixUndo(); break; } // UNDO в пиксел-редактора
-        if (e.code === 'F2' && G.editorOn && G.onSurface && G.city === 'mirhold') { cityEditToggle(); break; }
+        if (e.code === 'F2' && G.editorOn && (G.inside || (G.onSurface && G.city === 'mirhold'))) { cityEditToggle(); break; }
         if (e.code === 'Escape' && G.cityEdit) { cityEditToggle(); break; }
         if (e.code === 'Escape') { G.state = 'pause'; document.body.classList.add('menu'); break; }
         if (e.code === 'Tab') { G.state = 'inventory'; document.body.classList.add('menu'); break; }
@@ -773,7 +773,9 @@ function renderWorld() {
     const sy = isoY(i, j) + camY;
     if (sx > CW || sx + TW < 0 || sy > CH || sy + TH < 0) continue;
     let tile;
-    if (G.onSurface) {
+    if (G.inside) {
+      tile = Spr.int.floor[m.variant[idx] % Spr.int.floor.length];
+    } else if (G.onSurface) {
       tile = m.path && m.path[idx] ? Spr.surf.dirt[m.variant[idx] % 2] : Spr.surf.grass[m.variant[idx] % 4];
     } else {
       const v = m.variant[idx] % Spr.floor.length;
@@ -865,7 +867,8 @@ function renderWorld() {
     const sy = isoY(i, j) + camY - WALL_HP * S;
     if (sx > CW || sx + TW < 0 || sy > CH || sy + (16 + WALL_HP) * S < 0) continue;
     const vis = G.visible[idx] === 1;
-    const spr = Spr.wall[m.variant[idx] % Spr.wall.length];
+    const spr = G.inside ? { lit: Spr.int.wall[m.variant[idx] % Spr.int.wall.length], dim: Spr.int.wall[m.variant[idx] % Spr.int.wall.length] }
+      : Spr.wall[m.variant[idx] % Spr.wall.length];
     let alpha = 0;
     if (i + j + 1 > pD) {
       const wcx = sx + TW / 2, wcy = sy + (16 + WALL_HP) * S * 0.55;
@@ -928,8 +931,9 @@ function renderWorld() {
       else if (pr.vtype === 'exchange') spr = Spr.surf.exchange;
       else spr = Spr.surf.stallTiers[pr.vtype][clamp(((G.meta.vendorLvl && G.meta.vendorLvl[pr.vtype]) || 1) - 1, 0, 4)];
     }
-    else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
+    else if (pr.kind === 'vendor') spr = pr.vtype === 'tavern' ? Spr.int.innkeeper : Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'peddler') spr = Spr.surf.vendors.peddler; // странстващият търговец
+    else if (pr.kind === 'exitdoor') spr = Spr.int.door;             // вратата навън
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал.
@@ -1520,6 +1524,7 @@ function moveBuilding(pr, bx, by) {
   Sfx.play('open');
 }
 function saveCityLayout() {
+  if (G.inside) return saveInteriorLayout();
   if (G.city !== 'mirhold') return null; // подредбата е само на Мирхолд — друг град не я пипа
   const L = { houses: [], shops: {}, church: null, tower: null, cave: null, travel: null, decor: [] };
   for (const pr of G.props) {
@@ -1587,6 +1592,18 @@ function placeBuildingAt(bk, cellX, cellY, loud) {
   }
   saveCityLayout();
   Sfx.play('coin');
+}
+// подредбата на СТАЯТА: мебели (декор + собствени спрайтове) и пикселни корекции
+function saveInteriorLayout() {
+  const L = { decor: [] };
+  for (const pr of G.props) {
+    if (pr.kind === 'custom') { L.decor.push({ k: 'custom', id: pr.cid, x: pr.bx, y: pr.by }); continue; }
+    if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: Math.floor(pr.x), y: Math.floor(pr.y) });
+  }
+  if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs;
+  if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
+  try { localStorage.setItem(interiorLayoutKey(G.inside.id), JSON.stringify(L)); } catch (e) {}
+  return L;
 }
 function placeDecorAt(cellX, cellY, loud) {
   const m = G.map, idx = cellY * m.w + cellX;
@@ -1838,8 +1855,10 @@ function drawCityEditOverlay() {
   tbtn('ADD', CW / 2 - 100 * S, 30 * S, 'place');
   tbtn('PENCIL', CW / 2 - 68 * S, 42 * S, 'pencil');
   tbtn('ERASE', CW / 2 - 24 * S, 38 * S, 'erase');
-  tbtn('PATH', CW / 2 + 16 * S, 34 * S, 'path');
-  tbtn('GRASS', CW / 2 + 52 * S, 40 * S, 'grass');
+  if (!G.inside) { // пътищата и тревата са само навън
+    tbtn('PATH', CW / 2 + 16 * S, 34 * S, 'path');
+    tbtn('GRASS', CW / 2 + 52 * S, 40 * S, 'grass');
+  }
   tbtn('CREATE', CW / 2 + 94 * S, 44 * S, 'create');
   // ПАЛИТРАТА (при ADD/PENCIL/ERASE): моливът и гумата работят САМО по избрания елемент
   if (tool === 'place' || tool === 'erase') {
