@@ -1676,6 +1676,8 @@ function genMirHouse(R, v, twoStory) {
   px(g, 31, 6, '#3a3e46'); px(g, 32, 9, '#3a3e46'); px(g, 31, 12, '#3a3e46'); // фуги
   rc(g, 29, 2, 6, 2, '#4a4e56'); rc(g, 29, 2, 6, 1, '#6d7280');               // капак-плоча
   rc(g, 31, 1, 2, 1, '#171310'); px(g, 30, 1, '#2b2f36');                     // отворът и саждите
+  // комина също го режем под билото — за всеки случай
+  for (let c = 29; c <= 35; c++) g.clearRect(c, iso2EdgeY(oy, Math.min(31, c - 16)) - (8 + roofH) + 1, 1, 80);
   iso2Body(g, R, oy, wallH, roofH, pal);
   iso2Door(g, oy, wallH, 10, 8, 11);
   iso2Win(g, oy, 3, 5, twoStory ? 19 : 6, 4, true);       // фасаден прозорец (долен етаж)
@@ -1927,6 +1929,8 @@ function genChurch(R) {
   px(g, 37, 17, '#4a4e56'); px(g, 42, 17, '#4a4e56');
   for (let i = 0; i < 5; i++) rc(g, 35 + i, 11 - i * 2, 10 - i * 2, 2, i % 2 ? '#232830' : '#2d333c'); // шпилът
   rc(g, 39, 0, 2, 6, '#c9a23b'); rc(g, 37, 1, 6, 2, '#c9a23b'); px(g, 39, 0, '#e8c04a');   // КРЪСТЪТ
+  // ОТРЯЗВАМЕ кулата под линията на билото — под ската просто я няма (никакъв теч)
+  for (let c = 32; c <= 48; c++) g.clearRect(c, iso2EdgeY(oy, Math.min(31, c - 16)) - (8 + roofH) + 1, 1, 80);
   iso2Body(g, R, oy, wallH, roofH, pal);
   // контрафорси по фасадата
   for (const cx2 of [6, 24]) { const ey = iso2EdgeY(oy, cx2); for (let k = 2; k <= wallH - 2; k++) { px(g, cx2, ey + k, '#6d7280'); px(g, cx2 + 1, ey + k, '#4a4e56'); } }
