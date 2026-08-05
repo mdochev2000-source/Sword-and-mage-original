@@ -981,7 +981,7 @@ function renderWorld() {
     const flat = pr.flat;
     const cdef = pr.kind === 'custom' ? (G.customDefs && G.customDefs[pr.cid]) : null;
     // сградите са ВИНАГИ плътни; ако скриват героя, той се дорисува като силует отгоре
-    const bigCust = cdef && (cdef.cw + cdef.ch) > 2; // големите създадени спрайтове крият като сгради
+    const bigCust = cdef && !pr.flat && (cdef.cw + cdef.ch) > 2; // големите създадени спрайтове крият като сгради (теренът — не)
     if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'church' || pr.kind === 'gatetower' || bigCust) && pr.x + pr.y > pD + 0.6) {
       const lift = bigCust ? (cdef.cw + cdef.ch) * 4 : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16 : 8;
       const hw = spr.width * S / 2 - 2 * S, hTop = sy + lift * S - spr.height * S + 6 * S, hBot = sy + lift * S - 8 * S;
@@ -989,7 +989,7 @@ function renderWorld() {
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     // (създадените спрайтове се подреждат по югозападната клетка, като сградите)
-    const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : pr.kind === 'gatebanner' ? -2.5 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
+    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
@@ -1409,6 +1409,7 @@ const BLD_DEFS = {
   church:    { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
   tower:     { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] }, // кийпът е 2x2
   gatetower: { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },              // за диагностика/местене
+  wallseg:   { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },              // сегмент от стената
   portal:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // пещерата — мести се свободно
   cityportal:{ ax: 0.5, ay: 0.5, cells: () => [], free: true },            // хенчстоунът — мести се свободно
   tree:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // декорите — свободни
@@ -1509,6 +1510,8 @@ function saveCityLayout() {
     else if (pr.kind === 'shophouse') L.shops[pr.vtype] = { x: bx, y: by };
     else if (pr.kind === 'church') L.church = { x: bx, y: by };
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
+    else if (pr.kind === 'wallseg') (L.walls = L.walls || []).push({ x: bx, y: by });
+    else if (pr.kind === 'gatetower') (L.gates = L.gates || []).push({ x: bx, y: by });
     else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
     else if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: bx, y: by });
@@ -1524,10 +1527,51 @@ function saveCityLayout() {
   try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
   return L;
 }
+// поставяне на СГРАДА от палитрата (за възстановяване и дострояване)
+function placeBuildingAt(bk, cellX, cellY, loud) {
+  const m = G.map;
+  const deny = (msg) => { if (loud) { toast(msg, '#ff6b7a'); Sfx.play('deny'); } };
+  const vt = bk.slice(0, 5) === 'shop_' ? bk.slice(5) : null;
+  // единичните: църквата, кулата и всеки магазин съществуват само по веднъж
+  if (bk === 'church' || bk === 'tower' || vt) {
+    for (const pr of G.props) if (vt ? (pr.kind === 'shophouse' && pr.vtype === vt) : pr.kind === bk) {
+      if (loud) { toast('Already in the city — use MOVE to relocate it.', '#ffd23b'); Sfx.play('deny'); }
+      return;
+    }
+  }
+  if (bk === 'wallseg' || bk === 'gatetower') {
+    const idx = cellY * m.w + cellX;
+    if (cellX < 3 || cellY < 3 || cellX >= m.w - 3 || cellY >= m.h - 3 || m.cells[idx] !== FLOOR) return deny('Cannot place it here.');
+    for (const pr of G.props) if ((pr.kind === 'wallseg' || pr.kind === 'gatetower') && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
+    m.cells[idx] = 0;
+    G.props.push({ kind: bk, x: cellX + 0.5, y: cellY + 0.5, r: 0.5, solid: false });
+    G.editDecorDirty = true;
+    if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
+    return;
+  }
+  const defKind = vt ? 'shophouse' : bk.slice(0, 5) === 'house' ? 'house' : bk;
+  const def = BLD_DEFS[defKind];
+  if (!def) return;
+  const cellsNew = def.cells(cellX, cellY);
+  if (!bldCellsFree(cellsNew, null)) return deny('Cannot place it here.');
+  for (const [x, y] of cellsNew) m.cells[y * m.w + x] = 0;
+  const px2 = cellX + def.ax, py2 = cellY + def.ay;
+  if (defKind === 'house') {
+    const pp = bk.split('_'); // house,t,v
+    G.props.push({ kind: 'house', t: +pp[1] || 0, v: +pp[2] || 0, x: px2, y: py2, r: 0.6, solid: false });
+  } else if (vt) {
+    G.props.push({ kind: 'shophouse', vtype: vt, x: px2, y: py2, r: 0.6, solid: false, name: (typeof VENDOR_DEFS !== 'undefined' && VENDOR_DEFS[vt]) ? VENDOR_DEFS[vt].name : vt });
+  } else {
+    G.props.push({ kind: defKind, x: px2, y: py2, r: 0.6, solid: false });
+  }
+  saveCityLayout();
+  Sfx.play('coin');
+}
 function placeDecorAt(cellX, cellY, loud) {
   const m = G.map, idx = cellY * m.w + cellX;
   const kind = G.editPlaceKind;
   if (!kind) { if (loud) toast('Pick an element from the palette first.', '#ffd23b'); return; }
+  if (kind.slice(0, 2) === 'b_') { placeBuildingAt(kind.slice(2), cellX, cellY, loud); return; }
   if (kind.slice(0, 5) === 'cust_') {
     const id = kind.slice(5), cd = G.customDefs && G.customDefs[id];
     if (!cd) { G.editPlaceKind = null; if (loud) toast('That sprite no longer exists.', '#ff6b7a'); return; }
@@ -1535,7 +1579,7 @@ function placeDecorAt(cellX, cellY, loud) {
       if (x < 2 || y < 2 || x >= m.w - 2 || y >= m.h - 2 || m.cells[y * m.w + x] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
     }
     for (const pr of G.props) if (pr.kind === 'custom' && pr.cid === id && pr.bx === cellX && pr.by === cellY) return;
-    G.props.push({ kind: 'custom', cid: id, bx: cellX, by: cellY, cw: cd.cw, ch: cd.ch, x: cellX + cd.cw / 2, y: cellY + cd.ch / 2, r: 0.5, solid: !!cd.solid });
+    G.props.push({ kind: 'custom', cid: id, bx: cellX, by: cellY, cw: cd.cw, ch: cd.ch, x: cellX + cd.cw / 2, y: cellY + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
     G.editDecorDirty = true;
     if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
     return;
@@ -1551,6 +1595,28 @@ function placeDecorAt(cellX, cellY, loud) {
 function eraseDecorAt(cellX, cellY) {
   const kind = G.editPlaceKind;
   if (!kind) return;
+  if (kind.slice(0, 2) === 'b_') {
+    const bk = kind.slice(2);
+    const vt = bk.slice(0, 5) === 'shop_' ? bk.slice(5) : null;
+    for (let i = G.props.length - 1; i >= 0; i--) {
+      const pr = G.props[i];
+      const match = vt ? (pr.kind === 'shophouse' && pr.vtype === vt)
+        : bk.slice(0, 5) === 'house' ? (pr.kind === 'house' && (pr.t || 0) === (+bk.split('_')[1] || 0) && (pr.v || 0) === (+bk.split('_')[2] || 0))
+        : pr.kind === bk;
+      if (!match || !BLD_DEFS[pr.kind]) continue;
+      const { bx, by } = bldBase(pr);
+      const cellsL = BLD_DEFS[pr.kind].cells(bx, by);
+      if (!cellsL.some(([a, b2]) => a === cellX && b2 === cellY)) continue;
+      for (const [x, y] of cellsL) G.map.cells[y * G.map.w + x] = FLOOR;
+      G.props.splice(i, 1);
+      if (pr.kind === 'gatetower') { // гредата със знамената пада със своята кула
+        for (let k2 = G.props.length - 1; k2 >= 0; k2--) { const q = G.props[k2]; if (q.kind === 'gatebanner' && Math.abs(q.y - pr.y) < 1 && Math.abs(q.x - pr.x) <= 2.5) G.props.splice(k2, 1); }
+      }
+      G.editDecorDirty = true;
+      return;
+    }
+    return;
+  }
   if (kind.slice(0, 5) === 'cust_') {
     const id = kind.slice(5), cd = G.customDefs && G.customDefs[id];
     if (!cd) return;
@@ -1586,8 +1652,9 @@ function cityEditClick(mx, my) {
   // бутоните на лентата
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
   const tool = G.editTool || 'move';
-  // горната UI зона не е карта — да не редим елементи зад лентата
-  if (tool !== 'move' && my < 60 * SCALE) return true;
+  // горната UI зона не е карта — да не редим елементи зад лентата/палитрата
+  const uiBand = (tool === 'place' || tool === 'erase') && UI.editPaletteBottom ? UI.editPaletteBottom + 15 * SCALE : 60 * SCALE;
+  if (tool !== 'move' && my < uiBand) return true;
   const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
   // СЪЗДАВАНЕ: панелът поглъща кликовете си; при МАРКИРАНЕ влачиш рамка от клетки
   if (tool === 'create') {
@@ -1744,11 +1811,26 @@ function drawCityEditOverlay() {
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fence], ['fence2', Spr.surf.fence2], ['fence3', Spr.surf.fence3],
     ];
+    // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
+    items.push(
+      ['b_house_0_0', Spr.surf.houses[0]], ['b_house_0_1', Spr.surf.houses[1]],
+      ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
+      ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
+      ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
+      ['b_shop_exchange', Spr.surf.shophouses.exchange],
+      ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
+      ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
+    );
     for (const id in (G.customDefs || {})) if (Spr.custom && Spr.custom[id]) items.push(['cust_' + id, Spr.custom[id]]);
-    const cw2 = (items.length > 15 ? 16 : 20) * S, x0 = CW / 2 - items.length * (cw2 + 2 * S) / 2;
+    const per = 16, cw2 = 18 * S;
+    const palRows = Math.ceil(items.length / per);
+    UI.editPaletteBottom = (37 + palRows * 20) * S;
 
     items.forEach(([k, spr2], i) => {
-      const bx2 = x0 + i * (cw2 + 2 * S), by2 = 37 * S;
+      const colI = i % per, rowI = Math.floor(i / per);
+      const cntI = Math.min(per, items.length - rowI * per);
+      const x0r = CW / 2 - cntI * (cw2 + 2 * S) / 2;
+      const bx2 = x0r + colI * (cw2 + 2 * S), by2 = (37 + rowI * 20) * S;
       panel(bx2, by2, cw2, cw2);
       if (G.editPlaceKind === k) strokeRect(bx2, by2, cw2, cw2, '#7fd0a0', S);
       const f = Math.min((cw2 - 4 * S) / spr2.width, (cw2 - 4 * S) / spr2.height);
@@ -1766,7 +1848,7 @@ function drawCityEditOverlay() {
     if (G.editPlaceKind && G.editPlaceKind.slice(0, 5) === 'cust_') {
       const delId = G.editPlaceKind.slice(5);
       const armed = G.editDelArm === G.editPlaceKind;
-      const dx = CW / 2 - 40 * S, dy = 61 * S;
+      const dx = CW / 2 - 40 * S, dy = (UI.editPaletteBottom || 61 * S) + 2 * S;
       panel(dx, dy, 80 * S, 11 * S);
       strokeRect(dx, dy, 80 * S, 11 * S, armed ? '#ff6b7a' : '#3a4456', S);
       ctx.font = fontBold(5.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ff6b7a';
@@ -1832,7 +1914,9 @@ function customName(id) {
   return (d2 && d2.name) ? d2.name : id;
 }
 function editKindLabel(k) {
-  return k && k.slice(0, 5) === 'cust_' ? customName(k.slice(5)) : k;
+  if (k && k.slice(0, 5) === 'cust_') return customName(k.slice(5));
+  if (k && k.slice(0, 2) === 'b_') return k.slice(2).replace(/_/g, ' ');
+  return k;
 }
 function buildCustomSprites() {
   Spr.custom = Spr.custom || {};
@@ -1883,8 +1967,10 @@ function drawCreatePanel(diamond) {
   // плътността
   ctx.textAlign = 'left'; ctx.font = fontPx(5.5); ctx.fillStyle = '#7d8899';
   ctx.fillText('BODY', x + 5 * S, y + 74 * S);
-  bt('SOLID', x + 4 * S, y + 77 * S, 34 * S, () => { st.solid = true; }, st.solid);
-  bt('WALK', x + 40 * S, y + 77 * S, 34 * S, () => { st.solid = false; }, !st.solid);
+  st.body = st.body || (st.solid ? 'solid' : 'walk');
+  bt('SOLID', x + 4 * S, y + 77 * S, 30 * S, () => { st.body = 'solid'; }, st.body === 'solid');
+  bt('WALK', x + 36 * S, y + 77 * S, 28 * S, () => { st.body = 'walk'; }, st.body === 'walk');
+  bt('FLAT', x + 66 * S, y + 77 * S, 28 * S, () => { st.body = 'flat'; }, st.body === 'flat'); // терен: ляга НА земята, под всичко
   // ПРЕГЛЕДЪТ: платното се показва и чака ПОТВЪРЖДЕНИЕ — чак тогава се рисува
   if (ready) {
     const cvw = (st.cw + st.ch) * 16, cvh = (st.cw + st.ch) * 8 + st.top;
@@ -1907,7 +1993,7 @@ function drawCreatePanel(diamond) {
       G.customDefs = G.customDefs || {};
       let n = 1; while (G.customDefs['c' + n]) n++;
       const id = 'c' + n;
-      G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: !!st.solid };
+      G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: st.body === 'solid', flat: st.body === 'flat' };
       // кръщаването: празно = служебното id
       try {
         const nm = (window.prompt('Name your sprite:', '') || '').trim().slice(0, 24);

@@ -155,11 +155,24 @@ const Surface = {
     const used = new Set();
     const block = (x, y) => { const idx = y * w + x; cells[idx] = 0; used.add(idx); };
 
+    const LAY = mirholdLayout(); // ръчната подредба (ако има) важи и за стената
     // СТЕНАТА: каменен пръстен с ДВА входа — порта на юг и задна порта на север.
     // Отворът е 3 клетки; клетките на ±2 остават блокирани — върху тях стъпват кулите на портата.
     const gY = cy + Math.round(RAD / 1.1);  // редът на пръстена точно на юг
     const gNY = cy - Math.round(RAD / 1.1); // и на север
     const gateX = cx;
+    if (LAY && Array.isArray(LAY.walls)) {
+      // РЪЧНАТА стена от едитора — точно както е подредена
+      for (const c2 of LAY.walls) { block(c2.x, c2.y); props.push({ kind: 'wallseg', x: c2.x + 0.5, y: c2.y + 0.5, r: 0.5, solid: false }); }
+      const gts = Array.isArray(LAY.gates) ? LAY.gates : [];
+      for (const c2 of gts) { block(c2.x, c2.y); props.push({ kind: 'gatetower', x: c2.x + 0.5, y: c2.y + 0.5, r: 0.5, solid: false }); }
+      // гредата със знамената: две кули на един ред, на 4 клетки — греда по средата
+      for (let a = 0; a < gts.length; a++) for (let b2 = a + 1; b2 < gts.length; b2++) {
+        if (gts[a].y === gts[b2].y && Math.abs(gts[a].x - gts[b2].x) === 4) {
+          props.push({ kind: 'gatebanner', x: Math.min(gts[a].x, gts[b2].x) + 2.5, y: gts[a].y + 0.4, r: 0.1, solid: false });
+        }
+      }
+    } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
       const d = Math.hypot(i - cx, (j - cy) * 1.1);
       if (d >= RAD - 0.5 && d < RAD + 0.6) {
@@ -178,11 +191,11 @@ const Surface = {
       props.push({ kind: 'gatetower', x: gateX + 2.5, y: gy2 + 0.5, r: 0.5, solid: false });
       props.push({ kind: 'gatebanner', x: gateX + 0.5, y: gy2 + 0.4, r: 0.1, solid: false });
     }
+    }
 
     // СТРУКТУРАТА: ПЛОЩАД в центъра (кулата, огънят и магазините около него),
     // къщите — в пръстен покрай стената, свързани с околовръстна улица.
     // Ако има РЪЧНА подредба от едитора — тя замества позициите на сградите.
-    const LAY = mirholdLayout();
     const spots = {
       tower: { x: cx, y: cy - 1 },
       jewel: { x: cx + 4, y: cy - 6 },    // Мистикът — североизточния ръб на площада (север е за църквата)
@@ -346,7 +359,7 @@ const Surface = {
         if (d2.k === 'custom') {
           const cd = G.customDefs[d2.id];
           if (!cd) continue;
-          props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid });
+          props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
           continue;
         }
         props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' });
