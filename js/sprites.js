@@ -1363,6 +1363,17 @@ function genFencePiece(t, m) {
     rail(dirs[b][0], dirs[b][1], 9, skTop);
     rail(dirs[b][0], dirs[b][1], 4, skBot);
   }
+  // КОЛЧЕ НА ВСЕКИ ШЕВ: двете съседни парчета рисуват едно и също колче на
+  // средата на общия ръб — застъпват се пиксел в пиксел, никакво удвояване
+  const edgePost = (ex, gy) => {
+    const ph2 = 9;
+    for (let y = gy - ph2; y <= gy - 1; y++) { px(g, ex, y, post); px(g, ex + 1, y, postD); }
+    if (t !== 2) { px(g, ex, gy - ph2 - 1, postD); px(g, ex + 1, gy - ph2 - 1, postD); } // капаче (обгорената е назъбена)
+  };
+  if (m & 1) edgePost(23, H - 8);  // север
+  if (m & 2) edgePost(23, H);      // изток
+  if (m & 4) edgePost(7, H);       // юг
+  if (m & 8) edgePost(7, H - 8);   // запад
   const bits = (m & 1 ? 1 : 0) + (m & 2 ? 1 : 0) + (m & 4 ? 1 : 0) + (m & 8 ? 1 : 0);
   const straight = m === 5 || m === 10; // N|S или E|W — чиста права, без колче
   if (!straight) {
