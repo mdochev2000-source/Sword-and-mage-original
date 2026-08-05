@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 15:12 UTC";
+window.__BUILD__ = "2026-08-05 15:49 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -10013,6 +10013,7 @@ function setupInput() {
         break;
       case 'play': {
         // ГРАДСКИЯТ ЕДИТОР: само с ?editor=1 в адреса (dev), F2 в Мирхолд
+        if (G.pixEdit && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { pixUndo(); break; } // UNDO в пиксел-редактора
         if (e.code === 'F2' && G.editorOn && G.onSurface && G.city === 'mirhold') { cityEditToggle(); break; }
         if (e.code === 'Escape' && G.cityEdit) { cityEditToggle(); break; }
         if (e.code === 'Escape') { G.state = 'pause'; document.body.classList.add('menu'); break; }
@@ -10111,6 +10112,17 @@ function setupInput() {
         if (G.editPathDirty || G.editDecorDirty) { G.editPathDirty = false; G.editDecorDirty = false; saveCityLayout(); }
       }
       if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); }
+      if (G.pixShape && G.pixEdit) { // ЛИНИЯ/ПРАВОЪГЪЛНИК: пускането нанася фигурата
+        const eS = G.pixEdit;
+        const hitS = pixHitPixel(G.mouse.x, G.mouse.y);
+        if (hitS && (eS.tool === 'line' || eS.tool === 'rect')) {
+          pixPushHist();
+          const cS = eS.spr.getContext('2d'); cS.fillStyle = eS.color;
+          for (const [x, y] of pixShapePixels(eS.tool, G.pixShape.x0, G.pixShape.y0, hitS.px, hitS.py)) pixSet(cS, x, y, false);
+          pixSaveOverride();
+        }
+        G.pixShape = null;
+      }
       G.pixPanning = null;
       G.pixSVDrag = false; G.pixHueDrag = false;
       // МАРКИРАНЕ на клетки (CREATE): при пускане рамката става размер на платното
@@ -11395,7 +11407,7 @@ function cityEditToggle() {
   G.cityEdit = !G.cityEdit;
   G.editSelBld = null;
   if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); } // щрихът по средата не се губи
-  G.pixEdit = null; G.pixPaint = false;
+  G.pixEdit = null; G.pixPaint = false; G.pixShape = null;
   G.createSt = null; G.pixSVDrag = false; G.pixHueDrag = false;
   toast(G.cityEdit ? 'CITY EDITOR: tap a building, then tap a tile. F2/ESC — exit.' : 'Editor closed. The layout is saved on this device.', '#ffd23b');
 }
@@ -11656,7 +11668,7 @@ function drawCityEditOverlay() {
     try { localStorage.removeItem('sm_layout_mirhold'); } catch (e) {}
     // недовършен щрих се записва, редакторът и CREATE се затварят чисто
     if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); }
-    G.pixEdit = null; G.createSt = null; G.editPlaceKind = null; G.editSelBld = null;
+    G.pixEdit = null; G.pixShape = null; G.createSt = null; G.editPlaceKind = null; G.editSelBld = null;
     const keep = G.customDefs; // БИБЛИОТЕКАТА от създадени спрайтове оцелява при RESET
     startSurface('mirhold');
     if (keep && Object.keys(keep).length) { G.customDefs = keep; buildCustomSprites(); }
@@ -11937,7 +11949,7 @@ function openPixelEditor(key) {
   const own = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 16);
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
-  G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1 };
+  G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
 function pixZoomScale() {
@@ -11947,7 +11959,7 @@ function pixZoomScale() {
 }
 function pixViewport() {
   const S = SCALE;
-  const vw = 178 * S, vh = Math.max(60 * S, Math.min(CH - 172 * S, 340 * S));
+  const vw = 178 * S, vh = Math.max(60 * S, Math.min(CH - 185 * S, 340 * S));
   return { vw, vh };
 }
 function pixPanelRect() {
@@ -11955,20 +11967,16 @@ function pixPanelRect() {
   const z = pixZoomScale();
   const { vw, vh } = pixViewport();
   const w = vw + 12 * S;
-  const h = 46 * S + Math.ceil(e.palette.length / 8) * 12 * S + 32 * S + vh + 16 * S;
+  const h = 59 * S + Math.ceil(e.palette.length / 8) * 12 * S + 32 * S + vh + 16 * S;
   return { x: CW - w - 6 * S, y: 30 * S, w, h, z };
 }
 function pixPaintAt(mx, my) {
-  const e = G.pixEdit; if (!e || !UI.pixZoomRect) return;
-  const r = UI.pixZoomRect;
-  if (mx < r.x || my < r.y || mx >= r.x + r.vw || my >= r.y + r.vh) return; // само в прозореца
-  const drawW = e.spr.width * r.z, drawH = e.spr.height * r.z;
-  const ox = drawW < r.vw ? Math.floor((r.vw - drawW) / 2) : -e.panX;
-  const oy2 = drawH < r.vh ? Math.floor((r.vh - drawH) / 2) : -e.panY;
-  const px2 = Math.floor((mx - r.x - ox) / r.z), py2 = Math.floor((my - r.y - oy2) / r.z);
-  if (px2 < 0 || py2 < 0 || px2 >= e.spr.width || py2 >= e.spr.height) return;
+  const e = G.pixEdit; if (!e) return;
+  const hit = pixHitPixel(mx, my);
+  if (!hit) return;
+  const px2 = hit.px, py2 = hit.py;
   const c = e.spr.getContext('2d');
-  if (e.tool === 'erase') c.clearRect(px2, py2, 1, 1);
+  if (e.tool === 'erase') pixSet(c, px2, py2, true);
   else if (e.tool === 'pick') {
     const d = c.getImageData(px2, py2, 1, 1).data;
     if (d[3] > 0) {
@@ -11982,8 +11990,7 @@ function pixPaintAt(mx, my) {
     G.pixPaint = false;
   } else {
     c.fillStyle = e.color;
-    c.clearRect(px2, py2, 1, 1);
-    c.fillRect(px2, py2, 1, 1);
+    pixSet(c, px2, py2, false);
   }
 }
 function pixSaveOverride() {
@@ -12008,7 +12015,14 @@ function pixClick(mx, my) {
     if (mx >= zr.x && my >= zr.y && mx < zr.x + zr.vw && my < zr.y + zr.vh) {
       if (e.tool === 'hand') {
         G.pixPanning = { sx: mx, sy: my, ox: e.panX, oy: e.panY };
+      } else if (e.tool === 'fill') {
+        const hit = pixHitPixel(mx, my);
+        if (hit) { pixPushHist(); pixFloodFill(hit.px, hit.py); pixSaveOverride(); }
+      } else if (e.tool === 'line' || e.tool === 'rect') {
+        const hit = pixHitPixel(mx, my);
+        if (hit) G.pixShape = { x0: hit.px, y0: hit.py };
       } else {
+        if (e.tool !== 'pick') pixPushHist(); // щрихът да може да се върне с UNDO
         G.pixPaint = true;
         pixPaintAt(mx, my);
       }
@@ -12030,6 +12044,90 @@ function pixZoomStep(dir) {
   e.zoom = Math.max(1, Math.min(16, cur + dir));
   pixClampPan();
 }
+// --- помощници на пиксел-инструментите: кофа, линия, правоъгълник, огледало, UNDO ---
+function pixHitPixel(mx, my) {
+  const e = G.pixEdit; if (!e || !UI.pixZoomRect) return null;
+  const r = UI.pixZoomRect;
+  if (mx < r.x || my < r.y || mx >= r.x + r.vw || my >= r.y + r.vh) return null;
+  const drawW = e.spr.width * r.z, drawH = e.spr.height * r.z;
+  const ox = drawW < r.vw ? Math.floor((r.vw - drawW) / 2) : -e.panX;
+  const oy2 = drawH < r.vh ? Math.floor((r.vh - drawH) / 2) : -e.panY;
+  const px2 = Math.floor((mx - r.x - ox) / r.z), py2 = Math.floor((my - r.y - oy2) / r.z);
+  if (px2 < 0 || py2 < 0 || px2 >= e.spr.width || py2 >= e.spr.height) return null;
+  return { px: px2, py: py2 };
+}
+function pixSet(c, x, y, erase) {
+  const e = G.pixEdit;
+  const put = (xx, yy) => {
+    if (xx < 0 || yy < 0 || xx >= e.spr.width || yy >= e.spr.height) return;
+    c.clearRect(xx, yy, 1, 1);
+    if (!erase) c.fillRect(xx, yy, 1, 1);
+  };
+  put(x, y);
+  if (e.mirror) put(e.spr.width - 1 - x, y); // огледалото повтаря по хоризонтала
+}
+function pixShapePixels(tool, x0, y0, x1, y1) {
+  const out = [];
+  if (tool === 'rect') {
+    const ax = Math.min(x0, x1), bx = Math.max(x0, x1), ay = Math.min(y0, y1), by = Math.max(y0, y1);
+    for (let x = ax; x <= bx; x++) { out.push([x, ay]); if (by !== ay) out.push([x, by]); }
+    for (let y = ay + 1; y < by; y++) { out.push([ax, y]); if (bx !== ax) out.push([bx, y]); }
+    return out;
+  }
+  // линия на Брезенхам
+  let dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy, x = x0, y = y0;
+  for (;;) {
+    out.push([x, y]);
+    if (x === x1 && y === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+  return out;
+}
+function pixFloodFill(px, py) {
+  const e = G.pixEdit; if (!e) return;
+  const c = e.spr.getContext('2d');
+  const W = e.spr.width, H = e.spr.height;
+  const img = c.getImageData(0, 0, W, H), d = img.data;
+  const nr = parseInt(e.color.slice(1, 3), 16), ng = parseInt(e.color.slice(3, 5), 16), nb = parseInt(e.color.slice(5, 7), 16);
+  const fill1 = (sx, sy) => {
+    const i0 = (sy * W + sx) * 4;
+    const tr = d[i0], tg = d[i0 + 1], tb2 = d[i0 + 2], ta = d[i0 + 3];
+    if (ta === 255 && tr === nr && tg === ng && tb2 === nb) return; // вече е този цвят
+    const stack = [sy * W + sx];
+    while (stack.length) {
+      const idx = stack.pop();
+      const j = idx * 4;
+      if (d[j] !== tr || d[j + 1] !== tg || d[j + 2] !== tb2 || d[j + 3] !== ta) continue;
+      d[j] = nr; d[j + 1] = ng; d[j + 2] = nb; d[j + 3] = 255;
+      const x = idx % W, y = (idx / W) | 0;
+      if (x > 0) stack.push(idx - 1);
+      if (x < W - 1) stack.push(idx + 1);
+      if (y > 0) stack.push(idx - W);
+      if (y < H - 1) stack.push(idx + W);
+    }
+  };
+  fill1(px, py);
+  if (e.mirror) fill1(W - 1 - px, py);
+  c.putImageData(img, 0, 0);
+}
+function pixPushHist() {
+  const e = G.pixEdit; if (!e) return;
+  e.hist = e.hist || [];
+  try {
+    e.hist.push(e.spr.getContext('2d').getImageData(0, 0, e.spr.width, e.spr.height));
+    if (e.hist.length > 30) e.hist.shift();
+  } catch (err) {}
+}
+function pixUndo() {
+  const e = G.pixEdit; if (!e || !e.hist || !e.hist.length) return;
+  e.spr.getContext('2d').putImageData(e.hist.pop(), 0, 0);
+  pixSaveOverride();
+  Sfx.play('open');
+}
 function drawPixelEditor() {
   const S = SCALE, e = G.pixEdit;
   const r = pixPanelRect();
@@ -12039,32 +12137,40 @@ function drawPixelEditor() {
   ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
   ctx.fillText('PIXEL: ' + e.key, r.x + 6 * S, r.y + 10 * S);
   // инструменти
-  const tb = (label, x, wpx, act, on) => {
-    panel(x, r.y + 14 * S, wpx, 11 * S);
-    if (on) strokeRect(x, r.y + 14 * S, wpx, 11 * S, '#7fd0a0', S);
+  const tb = (label, x, wpx, act, on, row) => {
+    const by = r.y + (14 + (row || 0) * 13) * S;
+    panel(x, by, wpx, 11 * S);
+    if (on) strokeRect(x, by, wpx, 11 * S, '#7fd0a0', S);
     ctx.font = fontBold(5.5); ctx.textAlign = 'center';
     ctx.fillStyle = on ? '#7fd0a0' : '#a8b2c4';
-    ctx.fillText(label, x + wpx / 2, r.y + 21.5 * S);
-    UI.pixBtns.push({ x, y: r.y + 14 * S, w: wpx, h: 11 * S, act });
+    ctx.fillText(label, x + wpx / 2, by + 7.5 * S);
+    UI.pixBtns.push({ x, y: by, w: wpx, h: 11 * S, act });
   };
   let bx2 = r.x + 4 * S;
   tb('PEN', bx2, 20 * S, () => { e.tool = 'pen'; }, e.tool === 'pen'); bx2 += 22 * S;
   tb('ERS', bx2, 20 * S, () => { e.tool = 'erase'; }, e.tool === 'erase'); bx2 += 22 * S;
   tb('PIK', bx2, 20 * S, () => { e.tool = 'pick'; }, e.tool === 'pick'); bx2 += 22 * S;
-  tb('HND', bx2, 20 * S, () => { e.tool = 'hand'; }, e.tool === 'hand'); bx2 += 22 * S;
-  tb('-', bx2, 12 * S, () => pixZoomStep(-1), false); bx2 += 14 * S;
-  tb('+', bx2, 12 * S, () => pixZoomStep(1), false); bx2 += 14 * S;
+  tb('FIL', bx2, 20 * S, () => { e.tool = 'fill'; }, e.tool === 'fill'); bx2 += 22 * S;
+  tb('LIN', bx2, 20 * S, () => { e.tool = 'line'; }, e.tool === 'line'); bx2 += 22 * S;
+  tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect');
+  bx2 = r.x + 4 * S;
+  tb('HND', bx2, 20 * S, () => { e.tool = 'hand'; }, e.tool === 'hand', 1); bx2 += 22 * S;
+  tb('MIR', bx2, 20 * S, () => { e.mirror = !e.mirror; }, !!e.mirror, 1); bx2 += 22 * S;
+  tb('UND', bx2, 20 * S, () => pixUndo(), false, 1); bx2 += 22 * S;
+  tb('-', bx2, 12 * S, () => pixZoomStep(-1), false, 1); bx2 += 14 * S;
+  tb('+', bx2, 12 * S, () => pixZoomStep(1), false, 1); bx2 += 14 * S;
   tb('RST', bx2, 20 * S, () => {
+    pixPushHist(); // и RESET може да се върне с UNDO
     const c = e.spr.getContext('2d');
     c.clearRect(0, 0, e.spr.width, e.spr.height);
     c.drawImage(e.bak, 0, 0);
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
-  }, false); bx2 += 22 * S;
-  tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false);
+  }, false, 1); bx2 += 22 * S;
+  tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
   // палитрата
   ctx.textAlign = 'left';
-  const py0 = r.y + 28 * S;
+  const py0 = r.y + 41 * S; // под двата реда инструменти
   e.palette.forEach((col, i) => {
     const sx2 = r.x + 4 * S + (i % 8) * 15 * S, sy2 = py0 + Math.floor(i / 8) * 12 * S;
     rcx(sx2, sy2, 13 * S, 10 * S, col);
@@ -12119,11 +12225,22 @@ function drawPixelEditor() {
   }
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(e.spr, 0, 0, e.spr.width, e.spr.height, zx0 + ox, zy0 + oy2, drawW, drawH);
+  if (e.mirror) { ctx.globalAlpha = 0.35; rcx(zx0 + ox + (e.spr.width / 2) * z - 1, zy0 + oy2, 2, drawH, '#7fd0a0'); ctx.globalAlpha = 1; }
   // показалецът: полупрозрачен преглед на цвета + очертание на пиксела
   const hx2 = Math.floor((G.mouse.x - zx0 - ox) / z), hy2 = Math.floor((G.mouse.y - zy0 - oy2) / z);
   if (hx2 >= 0 && hy2 >= 0 && hx2 < e.spr.width && hy2 < e.spr.height &&
       G.mouse.x >= zx0 && G.mouse.x < zx0 + vw && G.mouse.y >= zy0 && G.mouse.y < zy0 + vh) {
-    if (e.tool === 'pen') { ctx.globalAlpha = 0.55; rcx(zx0 + ox + hx2 * z, zy0 + oy2 + hy2 * z, z, z, e.color); ctx.globalAlpha = 1; }
+    const cell = (x, y, col, a) => { ctx.globalAlpha = a; rcx(zx0 + ox + x * z, zy0 + oy2 + y * z, z, z, col); ctx.globalAlpha = 1; };
+    if (G.pixShape && (e.tool === 'line' || e.tool === 'rect')) {
+      // прегледът на линията/правоъгълника, докато влачиш
+      for (const [x, y] of pixShapePixels(e.tool, G.pixShape.x0, G.pixShape.y0, hx2, hy2)) {
+        cell(x, y, e.color, 0.55);
+        if (e.mirror) cell(e.spr.width - 1 - x, y, e.color, 0.35);
+      }
+    } else if (e.tool === 'pen' || e.tool === 'fill' || e.tool === 'line' || e.tool === 'rect') {
+      cell(hx2, hy2, e.color, 0.55);
+      if (e.mirror && e.tool === 'pen') cell(e.spr.width - 1 - hx2, hy2, e.color, 0.35);
+    }
     strokeRect(zx0 + ox + hx2 * z, zy0 + oy2 + hy2 * z, z, z, e.tool === 'erase' ? '#ff6b7a' : '#ffffff', 1);
   }
   ctx.restore();
