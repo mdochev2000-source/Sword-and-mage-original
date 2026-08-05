@@ -1465,7 +1465,8 @@ function saveCityLayout() {
 }
 function placeDecorAt(cellX, cellY, loud) {
   const m = G.map, idx = cellY * m.w + cellX;
-  const kind = G.editPlaceKind || 'tree';
+  const kind = G.editPlaceKind;
+  if (!kind) { if (loud) toast('Pick an element from the palette first.', '#ffd23b'); return; }
   if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
   // не дублираме същия вид върху същата клетка (моливът минава много пъти)
   for (const pr of G.props) if (pr.kind === kind && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
@@ -1475,7 +1476,8 @@ function placeDecorAt(cellX, cellY, loud) {
   if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
 }
 function eraseDecorAt(cellX, cellY) {
-  const kind = G.editPlaceKind || 'tree';
+  const kind = G.editPlaceKind;
+  if (!kind) return;
   for (let i = G.props.length - 1; i >= 0; i--) {
     const pr = G.props[i];
     if (pr.kind !== kind) continue;                       // гумата пипа САМО избрания вид
@@ -1499,6 +1501,8 @@ function cityEditClick(mx, my) {
   // бутоните на лентата
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
   const tool = G.editTool || 'move';
+  // горната UI зона не е карта — да не редим елементи зад лентата
+  if (tool !== 'move' && my < 60 * SCALE) return true;
   const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
   // ЧЕТКИ за път/трева: боядисваме и започваме влачене
   if (tool === 'path' || tool === 'grass') {
@@ -1557,7 +1561,9 @@ function drawCityEditOverlay() {
   // лентата с бутоните
   rcx(0, 0, CW, 17 * S, 'rgba(4,6,11,0.85)');
   ctx.font = fontBold(6.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
-  ctx.fillText('CITY EDITOR — tap a building, then tap a tile · F2/ESC exit', CW / 2, 7 * S);
+  const toolH = G.editTool || 'move';
+  const hint = toolH === 'move' ? 'tap a building, then a tile' : (toolH === 'place' || toolH === 'pencil') ? (G.editPlaceKind ? 'placing: ' + G.editPlaceKind : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + G.editPlaceKind + ' only' : 'PICK an element to erase') : 'paint the ground';
+  ctx.fillText('CITY EDITOR — ' + hint + ' · F2/ESC exit', CW / 2, 7 * S);
   UI.cityEditBtns = [];
   const btn = (label, x, wpx, col, act) => {
     panel(x, 9 * S, wpx, 12 * S);
@@ -1603,7 +1609,7 @@ function drawCityEditOverlay() {
       ['fence', Spr.surf.fence], ['fence2', Spr.surf.fence2], ['fence3', Spr.surf.fence3],
     ];
     const cw2 = 20 * S, x0 = CW / 2 - items.length * (cw2 + 2 * S) / 2;
-    if (!G.editPlaceKind) G.editPlaceKind = 'tree';
+
     items.forEach(([k, spr2], i) => {
       const bx2 = x0 + i * (cw2 + 2 * S), by2 = 37 * S;
       panel(bx2, by2, cw2, cw2);

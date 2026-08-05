@@ -1610,17 +1610,17 @@ function genBush(R, v) {
   return g.canvas;
 }
 function genTuft(R, v) {
-  // НЯКОЛКО стръка трева на една клетка — да седи естествено; v1 е суха
-  const g = mk(16, 11);
-  const c1 = v ? '#6a6034' : '#525f3f', c2 = v ? '#7a7040' : '#5c6a48', c3 = v ? '#57502a' : '#46543a';
-  const clump = (x0, y0, tall) => {
-    px(g, x0, y0, c1); px(g, x0, y0 - 1, c1);
-    px(g, x0 - 1, y0 - 1, c3); px(g, x0 - 1, y0, c1);
-    px(g, x0 + 1, y0 - 1, c2); px(g, x0 + 1, y0, c1);
-    if (tall) { px(g, x0, y0 - 2, c2); px(g, x0 + 1, y0 - 2, c3); }
+  // 4 снопчета СТАРАТА визия, наслагани едно до друго — покриват клетката естествено
+  const g = mk(24, 14);
+  const c1 = v ? '#6a6034' : '#525f3f', c2 = v ? '#7a7040' : '#5c6a48';
+  const blade = (ox, oy2) => {
+    px(g, ox + 2, oy2 + 5, c1); px(g, ox + 2, oy2 + 4, c1); px(g, ox + 1, oy2 + 3, c2);
+    px(g, ox + 4, oy2 + 5, c1); px(g, ox + 4, oy2 + 3, c2); px(g, ox + 4, oy2 + 2, v ? c2 : c1);
+    px(g, ox + 6, oy2 + 5, c1); px(g, ox + 6, oy2 + 4, c1); px(g, ox + 7, oy2 + 3, c2);
+    px(g, ox + 3, oy2 + 6, c1); px(g, ox + 5, oy2 + 6, c1);
+    if (v) { px(g, ox + 5, oy2 + 1, c2); px(g, ox + 3, oy2 + 2, c1); }
   };
-  clump(3, 4, v); clump(11, 3, true); clump(7, 8, false); clump(13, 8, v);
-  px(g, 5, 6, c3); px(g, 9, 5, c2); px(g, 1, 8, c2);
+  blade(0, 1); blade(9, 0); blade(4, 6); blade(13, 5);
   return g.canvas;
 }
 function genRock3(R) {
@@ -1662,18 +1662,43 @@ function genFence3(R) {
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
+// изправено мъртво дърво: висок ствол с разперени извити голи клони
+function genDeadTree1(R) {
+  const g = mk(24, 30);
+  const d1 = '#3a3126', d2 = '#4a4033', d3 = '#2e2820', hl = '#54493a';
+  rc(g, 11, 20, 3, 9, d1); rc(g, 11, 20, 1, 9, d2); px(g, 11, 20, hl);   // ствол
+  px(g, 9, 27, d3); px(g, 8, 28, d3); px(g, 14, 27, d3); px(g, 15, 28, d1); // корени
+  rc(g, 11, 14, 2, 6, d1); px(g, 12, 15, d2);                              // нагоре
+  // ляв главен клон
+  px(g, 10, 13, d1); px(g, 9, 12, d2); px(g, 8, 11, d1); px(g, 7, 9, d2); px(g, 6, 8, d1); px(g, 5, 6, d3);
+  px(g, 8, 9, d3); px(g, 9, 7, d2); px(g, 9, 6, d3);                       // разклонка
+  // десен главен клон
+  px(g, 13, 13, d1); px(g, 14, 12, d2); px(g, 15, 11, d1); px(g, 16, 9, d2); px(g, 17, 8, d1); px(g, 18, 6, d3); px(g, 19, 5, d2);
+  px(g, 16, 7, d3); px(g, 15, 5, d2);                                      // разклонка
+  // среден връх
+  px(g, 12, 13, d2); px(g, 12, 11, d1); px(g, 11, 9, d2); px(g, 12, 7, d1); px(g, 12, 5, d3); px(g, 11, 4, d2); px(g, 13, 3, d3);
+  px(g, 10, 17, d3); px(g, 13, 18, d3);                                    // чепове
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
 function genDeadTree2(R) {
-  // второ голо дърво: прекършено, с раздвоен ствол
-  const g = mk(20, 26);
-  rc(g, 9, 18, 3, 7, '#33291f'); rc(g, 9, 18, 1, 7, '#3d3226');    // дънер
-  px(g, 7, 23, '#33291f'); px(g, 13, 24, '#2b241c');               // корени
-  // раздвоен ствол
-  px(g, 9, 17, '#33291f'); px(g, 8, 16, '#33291f'); px(g, 7, 15, '#3d3226'); px(g, 6, 13, '#33291f'); px(g, 6, 11, '#3d3226');
-  px(g, 11, 17, '#33291f'); px(g, 12, 15, '#33291f'); px(g, 13, 13, '#3d3226'); px(g, 14, 11, '#33291f');
-  // прекършен връх (стърчи настрани)
-  px(g, 5, 9, '#33291f'); px(g, 4, 8, '#2b241c'); px(g, 6, 9, '#3d3226');
-  px(g, 15, 9, '#33291f'); px(g, 16, 8, '#2b241c'); px(g, 14, 8, '#3d3226'); px(g, 17, 7, '#2b241c');
-  px(g, 12, 12, '#2b241c'); px(g, 8, 13, '#2b241c');               // чепове
+  // наведено мъртво дърво със счупен висящ клон и пън до него
+  const g = mk(22, 26);
+  const d1 = '#3a3126', d2 = '#4a4033', d3 = '#2e2820', hl = '#54493a';
+  // ствол — диагонал, дебел 2px
+  const trunk = [[7,24],[7,23],[8,22],[8,21],[9,20],[9,19],[10,18],[10,17],[11,16],[11,15],[12,14],[12,13],[13,12],[13,11],[14,10]];
+  for (const [x,y] of trunk) { px(g, x, y, d1); px(g, x + 1, y, d2); }
+  px(g, 7, 24, hl); px(g, 8, 21, hl);
+  // корени и основа
+  px(g, 5, 24, d1); px(g, 6, 25, d3); px(g, 9, 25, d3); px(g, 10, 24, d1);
+  // клони горе
+  px(g, 14, 9, d1); px(g, 13, 8, d2); px(g, 12, 7, d1); px(g, 11, 6, d3);           // ляв
+  px(g, 15, 9, d1); px(g, 16, 8, d2); px(g, 17, 7, d1); px(g, 18, 6, d3); px(g, 19, 5, d2); // десен
+  px(g, 14, 8, d2); px(g, 15, 6, d1); px(g, 15, 5, d3);                              // среден
+  // СЧУПЕНИЯТ клон — виси надолу от средата
+  px(g, 11, 13, d2); px(g, 12, 15, d1); px(g, 12, 17, d3); px(g, 13, 18, d3);
+  // пънче до дървото
+  rc(g, 16, 21, 4, 3, d1); rc(g, 16, 21, 4, 1, d2); px(g, 17, 21, hl); px(g, 19, 23, d3);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -2232,7 +2257,7 @@ function initSurfaceSprites() {
     grass: [0, 1, 2, 3].map(() => genGrass(R, false)),
     dirt: [0, 1].map(() => genGrass(R, true)),
     tree: genTree(R, false),
-    deadTree: genTree(R, true),
+    deadTree: genDeadTree1(R),
     rock: genRockS(R),
     tomb: genTomb(R),
     pillar: genPillar(),
