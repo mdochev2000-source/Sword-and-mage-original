@@ -348,6 +348,7 @@ const Surface = {
       if (!path[idx] && R() < 0.65) continue;
       props.push({ kind: 'puddle', x: x + 0.5, y: y + 0.5, r: 0, solid: false, flat: true });
     }
+    G.fenceDirty = true; // оградите се снапват — маските се преизчисляват при първия кадър
     // създадените от дизайнера спрайтове (бутонът CREATE) — дефиниции + платна
     G.customDefs = (LAY && LAY.custom) ? JSON.parse(JSON.stringify(LAY.custom)) : {};
     if (typeof buildCustomSprites === 'function') buildCustomSprites();

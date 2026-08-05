@@ -853,6 +853,7 @@ function renderWorld() {
   // --- събиране на обекти за рисуване в дълбочинен ред (пул, без нови closures) ---
   draws.length = 0; drawPoolI = 0;
   G.heroCovered = false;
+  if (G.fenceDirty !== false) recomputeFenceMasks(); // снапването на оградите
   // стени (тези пред героя стават полупрозрачни, за да не го скриват)
   const P = G.player;
   const pD = P.x + P.y;
@@ -921,7 +922,7 @@ function renderWorld() {
     else if (pr.kind === 'rock') spr = Spr.surf.rock;
     else if (pr.kind === 'tomb') spr = Spr.surf.tomb;
     else if (pr.kind === 'pillar') spr = Spr.surf.pillar;
-    else if (pr.kind === 'fence') spr = Spr.surf.fence;
+    else if (pr.kind === 'fence') spr = (Spr.surf.fenceTiles && pr.fm !== undefined) ? Spr.surf.fenceTiles[0][pr.fm] : Spr.surf.fence;
     else if (pr.kind === 'stall') {
       if (pr.vtype === 'jewel') spr = Spr.surf.mystic;
       else if (pr.vtype === 'exchange') spr = Spr.surf.exchange;
@@ -973,8 +974,8 @@ function renderWorld() {
     else if (pr.kind === 'tuft2') spr = Spr.surf.tufts[1];
     else if (pr.kind === 'deadTree2') spr = Spr.surf.deadTree2;
     else if (pr.kind === 'rock3') spr = Spr.surf.rock3;
-    else if (pr.kind === 'fence2') spr = Spr.surf.fence2;
-    else if (pr.kind === 'fence3') spr = Spr.surf.fence3;
+    else if (pr.kind === 'fence2') spr = (Spr.surf.fenceTiles && pr.fm !== undefined) ? Spr.surf.fenceTiles[1][pr.fm] : Spr.surf.fence2;
+    else if (pr.kind === 'fence3') spr = (Spr.surf.fenceTiles && pr.fm !== undefined) ? Spr.surf.fenceTiles[2][pr.fm] : Spr.surf.fence3;
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     else if (pr.kind === 'custom') spr = Spr.custom && Spr.custom[pr.cid]; // създаден от дизайнера
     if (!spr) continue;
@@ -1444,6 +1445,19 @@ const DECOR_KINDS = {
   fence2:   { r: 0.35, solid: true },
   fence3:   { r: 0.35, solid: true },
 };
+// оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
+const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
+function recomputeFenceMasks() {
+  const cells = new Set();
+  for (const pr of G.props) if (FENCE_SET[pr.kind] !== undefined) cells.add(Math.floor(pr.x) + ',' + Math.floor(pr.y));
+  for (const pr of G.props) {
+    if (FENCE_SET[pr.kind] === undefined) continue;
+    const x = Math.floor(pr.x), y = Math.floor(pr.y);
+    pr.fm = (cells.has(x + ',' + (y - 1)) ? 1 : 0) | (cells.has((x + 1) + ',' + y) ? 2 : 0)
+      | (cells.has(x + ',' + (y + 1)) ? 4 : 0) | (cells.has((x - 1) + ',' + y) ? 8 : 0);
+  }
+  G.fenceDirty = false;
+}
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
   return { bx: Math.round(pr.x - def.ax), by: Math.round(pr.y - def.ay) };
@@ -1495,6 +1509,7 @@ function moveBuilding(pr, bx, by) {
   }
   const ox = bx + def.ax - pr.x, oy = by + def.ay - pr.y;
   pr.x += ox; pr.y += oy;
+  if (FENCE_SET[pr.kind] !== undefined) G.fenceDirty = true;
   if (pr.kind === 'church') for (const q of G.props) if (q.kind === 'priest' || q.kind === 'almsbox') { q.x += ox; q.y += oy; }
   if (pr.kind === 'cityportal') for (const q of G.props) if (q.kind === 'menhir') { q.x += ox; q.y += oy; } // кръгът следва камъка
   saveCityLayout();
@@ -1585,10 +1600,15 @@ function placeDecorAt(cellX, cellY, loud) {
     return;
   }
   if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
-  // не дублираме същия вид върху същата клетка (моливът минава много пъти)
-  for (const pr of G.props) if (pr.kind === kind && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
+  // не дублираме същия вид върху същата клетка (моливът минава много пъти);
+  // оградите не се трупат и МЕЖДУ видовете — една клетка носи една ограда
+  for (const pr of G.props) {
+    const clash = pr.kind === kind || (FENCE_SET[kind] !== undefined && FENCE_SET[pr.kind] !== undefined);
+    if (clash && Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) return;
+  }
   const d = DECOR_KINDS[kind];
   G.props.push({ kind, x: cellX + 0.5, y: cellY + 0.5, r: d.r, solid: d.solid });
+  if (FENCE_SET[kind] !== undefined) G.fenceDirty = true;
   G.editDecorDirty = true;
   if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
 }
@@ -1632,6 +1652,7 @@ function eraseDecorAt(cellX, cellY) {
     if (pr.kind !== kind) continue;                       // гумата пипа САМО избрания вид
     if (Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY) {
       G.props.splice(i, 1);
+      if (FENCE_SET[kind] !== undefined) G.fenceDirty = true;
       G.editDecorDirty = true;
       return;
     }
@@ -1674,9 +1695,11 @@ function cityEditClick(mx, my) {
     paintPathCell(tool === 'path' ? 1 : 0);
     return true;
   }
-  // ДОБАВЯНЕ (клик) — поставя избрания от палитрата елемент
+  // ДОБАВЯНЕ (клик) — поставя избрания от палитрата елемент;
+  // оградите се редят с ВЛАЧЕНЕ (свързват се сами)
   if (tool === 'place') {
     placeDecorAt(cellX, cellY, true);
+    if (G.editPlaceKind && FENCE_SET[G.editPlaceKind] !== undefined) G.editPaint = true;
     return true;
   }
   // МОЛИВЪТ: избираш поставен обект -> отваря се пиксел-редакторът за спрайта му
@@ -1817,7 +1840,7 @@ function drawCityEditOverlay() {
       ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2], ['rock3', Spr.surf.rock3],
       ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
-      ['fence', Spr.surf.fence], ['fence2', Spr.surf.fence2], ['fence3', Spr.surf.fence3],
+      ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     items.push(
@@ -1876,6 +1899,7 @@ function drawCityEditOverlay() {
   // влаченето: четките за път/трева + моливът + гумата
   if (G.editPaint && (tool === 'path' || tool === 'grass')) paintPathCell(tool === 'path' ? 1 : 0);
   if (G.editPaint && tool === 'erase') eraseDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy));
+  if (G.editPaint && tool === 'place' && G.editPlaceKind && FENCE_SET[G.editPlaceKind] !== undefined) placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
   if (G.editPaint && tool === 'create' && !G.pixEdit && G.createSt && G.createSt.drag) {
     G.createSt.drag.x1 = Math.floor(G.mouse.wx); G.createSt.drag.y1 = Math.floor(G.mouse.wy);
   }
@@ -2058,7 +2082,7 @@ function spriteByKey(key) {
     tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
     rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
     bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
-    fence: S2.fence, fence2: S2.fence2, fence3: S2.fence3,
+    // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,
     menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],

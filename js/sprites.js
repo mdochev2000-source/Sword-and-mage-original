@@ -1331,6 +1331,64 @@ function genPillar() {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
+// АВТО-СВЪРЗВАЩИ СЕ ОГРАДИ: 16 маски (N=1,E=2,S=4,W=8) x 3 вида.
+// Геометрия: платно 32x20, земният център е на (16,H-4) (котвата на декора);
+// полу-летвите вървят 2:1 до средата на ръба и се срещат пиксел в пиксел
+// със съседната клетка — без шевове. Колче има само на край/ъгъл/Т/кръст.
+function genFencePiece(t, m) {
+  const H = 20;
+  const g = mk(32, H);
+  const wood  = t === 2 ? '#2a2320' : t === 1 ? '#4d4437' : '#5c4a36';
+  const woodD = t === 2 ? '#191411' : t === 1 ? '#332c23' : '#3d3122';
+  const post  = t === 2 ? '#211a16' : '#4a3c2d';
+  const postD = t === 2 ? '#120e0b' : '#332a1f';
+  const cy = H - 4; // земният център
+  // полу-летва към посока (dx,dy е стъпката на екрана): двойни пиксели, 2:1
+  const rail = (dxs, dys, up, skip) => {
+    for (let i = 0; i <= 4; i++) {
+      if (skip && skip.indexOf(i) !== -1) continue;
+      const x = 16 + dxs * i * 2;
+      const y = cy + dys * i - up;
+      px(g, x, y, wood); px(g, x, y + 1, woodD);
+      if (i < 4) { const x2 = x + dxs; px(g, x2, y, wood); px(g, x2, y + 1, woodD); }
+    }
+  };
+  // N=(+2,-1)  E=(+2,+1)  S=(-2,+1)  W=(-2,-1); счупената губи парчета,
+  // обгорената — само откъслеци
+  const skTop = t === 1 ? [2] : t === 2 ? [1, 3] : null;
+  const skBot = t === 2 ? [2] : null;
+  const dirs = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
+  for (let b = 0; b < 4; b++) {
+    if (!(m & (1 << b))) continue;
+    rail(dirs[b][0], dirs[b][1], 9, skTop);
+    rail(dirs[b][0], dirs[b][1], 4, skBot);
+  }
+  const bits = (m & 1 ? 1 : 0) + (m & 2 ? 1 : 0) + (m & 4 ? 1 : 0) + (m & 8 ? 1 : 0);
+  const straight = m === 5 || m === 10; // N|S или E|W — чиста права, без колче
+  if (!straight) {
+    const ph = t === 1 ? 11 : 13;
+    for (let y = cy - ph; y <= cy; y++) { px(g, 15, y, post); px(g, 16, y, postD); }
+    px(g, 14, cy - ph, postD); px(g, 17, cy - ph, postD);
+    if (t !== 2) { px(g, 15, cy - ph - 1, post); px(g, 16, cy - ph - 1, postD); }
+    if (t === 2) px(g, 16, cy - ph, '#0d0a08'); // обгорен назъбен връх
+  }
+  if (m === 0) { // самотно парче: колче с две чуканчета
+    for (const up of [9, 4]) {
+      px(g, 12, cy - up, wood); px(g, 13, cy - up, wood);
+      px(g, 18, cy - up, wood); px(g, 19, cy - up, wood);
+    }
+  }
+  return g.canvas;
+}
+function genFenceTiles() {
+  const out = [];
+  for (let t = 0; t < 3; t++) {
+    const arr = [];
+    for (let m = 0; m < 16; m++) arr.push(genFencePiece(t, m));
+    out.push(arr);
+  }
+  return out;
+}
 function genFence() {
   const g = mk(16, 11);
   rc(g, 1, 3, 1, 8, '#4a3c2d'); rc(g, 8, 3, 1, 8, '#4a3c2d'); rc(g, 14, 3, 1, 8, '#4a3c2d');
@@ -2302,6 +2360,7 @@ function initSurfaceSprites() {
     tufts: [genTuft(R, 0), genTuft(R, 1)],
     fence2: genFence2(R),
     fence3: genFence3(R),
+    fenceTiles: genFenceTiles(), // снапващите се огради (16 маски x 3 вида)
     cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),
