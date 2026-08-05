@@ -29,6 +29,8 @@ const MIRHOLD_LAYOUT = {
   },
   church: { x: 21, y: 14 },
   tower: { x: 21, y: 20 },
+  cave: { x: 4, y: 37 },
+  travel: { x: 5, y: 31 },
 };
 function mirholdLayout() {
   try {
