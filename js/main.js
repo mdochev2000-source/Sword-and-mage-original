@@ -154,6 +154,7 @@ function setupInput() {
         G.editPaint = false;
         if (G.editPathDirty || G.editDecorDirty) { G.editPathDirty = false; G.editDecorDirty = false; saveCityLayout(); }
       }
+      if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); }
     }
     if (e.button === 2) G.mouse.rdown = false;
   });
@@ -1405,6 +1406,7 @@ function bldBase(pr) {
 function cityEditToggle() {
   G.cityEdit = !G.cityEdit;
   G.editSelBld = null;
+  G.pixEdit = null; G.pixPaint = false;
   toast(G.cityEdit ? 'CITY EDITOR: tap a building, then tap a tile. F2/ESC — exit.' : 'Editor closed. The layout is saved on this device.', '#ffd23b');
 }
 function bldCellsFree(cellsList, self) {
@@ -1454,6 +1456,7 @@ function saveCityLayout() {
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
     else if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: bx, y: by });
   }
+  if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   // пътищата (боядисани с четката) — целият слой, пакетиран в base64
   try {
     const pb = G.map.path; const bytes = new Uint8Array((pb.length + 7) >> 3);
@@ -1498,6 +1501,8 @@ function paintPathCell(v) {
   G.editPathDirty = true; // записваме при пускане на бутона (не на всеки пиксел)
 }
 function cityEditClick(mx, my) {
+  // панелът на пиксел-редактора поглъща кликовете си
+  if (G.pixEdit && pixClick(mx, my)) return true;
   // бутоните на лентата
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
   const tool = G.editTool || 'move';
@@ -1510,10 +1515,27 @@ function cityEditClick(mx, my) {
     paintPathCell(tool === 'path' ? 1 : 0);
     return true;
   }
-  // ДОБАВЯНЕ (клик) и МОЛИВ (влачене) — поставят избрания от палитрата елемент
-  if (tool === 'place' || tool === 'pencil') {
-    if (tool === 'pencil') G.editPaint = true; // моливът продължава при влачене
-    placeDecorAt(cellX, cellY, tool === 'place');
+  // ДОБАВЯНЕ (клик) — поставя избрания от палитрата елемент
+  if (tool === 'place') {
+    placeDecorAt(cellX, cellY, true);
+    return true;
+  }
+  // МОЛИВЪТ: избираш поставен обект -> отваря се пиксел-редакторът за спрайта му
+  if (tool === 'pencil') {
+    for (const pr of G.props) {
+      const key = propSpriteKey(pr);
+      if (!key) continue;
+      const def = BLD_DEFS[pr.kind];
+      let hitP = false;
+      if (def && !def.free && def.cells) {
+        const { bx, by } = bldBase(pr);
+        hitP = def.cells(bx, by).some(([a, b]) => a === cellX && b === cellY);
+      } else {
+        hitP = Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY;
+      }
+      if (hitP) { openPixelEditor(key); return true; }
+    }
+    toast('Click a placed object to edit its pixels.', '#ffd23b');
     return true;
   }
   // ГУМАТА: трие САМО избрания вид (с влачене) — да не стават грешки
@@ -1562,7 +1584,7 @@ function drawCityEditOverlay() {
   rcx(0, 0, CW, 17 * S, 'rgba(4,6,11,0.85)');
   ctx.font = fontBold(6.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
   const toolH = G.editTool || 'move';
-  const hint = toolH === 'move' ? 'tap a building, then a tile' : (toolH === 'place' || toolH === 'pencil') ? (G.editPlaceKind ? 'placing: ' + G.editPlaceKind : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + G.editPlaceKind + ' only' : 'PICK an element to erase') : 'paint the ground';
+  const hint = toolH === 'move' ? 'tap a building, then a tile' : toolH === 'pencil' ? (G.pixEdit ? 'pixel editing: ' + G.pixEdit.key : 'click an object to PIXEL-EDIT its sprite') : toolH === 'place' ? (G.editPlaceKind ? 'placing: ' + G.editPlaceKind : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + G.editPlaceKind + ' only' : 'PICK an element to erase') : 'paint the ground';
   ctx.fillText('CITY EDITOR — ' + hint + ' · F2/ESC exit', CW / 2, 7 * S);
   UI.cityEditBtns = [];
   const btn = (label, x, wpx, col, act) => {
@@ -1600,7 +1622,7 @@ function drawCityEditOverlay() {
   tbtn('PATH', CW / 2 + 16 * S, 34 * S, 'path');
   tbtn('GRASS', CW / 2 + 52 * S, 40 * S, 'grass');
   // ПАЛИТРАТА (при ADD/PENCIL/ERASE): моливът и гумата работят САМО по избрания елемент
-  if (tool === 'place' || tool === 'pencil' || tool === 'erase') {
+  if (tool === 'place' || tool === 'erase') {
     const items = [
       ['tree', Spr.surf.tree], ['tree2', Spr.surf.tree2], ['deadTree', Spr.surf.deadTree], ['deadTree2', Spr.surf.deadTree2],
       ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2], ['rock3', Spr.surf.rock3],
@@ -1623,8 +1645,9 @@ function drawCityEditOverlay() {
   }
   // влаченето: четките за път/трева + моливът + гумата
   if (G.editPaint && (tool === 'path' || tool === 'grass')) paintPathCell(tool === 'path' ? 1 : 0);
-  if (G.editPaint && tool === 'pencil') placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
   if (G.editPaint && tool === 'erase') eraseDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy));
+  if (G.pixPaint && G.pixEdit) pixPaintAt(G.mouse.x, G.mouse.y);
+  if (G.pixEdit) drawPixelEditor();
   // курсорната клетка при четка/добавяне/триене
   if (tool !== 'move') {
     const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
@@ -1636,4 +1659,183 @@ function drawCityEditOverlay() {
     ctx.closePath(); ctx.stroke();
   }
   ctx.textAlign = 'left';
+}
+
+// ================= ПИКСЕЛ-РЕДАКТОРЪТ (моливът на дизайнера) =================
+// Избираш обект -> панел отстрани: увеличен спрайт, цветове, молив/гума/пипета.
+// Промените важат за ВСИЧКИ копия и влизат в подредбата (COPY LAYOUT).
+function spriteByKey(key) {
+  const S2 = Spr.surf; if (!S2) return null;
+  const map = {
+    tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
+    rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
+    bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
+    fence: S2.fence, fence2: S2.fence2, fence3: S2.fence3,
+    church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
+    cave: S2.cave, hearth: S2.hearth,
+    menhir0: S2.menhirs[0], menhir1: S2.menhirs[1], menhir2: S2.menhirs[2],
+    house_0_0: S2.houses[0], house_0_1: S2.houses[1], house_1_0: S2.houses2[0], house_1_1: S2.houses2[1],
+    shop_weapon: S2.shophouses.weapon, shop_armor: S2.shophouses.armor,
+    shop_potion: S2.shophouses.potion, shop_jewel: S2.shophouses.jewel, shop_exchange: S2.shophouses.exchange,
+  };
+  return map[key] || null;
+}
+function propSpriteKey(pr) {
+  switch (pr.kind) {
+    case 'house': return 'house_' + (pr.t || 0) + '_' + (pr.v || 0);
+    case 'shophouse': return 'shop_' + pr.vtype;
+    case 'gatetower': return 'gatetower';
+    case 'portal': return 'cave';
+    case 'cityportal': return 'hearth';
+    case 'menhir': return 'menhir' + ((pr.v || 0) % 3);
+    default: return spriteByKey(pr.kind) ? pr.kind : null;
+  }
+}
+function openPixelEditor(key) {
+  const spr = spriteByKey(key);
+  if (!spr) { toast('This object cannot be edited.', '#ff6b7a'); return; }
+  // резервно копие за RESET
+  const bak = document.createElement('canvas');
+  bak.width = spr.width; bak.height = spr.height;
+  bak.getContext('2d').drawImage(spr, 0, 0);
+  // палитра: най-честите цветове от спрайта + основни
+  const g2 = spr.getContext('2d');
+  const data = g2.getImageData(0, 0, spr.width, spr.height).data;
+  const freq = {};
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 200) continue;
+    const hex = '#' + ((1 << 24) | (data[i] << 16) | (data[i + 1] << 8) | data[i + 2]).toString(16).slice(1);
+    freq[hex] = (freq[hex] || 0) + 1;
+  }
+  const own = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 16);
+  const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
+  const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
+  G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen' };
+  Sfx.play('open');
+}
+function pixZoomScale() {
+  const e = G.pixEdit, S = SCALE;
+  return Math.max(2, Math.floor(Math.min(120 * S / e.spr.width, (CH - 170 * S) / e.spr.height)));
+}
+function pixPanelRect() {
+  const S = SCALE, e = G.pixEdit;
+  const z = pixZoomScale();
+  const w = Math.max(130 * S, e.spr.width * z + 12 * S);
+  const h = 46 * S + Math.ceil(e.palette.length / 8) * 12 * S + e.spr.height * z + 14 * S;
+  return { x: CW - w - 6 * S, y: 34 * S, w, h, z };
+}
+function pixPaintAt(mx, my) {
+  const e = G.pixEdit; if (!e || !UI.pixZoomRect) return;
+  const r = UI.pixZoomRect;
+  const px2 = Math.floor((mx - r.x) / r.z), py2 = Math.floor((my - r.y) / r.z);
+  if (px2 < 0 || py2 < 0 || px2 >= e.spr.width || py2 >= e.spr.height) return;
+  const c = e.spr.getContext('2d');
+  if (e.tool === 'erase') c.clearRect(px2, py2, 1, 1);
+  else if (e.tool === 'pick') {
+    const d = c.getImageData(px2, py2, 1, 1).data;
+    if (d[3] > 0) e.color = '#' + ((1 << 24) | (d[0] << 16) | (d[1] << 8) | d[2]).toString(16).slice(1);
+    G.pixPaint = false;
+  } else {
+    c.fillStyle = e.color;
+    c.clearRect(px2, py2, 1, 1);
+    c.fillRect(px2, py2, 1, 1);
+  }
+}
+function pixSaveOverride() {
+  const e = G.pixEdit; if (!e) return;
+  G.spriteOverrides = G.spriteOverrides || {};
+  try { G.spriteOverrides[e.key] = e.spr.toDataURL('image/png'); saveCityLayout(); } catch (err) {}
+}
+function pixClick(mx, my) {
+  const e = G.pixEdit;
+  const r = pixPanelRect();
+  if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) return false; // извън панела
+  for (const b of (UI.pixBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
+  if (UI.pixZoomRect) {
+    const zr = UI.pixZoomRect;
+    if (mx >= zr.x && my >= zr.y && mx < zr.x + e.spr.width * zr.z && my < zr.y + e.spr.height * zr.z) {
+      G.pixPaint = true;
+      pixPaintAt(mx, my);
+      return true;
+    }
+  }
+  return true; // клик в панела, но не върху нищо
+}
+function drawPixelEditor() {
+  const S = SCALE, e = G.pixEdit;
+  const r = pixPanelRect();
+  panel(r.x, r.y, r.w, r.h);
+  UI.pixBtns = [];
+  ctx.textAlign = 'left';
+  ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
+  ctx.fillText('PIXEL: ' + e.key, r.x + 6 * S, r.y + 10 * S);
+  // инструменти
+  const tb = (label, x, wpx, act, on) => {
+    panel(x, r.y + 14 * S, wpx, 11 * S);
+    if (on) strokeRect(x, r.y + 14 * S, wpx, 11 * S, '#7fd0a0', S);
+    ctx.font = fontBold(5.5); ctx.textAlign = 'center';
+    ctx.fillStyle = on ? '#7fd0a0' : '#a8b2c4';
+    ctx.fillText(label, x + wpx / 2, r.y + 21.5 * S);
+    UI.pixBtns.push({ x, y: r.y + 14 * S, w: wpx, h: 11 * S, act });
+  };
+  let bx2 = r.x + 4 * S;
+  tb('PEN', bx2, 24 * S, () => { e.tool = 'pen'; }, e.tool === 'pen'); bx2 += 26 * S;
+  tb('ERASE', bx2, 30 * S, () => { e.tool = 'erase'; }, e.tool === 'erase'); bx2 += 32 * S;
+  tb('PICK', bx2, 26 * S, () => { e.tool = 'pick'; }, e.tool === 'pick'); bx2 += 28 * S;
+  tb('RESET', bx2, 30 * S, () => {
+    const c = e.spr.getContext('2d');
+    c.clearRect(0, 0, e.spr.width, e.spr.height);
+    c.drawImage(e.bak, 0, 0);
+    if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
+  }, false); bx2 += 32 * S;
+  tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false);
+  // палитрата
+  ctx.textAlign = 'left';
+  const py0 = r.y + 28 * S;
+  e.palette.forEach((col, i) => {
+    const sx2 = r.x + 4 * S + (i % 8) * 15 * S, sy2 = py0 + Math.floor(i / 8) * 12 * S;
+    rcx(sx2, sy2, 13 * S, 10 * S, col);
+    if (e.color === col) strokeRect(sx2 - S, sy2 - S, 15 * S, 12 * S, '#ffffff', S);
+    UI.pixBtns.push({ x: sx2, y: sy2, w: 13 * S, h: 10 * S, act: () => { e.color = col; if (e.tool === 'erase') e.tool = 'pen'; } });
+  });
+  // текущият цвят
+  rcx(r.x + r.w - 20 * S, r.y + 3 * S, 14 * S, 8 * S, e.color);
+  strokeRect(r.x + r.w - 20 * S, r.y + 3 * S, 14 * S, 8 * S, '#e8e4d0', S);
+  // увеличеният спрайт върху шахматен фон
+  const zy0 = py0 + Math.ceil(e.palette.length / 8) * 12 * S + 4 * S;
+  const z = r.z;
+  const zx0 = r.x + Math.floor((r.w - e.spr.width * z) / 2);
+  for (let yy = 0; yy < e.spr.height; yy++) for (let xx = 0; xx < e.spr.width; xx++) {
+    rcx(zx0 + xx * z, zy0 + yy * z, z, z, (xx + yy) % 2 ? '#1a2030' : '#141926');
+  }
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(e.spr, 0, 0, e.spr.width, e.spr.height, zx0, zy0, e.spr.width * z, e.spr.height * z);
+  UI.pixZoomRect = { x: zx0, y: zy0, z };
+  // пикселът под курсора
+  const hx2 = Math.floor((G.mouse.x - zx0) / z), hy2 = Math.floor((G.mouse.y - zy0) / z);
+  if (hx2 >= 0 && hy2 >= 0 && hx2 < e.spr.width && hy2 < e.spr.height) {
+    strokeRect(zx0 + hx2 * z, zy0 + hy2 * z, z, z, e.tool === 'erase' ? '#ff6b7a' : '#ffffff', 1);
+  }
+  ctx.textAlign = 'left';
+}
+// прилага записаните пикселни корекции върху сглобените спрайтове
+function applySpriteOverrides() {
+  let loc = null;
+  try { const L = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null'); if (L && L.sprites) loc = L.sprites; } catch (e) {}
+  const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
+  const merged = Object.assign({}, baked, loc || {});
+  G.spriteOverrides = Object.assign({}, loc || {});
+  for (const key in merged) {
+    const img = new Image();
+    img.onload = (function (k, im) {
+      return function () {
+        const cv3 = spriteByKey(k);
+        if (!cv3 || cv3.width !== im.width || cv3.height !== im.height) return;
+        const c = cv3.getContext('2d');
+        c.clearRect(0, 0, cv3.width, cv3.height);
+        c.drawImage(im, 0, 0);
+      };
+    })(key, img);
+    img.src = merged[key];
+  }
 }
