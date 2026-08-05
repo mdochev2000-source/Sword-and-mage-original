@@ -766,7 +766,8 @@ function renderWorld() {
   // --- светлина: мангали/огън/фенер (топла), хенчстоун (руническа), портал за прибиране (лилава) ---
   for (const pr of G.props) {
     const hearthGlow = pr.kind === 'cityportal';
-    const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && !G.onSurface);
+    const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && (!G.onSurface ||
+      ((pr.dungeon === 'mirhold' ? (G.mirCheckpoint || 1) : (G.checkpoint || 1)) > 1)));
     if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
@@ -900,8 +901,12 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
-        // на повърхността входът към подземието е ПЕЩЕРА, не портал
+        // на повърхността входът към подземието е ПЕЩЕРА, не портал.
+        // Ако имаш активна контролна точка (връщаш се там, откъдето излезе),
+        // пещерата свети с лилавия портален ефект — индикатор за продължаване.
         spr = Spr.surf.cave;
+        const cp = pr.dungeon === 'mirhold' ? (G.mirCheckpoint || 1) : (G.checkpoint || 1);
+        if (cp > 1) portalFx(pr, vis);
       } else {
         spr = Spr.surf.portal[Math.floor(G.time * 4) % 3];
         portalFx(pr, vis);
