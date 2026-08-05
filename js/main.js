@@ -929,7 +929,7 @@ function renderWorld() {
     const flat = pr.flat;
     // сградите са ВИНАГИ плътни; ако скриват героя, той се дорисува като силует отгоре
     if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'church' || pr.kind === 'gatetower') && pr.x + pr.y > pD + 0.6) {
-      const lift = (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : 8;
+      const lift = (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16 : 8;
       const hw = spr.width * S / 2 - 2 * S, hTop = sy + lift * S - spr.height * S + 6 * S, hBot = sy + lift * S - 8 * S;
       if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) G.heroCovered = true;
     }
@@ -937,8 +937,8 @@ function renderWorld() {
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : pr.kind === 'gatebanner' ? -2.5 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
-    o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower' || pr.kind === 'tower') ? 8
-      : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : undefined;
+    o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
+      : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16 : undefined;
     o.alpha = 0;
   }
   // предмети по земята
@@ -1346,10 +1346,14 @@ const BLD_DEFS = {
   house:     { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
   shophouse: { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
   church:    { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] },
-  tower:     { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },
+  tower:     { ax: 1.0, ay: 0.0, cells: (x, y) => [[x, y - 1], [x + 1, y - 1], [x, y], [x + 1, y]] }, // кийпът е 2x2
   gatetower: { ax: 0.5, ay: 0.5, cells: (x, y) => [[x, y]] },              // за диагностика/местене
   portal:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // пещерата — мести се свободно
   cityportal:{ ax: 0.5, ay: 0.5, cells: () => [], free: true },            // хенчстоунът — мести се свободно
+  tree:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },            // декорите — свободни
+  deadTree:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  rock:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  fence:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
@@ -1395,7 +1399,7 @@ function moveBuilding(pr, bx, by) {
   Sfx.play('open');
 }
 function saveCityLayout() {
-  const L = { houses: [], shops: {}, church: null, tower: null, cave: null, travel: null };
+  const L = { houses: [], shops: {}, church: null, tower: null, cave: null, travel: null, decor: [] };
   for (const pr of G.props) {
     if (!BLD_DEFS[pr.kind]) continue;
     const { bx, by } = bldBase(pr);
@@ -1405,6 +1409,7 @@ function saveCityLayout() {
     else if (pr.kind === 'tower') L.tower = { x: bx, y: by };
     else if (pr.kind === 'portal') L.cave = { x: bx, y: by };
     else if (pr.kind === 'cityportal') L.travel = { x: bx, y: by };
+    else if (pr.kind === 'tree' || pr.kind === 'deadTree' || pr.kind === 'rock' || pr.kind === 'fence') L.decor.push({ k: pr.kind, x: bx, y: by });
   }
   try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
   return L;

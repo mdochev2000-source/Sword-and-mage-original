@@ -1773,47 +1773,65 @@ function genMirShopHouse(vtype, R) {
   return g.canvas;
 }
 
-// 2.5D гарнизонна кула върху ЕДНА клетка: изометричен кийп 32x100 (pyo=8)
+// 2.5D гарнизонна кула-КИЙП върху 2x2 клетки: масивна, 64x156 (pyo=16)
 function genMirTower(R) {
-  const FH = 62, oy = 22; // фенер+зъбери 0..21, диамант 22..37, лица 38..99
-  const g = mk(32, oy + 16 + FH);
+  const FH = 112, oy = 12; // корона 0..11, капак-ромб 12..43, лица 44..155
+  const g = mk(64, oy + 32 + FH);
   const st = '#5c6068', stD = '#4a4e56', stL = '#6d7280', mort = '#3a3e46';
-  // капакът (площадката)
-  for (let y = 0; y < 16; y++) { const [x0, w2] = diamondSpan(y); rc(g, x0, oy + y, w2, 1, st); }
-  for (let i = 0; i < 20; i++) { const x = (R() * 32) | 0, y = (R() * 16) | 0; if (inDiamond(x, y)) px(g, x, oy + y, R() < 0.5 ? stD : stL); }
-  // лицата със зидария
-  for (let x = 0; x < 32; x++) {
-    const left = x < 16;
-    const yb = oy + (left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1);
-    for (let k = 0; k < FH; k++) {
-      const y = yb + k;
-      if (y >= oy + 16 + FH) continue;
-      let col = left ? '#4e525a' : '#41454d';
-      if (k % 6 === 5) col = mort;
-      else if (((x + ((k / 6) | 0) * 5) % 10) === 0) col = mort;
-      if (k >= FH - 2) col = mort;
-      px(g, x, y, col);
-    }
-    px(g, x, yb, left ? stL : stD);
+  // капакът (бойната площадка) — ромб 64x32
+  for (let yy = 0; yy < 32; yy++) {
+    const half = yy < 16 ? (yy + 1) * 2 : (32 - yy) * 2;
+    rc(g, 32 - half, oy + yy, half * 2, 1, st);
   }
-  for (let k = 0; k < FH; k++) px(g, 16, oy + 16 + k, mort);
-  // прозорци с топла светлина + бойници по лицата
-  const winSW = (x0, top) => { for (let x = x0; x < x0 + 4; x++) { const yb = oy + 8 + (x >> 1) + 1; for (let k = top; k < top + 5; k++) px(g, x, yb + k, '#171310'); } px(g, x0 + 1, oy + 8 + ((x0 + 1) >> 1) + 1 + top + 1, '#e8a84d'); };
-  winSW(5, 10); winSW(9, 30);
-  { const x0 = 22; for (let x = x0; x < x0 + 3; x++) { const yb = oy + 8 + ((31 - x) >> 1) + 1; for (let k = 20; k < 26; k++) px(g, x, yb + k, '#12100c'); } }
-  // врата с арка на фасадата (долу)
-  for (let x = 10; x < 17; x++) { const yb = oy + 8 + (x >> 1) + 1; for (let k = FH - 12; k < FH - 1; k++) px(g, x, yb + k, k === FH - 12 ? '#241f1a' : '#1a140e'); }
-  px(g, 15, oy + 8 + 7 + 1 + FH - 6, '#9a9da5');
-  // зъбери-корона по задните ръбове на капака
-  for (const [mx, my] of [[14, oy - 4], [4, oy + 1], [24, oy + 1], [0, oy + 6], [28, oy + 6]]) {
-    rc(g, mx, my, 4, 6, st); px(g, mx, my, stL); px(g, mx + 3, my + 1, stD);
+  for (let i = 0; i < 60; i++) {
+    const x = 4 + ((R() * 56) | 0), yy = 2 + ((R() * 28) | 0);
+    px(g, x, oy + yy, R() < 0.5 ? stD : stL);
+  }
+  // лицата: масивна зидария с фуги, ъглов ръб и тъмна основа
+  for (let x = 0; x < 64; x++) {
+    const sw = x < 32, ey = iso2EdgeY(oy, x);
+    for (let k = 1; k <= FH; k++) {
+      let col = sw ? '#4e525a' : '#41454d';
+      if (k % 7 === 6) col = mort;
+      else if (((x + ((k / 7) | 0) * 5) % 11) === 0) col = mort;
+      if (k >= FH - 3) col = k >= FH - 1 ? '#20242b' : '#2b2f36';
+      px(g, x, ey + k, col);
+    }
+    px(g, x, ey, sw ? stL : stD);
+  }
+  for (let k = 1; k <= FH; k++) { px(g, 31, iso2EdgeY(oy, 31) + k, stL); px(g, 32, iso2EdgeY(oy, 32) + k, '#383c44'); } // южният ъгъл
+  // шум по камъка
+  for (let i = 0; i < 60; i++) {
+    const x = 1 + ((R() * 62) | 0), ey = iso2EdgeY(oy, x);
+    const k = 2 + ((R() * (FH - 8)) | 0);
+    px(g, x, ey + k, R() < 0.5 ? '#454952' : '#565a62');
+  }
+  // ПРОЗОРЦИ: бойници и топли прозорчета, разхвърляни по двете лица
+  const slit = (x0, top) => { for (let x = x0; x < x0 + 2; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 9; k++) px(g, x, ey + k, '#12100c'); } };
+  const warm = (x0, top, lit) => {
+    for (let x = x0; x < x0 + 6; x++) { const ey = iso2EdgeY(oy, x); for (let k = top; k < top + 6; k++) px(g, x, ey + k, '#171310'); }
+    if (lit) { const ey = iso2EdgeY(oy, x0 + 1); px(g, x0 + 1, ey + top + 2, '#e8a84d'); px(g, x0 + 3, ey + top + 3, '#c98a3b'); }
+  };
+  slit(10, 16); slit(22, 44); slit(6, 62); warm(14, 78, true);
+  slit(44, 26); warm(48, 54, true); slit(56, 84);
+  // ВРАТАТА: арка със стъпала на фасадата
+  for (let x = 11; x < 22; x++) {
+    const ey = iso2EdgeY(oy, x);
+    for (let k = FH - 17; k <= FH - 4; k++) px(g, x, ey + k, k === FH - 17 ? '#241f1a' : '#1a140e');
+  }
+  { const ey = iso2EdgeY(oy, 12); rc(g, 12, ey + FH - 19, 9, 2, stD); px(g, 20, ey + FH - 9, '#9a9da5'); }
+  // факла до вратата
+  { const ey = iso2EdgeY(oy, 24); px(g, 24, ey + FH - 14, '#241f1a'); px(g, 24, ey + FH - 15, '#ffb84d'); px(g, 24, ey + FH - 16, '#c98a3b'); }
+  // КОРОНАТА: зъбери по ръбовете на площадката
+  for (const [mx, my] of [[29, 0], [10, 7], [47, 7], [0, 17], [58, 17], [20, 3], [38, 3]]) {
+    rc(g, mx, my, 6, 9, st);
+    px(g, mx, my, stL); rc(g, mx + 5, my + 1, 1, 8, stD);
+    px(g, mx + 1, my + 8, stD); px(g, mx + 3, my + 2, mort);
   }
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 
-// за да не скрива героя, когато е встрани). Котва pyo=8 като стенния блок.
-// стенен БЛОК-призма 32x(12+16+26): пасва точно на плочката -> стената е едно цяло
 // каменна снага (двойна височина) + дървена палисада, издигаща се от пътеката отгоре
 function genMirWallBlock(R) {
   const SK = 12, FH = 26;

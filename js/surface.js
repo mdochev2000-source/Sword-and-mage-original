@@ -270,17 +270,15 @@ const Surface = {
       props.push({ kind: 'shophouse', vtype: vt, x: s.x + 1.0, y: s.y + 0.0, r: 0.6, solid: false, name: VENDOR_DEFS[vt].name });
       noProp(s.x, s.y + 1, 1); // свободно пред вратата
     }
-    // КУЛАТА на гарнизона (центъра, с фенер) — тялото ѝ е широко точно 1 клетка,
-    // затова блокираме само централната колона (без невидими зони отстрани)
-    block(spots.tower.x, spots.tower.y);
-    props.push({ kind: 'tower', x: spots.tower.x + 0.5, y: spots.tower.y + 0.5, r: 0.6, solid: false });
+    // КУЛАТА на гарнизона: масивен КИЙП върху 2x2 клетки (като къщите)
+    for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(spots.tower.x + di, spots.tower.y + dj);
+    props.push({ kind: 'tower', x: spots.tower.x + 1.0, y: spots.tower.y + 0.0, r: 0.6, solid: false });
     // ЦЪРКВАТА на северния ръб на площада (замества огъня): пълно изцеление при
     // свещеника + кутия за дарения (благословия срещу сребро)
     const ch = (LAY && LAY.church) ? { x: LAY.church.x, y: LAY.church.y } : { x: cx - 4, y: cy - 6 };
     for (let dj = -1; dj <= 0; dj++) for (let di = 0; di <= 1; di++) block(ch.x + di, ch.y + dj);
     props.push({ kind: 'church', x: ch.x + 1.0, y: ch.y + 0.0, r: 0.6, solid: false });
-    props.push({ kind: 'priest', x: ch.x + 0.2, y: ch.y + 1.4, r: 0.3, solid: true });
-    props.push({ kind: 'almsbox', x: ch.x + 2.2, y: ch.y + 1.2, r: 0.3, solid: true });
+    // свещеникът и кутията са премахнати (дизайнерът има друга идея за тях)
     noProp(ch.x, ch.y + 1, 2);
     carve(ch.x, ch.y + 2, cx, cy);
     // ПОРТАЛИ (извън стените): тъмницата на гарнизона + хенчстоунът с кръг от менхири
@@ -356,7 +354,13 @@ const Surface = {
       if (!path[idx] && R() < 0.65) continue;
       props.push({ kind: 'puddle', x: x + 0.5, y: y + 0.5, r: 0, solid: false, flat: true });
     }
-    // навън: голи дървета, накъсани огради (изоставени ниви), камъни
+    // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
+    // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
+    if (LAY && Array.isArray(LAY.decor)) {
+      for (const d2 of LAY.decor) {
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: d2.k === 'fence' ? 0.35 : d2.k === 'rock' ? 0.3 : 0.38, solid: true });
+      }
+    } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
       const idx = j * w + i;
       if (cells[idx] !== FLOOR || used.has(idx) || path[idx]) continue;
@@ -369,6 +373,7 @@ const Surface = {
       if (r2 < 0.045) { used.add(idx); props.push({ kind: 'deadTree', x: i + 0.5, y: j + 0.5, r: 0.38, solid: true }); }
       else if (r2 < 0.072) { used.add(idx); props.push({ kind: 'fence', x: i + 0.5, y: j + 0.5, r: 0.35, solid: true }); }
       else if (r2 < 0.084) { used.add(idx); props.push({ kind: 'rock', x: i + 0.5, y: j + 0.5, r: 0.3, solid: true }); }
+    }
     }
 
     return {
