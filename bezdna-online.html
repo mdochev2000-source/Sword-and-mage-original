@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-05 09:40 UTC";
+window.__BUILD__ = "2026-08-05 10:07 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1879,7 +1879,8 @@ function iso2Body(g, R, oy, wallH, roofH, pal) {
   for (let x = 0; x < 32; x++) {
     px(g, x + 16, iso2EdgeY(oy, x) - N, pal.rD);       // билото
     px(g, x + 16, iso2EdgeY(oy, x) - N - 1, pal.rD);   // загатнат заден скат —
-    px(g, x + 16, iso2EdgeY(oy, x) - N - 2, '#1a1e26'); // покривът има гръб, не е хартия
+    px(g, x + 16, iso2EdgeY(oy, x) - N - 2, pal.rB);   // покривът има гръб,
+    px(g, x + 16, iso2EdgeY(oy, x) - N - 3, '#1a1e26'); // не е хартия
   }
 }
 // врата на СЗ-фасадата (колони x0..x0+w-1, височина dh от земята)
@@ -1910,9 +1911,16 @@ const ISO_PAL_HOUSE = v => ({
 
 // ЖИЛИЩНА КЪЩА (t0 едноетажна, t1 двуетажна) — старата визия + странична стена (2.5D)
 function genMirHouse(R, v, twoStory) {
-  const wallH = twoStory ? 30 : 18, roofH = 12, oy = 10;
+  const wallH = twoStory ? 30 : 18, roofH = 12, oy = 14;
   const g = mk(64, oy + 32 + wallH);
   const pal = ISO_PAL_HOUSE(v);
+  // КОМИНЪТ: рисува се ПРЕДИ снагата и наднича иззад ската (никакъв шев),
+  // двойно по-висок, за да се вижда добре зад билото
+  rc(g, 30, 3, 4, 14, '#565a62');
+  rc(g, 30, 3, 1, 14, '#6d7280'); rc(g, 33, 3, 1, 14, '#4a4e56');
+  px(g, 31, 6, '#3a3e46'); px(g, 32, 9, '#3a3e46'); px(g, 31, 12, '#3a3e46'); // фуги
+  rc(g, 29, 2, 6, 2, '#4a4e56'); rc(g, 29, 2, 6, 1, '#6d7280');               // капак-плоча
+  rc(g, 31, 1, 2, 1, '#171310'); px(g, 30, 1, '#2b2f36');                     // отворът и саждите
   iso2Body(g, R, oy, wallH, roofH, pal);
   iso2Door(g, oy, wallH, 10, 8, 11);
   iso2Win(g, oy, 3, 5, twoStory ? 19 : 6, 4, true);       // фасаден прозорец (долен етаж)
@@ -1922,12 +1930,6 @@ function genMirHouse(R, v, twoStory) {
     iso2Win(g, oy, 22, 5, 5, 4, false);
     iso2Win(g, oy, 38, 5, 5, 4, true);
   }
-  // комин: малък, в СРЕДАТА на покрива, зад билото — виждат се само върхът и капакът
-  rc(g, 30, 8, 4, 7, '#565a62');                                 // тялото (до билото на y=14)
-  rc(g, 30, 8, 1, 7, '#6d7280'); rc(g, 33, 8, 1, 7, '#4a4e56');
-  px(g, 31, 10, '#3a3e46'); px(g, 32, 12, '#3a3e46');            // фуги
-  rc(g, 29, 7, 6, 2, '#4a4e56'); rc(g, 29, 7, 6, 1, '#6d7280');  // капак-плоча
-  rc(g, 31, 6, 2, 1, '#171310'); px(g, 30, 6, '#2b2f36');        // отворът и саждите
   if (v) for (let x = 1; x < 31; x += 3) px(g, x + 1, iso2EdgeY(oy, x) + 1, pal.rB); // рошав край на сламата
   outlineSprite(g, '#10131c');
   return g.canvas;
@@ -2092,9 +2094,9 @@ function genMirWallBlock(R) {
 }
 
 function genGateTower(R) {
-  const g = mk(32, 64);
-  const st = '#5a5f67', stD = '#4a4e56', stL = '#6d7280', mort = '#2b2f36';
   const FH = 58, oy = 14; // мерлони 0..13, диамант 14..29, лица 30..87 (+2 блока)
+  const g = mk(32, oy + 16 + FH); // канвата РАСТЕ с височината (беше 64 — режеше кулите отдолу!)
+  const st = '#5a5f67', stD = '#4a4e56', stL = '#6d7280', mort = '#2b2f36';
   // капак
   for (let y = 0; y < 16; y++) { const [x0, w2] = diamondSpan(y); rc(g, x0, oy + y, w2, 1, st); }
   for (let i = 0; i < 30; i++) { const x = (R() * 32) | 0, y = (R() * 16) | 0; if (inDiamond(x, y)) px(g, x, oy + y, R() < 0.5 ? stD : stL); }
@@ -2163,7 +2165,7 @@ function genChurch(R) {
     rA: '#2d333c', rB: '#232830', rC: '#39404a', rD: '#1c2128',
   };
   // КАМБАНАРИЯТА: рисува се ПРЕДИ покрива и СТЪПВА на билото (гърбът му я подпира)
-  rc(g, 34, 12, 12, 22, '#565a62');
+  rc(g, 34, 12, 12, 24, '#565a62');
   rc(g, 34, 12, 2, 22, '#6d7280'); rc(g, 44, 12, 2, 22, '#4a4e56');
   for (let y = 16; y < 33; y += 4) rc(g, 35, y, 10, 1, '#3a3e46');
   rc(g, 37, 18, 6, 7, '#12100c'); px(g, 39, 20, '#8a8d95'); px(g, 39, 21, '#6a6d75'); // камбаната
@@ -10563,6 +10565,7 @@ function renderWorld() {
 
   // --- събиране на обекти за рисуване в дълбочинен ред (пул, без нови closures) ---
   draws.length = 0; drawPoolI = 0;
+  G.heroCovered = false;
   // стени (тези пред героя стават полупрозрачни, за да не го скриват)
   const P = G.player;
   const pD = P.x + P.y;
@@ -10674,14 +10677,11 @@ function renderWorld() {
     else if (pr.kind === 'puddle') spr = Spr.surf.puddle;
     if (!spr) continue;
     const flat = pr.flat;
-    // високите сгради стават полупрозрачни САМО когато героят реално е СКРИТ зад тях
-    // (тясна зона: краката му са в тялото на спрайта и е с по-малка дълбочина)
-    let alpha = 0;
+    // сградите са ВИНАГИ плътни; ако скриват героя, той се дорисува като силует отгоре
     if ((pr.kind === 'wallseg' || pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'tower' || pr.kind === 'church' || pr.kind === 'gatetower') && pr.x + pr.y > pD + 0.6) {
-      // lift = изометричната котва (дъното е на южния връх, не на центъра)
       const lift = (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : 8;
       const hw = spr.width * S / 2 - 2 * S, hTop = sy + lift * S - spr.height * S + 6 * S, hBot = sy + lift * S - 8 * S;
-      if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) alpha = 0.45;
+      if (Math.abs(sx - psx) < hw && psy > hTop && psy < hBot) G.heroCovered = true;
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     const o = pushDraw(pr.x + pr.y + (flat ? -0.6 : pr.kind === 'gatebanner' ? -2.5 : 0));
@@ -10689,7 +10689,7 @@ function renderWorld() {
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower' || pr.kind === 'tower') ? 8
       : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church') ? 16 : undefined;
-    o.alpha = alpha;
+    o.alpha = 0;
   }
   // предмети по земята
   for (const gitem of G.ground) {
@@ -10749,6 +10749,12 @@ function renderWorld() {
 
   draws.sort((a, b) => a.d - b.d);
   for (const it of draws) drawItem(it);
+  // героят е скрит зад сграда -> дорисуваме го като полупрозрачен силует НАД нея
+  if (G.heroCovered && G.player && G.state !== 'dead') {
+    ctx.globalAlpha = 0.42;
+    drawPlayer(G.player, psx, psy);
+    ctx.globalAlpha = 1;
+  }
 
   // --- МИРХОЛД: дим от комините + ниска мъгла (плоски пиксели, без градиенти) ---
   if (G.onSurface && G.city === 'mirhold') {
@@ -10759,7 +10765,7 @@ function renderWorld() {
       const sx = isoX(pr.x, pr.y) + camX, sy = isoY(pr.x, pr.y) + camY;
       const h2 = pr.kind === 'house' && pr.t === 1; // двуетажната е по-висока
       const chx = sx + (pr.kind === 'house' ? 0 : -10) * S; // над комина (в средата на покрива)
-      const base = sy - (pr.kind === 'house' ? (h2 ? 50 : 38) : 38) * S;
+      const base = sy - (pr.kind === 'house' ? (h2 ? 61 : 49) : 38) * S;
       for (let sm = 0; sm < 4; sm++) {
         const t2 = (G.time * 0.7 + sm * 0.25 + pr.x * 0.13) % 1;
         const a2 = 0.30 * (1 - t2);
@@ -11157,12 +11163,17 @@ function cityEditClick(mx, my) {
   // бутоните на лентата
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
   const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
-  // избор на сграда (клик върху някоя от клетките ѝ)
+  // избор на сграда (клик върху някоя от клетките ѝ; свободните — по собствената им клетка)
   let hit = null;
   for (const pr of G.props) {
-    if (!BLD_DEFS[pr.kind]) continue;
+    const def = BLD_DEFS[pr.kind];
+    if (!def) continue;
     const { bx, by } = bldBase(pr);
-    if (BLD_DEFS[pr.kind].cells(bx, by).some(([a, b]) => a === cellX && b === cellY)) { hit = pr; break; }
+    if (def.free) {
+      // пещерата е широка — хваща се и по съседните клетки
+      const rr = pr.kind === 'portal' ? 1 : 0;
+      if (Math.abs(cellX - bx) <= rr && Math.abs(cellY - by) <= rr) { hit = pr; break; }
+    } else if (def.cells(bx, by).some(([a, b]) => a === cellX && b === cellY)) { hit = pr; break; }
   }
   if (hit) { G.editSelBld = hit === G.editSelBld ? null : hit; Sfx.play('coin'); return true; }
   if (!G.editSelBld) return true;
@@ -11181,7 +11192,8 @@ function drawCityEditOverlay() {
   // клетките на избраната сграда — жълти
   if (G.editSelBld && BLD_DEFS[G.editSelBld.kind]) {
     const { bx, by } = bldBase(G.editSelBld);
-    for (const [x, y] of BLD_DEFS[G.editSelBld.kind].cells(bx, by)) diamond(x, y, 'rgba(255,210,59,0.9)');
+    const selCells = BLD_DEFS[G.editSelBld.kind].free ? [[bx, by]] : BLD_DEFS[G.editSelBld.kind].cells(bx, by);
+    for (const [x, y] of selCells) diamond(x, y, 'rgba(255,210,59,0.9)');
     // клетката под курсора — зелена/червена според валидността
     const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
     const ok = bldCellsFree(BLD_DEFS[G.editSelBld.kind].cells(cx2, cy2), G.editSelBld);

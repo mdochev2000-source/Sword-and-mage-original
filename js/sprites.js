@@ -1630,7 +1630,8 @@ function iso2Body(g, R, oy, wallH, roofH, pal) {
   for (let x = 0; x < 32; x++) {
     px(g, x + 16, iso2EdgeY(oy, x) - N, pal.rD);       // билото
     px(g, x + 16, iso2EdgeY(oy, x) - N - 1, pal.rD);   // загатнат заден скат —
-    px(g, x + 16, iso2EdgeY(oy, x) - N - 2, '#1a1e26'); // покривът има гръб, не е хартия
+    px(g, x + 16, iso2EdgeY(oy, x) - N - 2, pal.rB);   // покривът има гръб,
+    px(g, x + 16, iso2EdgeY(oy, x) - N - 3, '#1a1e26'); // не е хартия
   }
 }
 // врата на СЗ-фасадата (колони x0..x0+w-1, височина dh от земята)
@@ -1661,9 +1662,16 @@ const ISO_PAL_HOUSE = v => ({
 
 // ЖИЛИЩНА КЪЩА (t0 едноетажна, t1 двуетажна) — старата визия + странична стена (2.5D)
 function genMirHouse(R, v, twoStory) {
-  const wallH = twoStory ? 30 : 18, roofH = 12, oy = 10;
+  const wallH = twoStory ? 30 : 18, roofH = 12, oy = 14;
   const g = mk(64, oy + 32 + wallH);
   const pal = ISO_PAL_HOUSE(v);
+  // КОМИНЪТ: рисува се ПРЕДИ снагата и наднича иззад ската (никакъв шев),
+  // двойно по-висок, за да се вижда добре зад билото
+  rc(g, 30, 3, 4, 14, '#565a62');
+  rc(g, 30, 3, 1, 14, '#6d7280'); rc(g, 33, 3, 1, 14, '#4a4e56');
+  px(g, 31, 6, '#3a3e46'); px(g, 32, 9, '#3a3e46'); px(g, 31, 12, '#3a3e46'); // фуги
+  rc(g, 29, 2, 6, 2, '#4a4e56'); rc(g, 29, 2, 6, 1, '#6d7280');               // капак-плоча
+  rc(g, 31, 1, 2, 1, '#171310'); px(g, 30, 1, '#2b2f36');                     // отворът и саждите
   iso2Body(g, R, oy, wallH, roofH, pal);
   iso2Door(g, oy, wallH, 10, 8, 11);
   iso2Win(g, oy, 3, 5, twoStory ? 19 : 6, 4, true);       // фасаден прозорец (долен етаж)
@@ -1673,12 +1681,6 @@ function genMirHouse(R, v, twoStory) {
     iso2Win(g, oy, 22, 5, 5, 4, false);
     iso2Win(g, oy, 38, 5, 5, 4, true);
   }
-  // комин: малък, в СРЕДАТА на покрива, зад билото — виждат се само върхът и капакът
-  rc(g, 30, 8, 4, 7, '#565a62');                                 // тялото (до билото на y=14)
-  rc(g, 30, 8, 1, 7, '#6d7280'); rc(g, 33, 8, 1, 7, '#4a4e56');
-  px(g, 31, 10, '#3a3e46'); px(g, 32, 12, '#3a3e46');            // фуги
-  rc(g, 29, 7, 6, 2, '#4a4e56'); rc(g, 29, 7, 6, 1, '#6d7280');  // капак-плоча
-  rc(g, 31, 6, 2, 1, '#171310'); px(g, 30, 6, '#2b2f36');        // отворът и саждите
   if (v) for (let x = 1; x < 31; x += 3) px(g, x + 1, iso2EdgeY(oy, x) + 1, pal.rB); // рошав край на сламата
   outlineSprite(g, '#10131c');
   return g.canvas;
@@ -1843,9 +1845,9 @@ function genMirWallBlock(R) {
 }
 
 function genGateTower(R) {
-  const g = mk(32, 64);
-  const st = '#5a5f67', stD = '#4a4e56', stL = '#6d7280', mort = '#2b2f36';
   const FH = 58, oy = 14; // мерлони 0..13, диамант 14..29, лица 30..87 (+2 блока)
+  const g = mk(32, oy + 16 + FH); // канвата РАСТЕ с височината (беше 64 — режеше кулите отдолу!)
+  const st = '#5a5f67', stD = '#4a4e56', stL = '#6d7280', mort = '#2b2f36';
   // капак
   for (let y = 0; y < 16; y++) { const [x0, w2] = diamondSpan(y); rc(g, x0, oy + y, w2, 1, st); }
   for (let i = 0; i < 30; i++) { const x = (R() * 32) | 0, y = (R() * 16) | 0; if (inDiamond(x, y)) px(g, x, oy + y, R() < 0.5 ? stD : stL); }
@@ -1914,7 +1916,7 @@ function genChurch(R) {
     rA: '#2d333c', rB: '#232830', rC: '#39404a', rD: '#1c2128',
   };
   // КАМБАНАРИЯТА: рисува се ПРЕДИ покрива и СТЪПВА на билото (гърбът му я подпира)
-  rc(g, 34, 12, 12, 22, '#565a62');
+  rc(g, 34, 12, 12, 24, '#565a62');
   rc(g, 34, 12, 2, 22, '#6d7280'); rc(g, 44, 12, 2, 22, '#4a4e56');
   for (let y = 16; y < 33; y += 4) rc(g, 35, y, 10, 1, '#3a3e46');
   rc(g, 37, 18, 6, 7, '#12100c'); px(g, 39, 20, '#8a8d95'); px(g, 39, 21, '#6a6d75'); // камбаната
