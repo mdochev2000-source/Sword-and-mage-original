@@ -63,6 +63,29 @@ def build():
     parts.append('<script>')
     parts.append('// сглобено от build.py — не редактирай ръчно; промени js/*.js')
     parts.append('window.__BUILD__ = "%s";' % build_ts)
+    # ---- САМООБНОВЯВАНЕ (заобикаля 10-минутния кеш на GitHub Pages) ----
+    parts.append("""
+(function () {
+  // Страницата се сервира с Cache-Control: max-age=600, тоест обикновеното
+  // презареждане връща СТАРОТО копие. Затова питаме сървъра директно (no-store)
+  // и ако горе има по-нова сглобка — презареждаме веднъж към нея.
+  try {
+    if (location.protocol === 'file:') return;
+    var here = /\.html?$/.test(location.pathname) ? location.pathname : location.pathname.replace(/[^/]*$/, '');
+    fetch(here + '?fresh=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+      return r.text();
+    }).then(function (t) {
+      var m = t.match(/window\.__BUILD__ = "([^"]+)"/);
+      if (!m) return;
+      var live = m[1], mine = window.__BUILD__;
+      if (live <= mine) return;                       // нямаме нищо ново
+      if (sessionStorage.getItem('sm_upd') === live) return; // вече опитахме
+      sessionStorage.setItem('sm_upd', live);
+      location.replace(here + '?v=' + Date.now());    // ново URL -> нов файл
+    }).catch(function () {});
+  } catch (e) {}
+})();
+""")
     for src in srcs:
         name = os.path.basename(src)
         js_path = os.path.join(ROOT, src)

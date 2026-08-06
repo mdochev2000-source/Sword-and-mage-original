@@ -22,7 +22,29 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 11:19 UTC";
+window.__BUILD__ = "2026-08-06 11:38 UTC";
+
+(function () {
+  // Страницата се сервира с Cache-Control: max-age=600, тоест обикновеното
+  // презареждане връща СТАРОТО копие. Затова питаме сървъра директно (no-store)
+  // и ако горе има по-нова сглобка — презареждаме веднъж към нея.
+  try {
+    if (location.protocol === 'file:') return;
+    var here = /\.html?$/.test(location.pathname) ? location.pathname : location.pathname.replace(/[^/]*$/, '');
+    fetch(here + '?fresh=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+      return r.text();
+    }).then(function (t) {
+      var m = t.match(/window\.__BUILD__ = "([^"]+)"/);
+      if (!m) return;
+      var live = m[1], mine = window.__BUILD__;
+      if (live <= mine) return;                       // нямаме нищо ново
+      if (sessionStorage.getItem('sm_upd') === live) return; // вече опитахме
+      sessionStorage.setItem('sm_upd', live);
+      location.replace(here + '?v=' + Date.now());    // ново URL -> нов файл
+    }).catch(function () {});
+  } catch (e) {}
+})();
+
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -9932,6 +9954,9 @@ function drawPause() {
   ctx.font = fontBold(13);
   ctx.fillStyle = '#e8e4d0';
   ctx.fillText('PAUSE', CW / 2, CH * 0.4);
+  // ВЕРСИЯТА на сглобката — за да се вижда веднага коя версия върви
+  ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f';
+  ctx.fillText('build ' + (window.__BUILD__ || '?'), CW / 2, CH - 8 * S);
   ctx.font = fontPx(7);
   ctx.fillStyle = '#7d8899';
   if (padRecent()) {

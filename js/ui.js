@@ -2641,6 +2641,9 @@ function drawPause() {
   ctx.font = fontBold(13);
   ctx.fillStyle = '#e8e4d0';
   ctx.fillText('PAUSE', CW / 2, CH * 0.4);
+  // ВЕРСИЯТА на сглобката — за да се вижда веднага коя версия върви
+  ctx.font = fontPx(5.5); ctx.fillStyle = '#5a677f';
+  ctx.fillText('build ' + (window.__BUILD__ || '?'), CW / 2, CH - 8 * S);
   ctx.font = fontPx(7);
   ctx.fillStyle = '#7d8899';
   if (padRecent()) {
