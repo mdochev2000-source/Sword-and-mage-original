@@ -411,7 +411,7 @@ const Surface = {
     // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
     // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
     if (LAY && Array.isArray(LAY.decor)) {
-      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
+      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
       for (const d2 of LAY.decor) {
         if (d2.k === 'custom') {
           const cd = G.customDefs[d2.id];
@@ -419,7 +419,7 @@ const Surface = {
           props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
           continue;
         }
-        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll', flat: d2.k === 'puddle' });
       }
     } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
@@ -498,7 +498,7 @@ function generateInterior(id) {
   if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
   if (typeof buildCustomSprites === 'function') buildCustomSprites();
   if (LAY && Array.isArray(LAY.decor)) {
-    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
+    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
     for (const d2 of LAY.decor) {
       if (d2.k === 'custom') {
         const cd = G.customDefs[d2.id];
@@ -506,7 +506,7 @@ function generateInterior(id) {
         props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
         continue;
       }
-      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll', flat: d2.k === 'puddle' });
     }
   }
   G.fenceDirty = true;

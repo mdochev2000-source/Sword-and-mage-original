@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 00:15 UTC";
+window.__BUILD__ = "2026-08-06 00:24 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1532,6 +1532,131 @@ function genInnkeeper() {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
+// --- МЕБЕЛИ (база за хана; слагат се от едитора навсякъде) ---
+// Всички стъпват на пода: горната плоскост е ромб като плочката, краката слизат надолу.
+function furnTop(g, cx, cy, hw, hh, top, edge) {          // изометричен плот
+  for (let dy = -hh; dy <= hh; dy++) {
+    const w = Math.round(hw * (1 - Math.abs(dy) / (hh + 1)));
+    for (let dx = -w; dx <= w; dx++) px(g, cx + dx, cy + dy, top);
+  }
+  for (let dy = -hh; dy <= hh; dy++) {
+    const w = Math.round(hw * (1 - Math.abs(dy) / (hh + 1)));
+    px(g, cx - w, cy + dy, edge); px(g, cx + w, cy + dy, edge);
+  }
+}
+function genTable(R) {
+  const g = mk(30, 22);
+  const top = '#8a6a3a', topD = '#6b5231', leg = '#54401f';
+  furnTop(g, 15, 8, 13, 5, top, topD);
+  for (let i = 0; i < 26; i++) { const x = 3 + ((R() * 24) | 0), y = 4 + ((R() * 8) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, R() < 0.5 ? '#7d5f33' : '#96763f'); }
+  rc(g, 3, 12, 2, 6, leg); rc(g, 25, 12, 2, 6, leg);            // крака
+  rc(g, 9, 14, 2, 7, leg); rc(g, 19, 14, 2, 7, leg);
+  rc(g, 3, 13, 24, 1, topD);                                     // ръб на плота
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genBench(R) {
+  const g = mk(24, 16);
+  furnTop(g, 12, 6, 10, 3, '#7d5f33', '#5c4423');
+  for (let i = 0; i < 14; i++) { const x = 4 + ((R() * 16) | 0), y = 4 + ((R() * 5) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, '#8f6f3c'); }
+  rc(g, 3, 9, 2, 5, '#4a3620'); rc(g, 19, 9, 2, 5, '#4a3620');
+  rc(g, 3, 9, 18, 1, '#5c4423');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genStool() {
+  const g = mk(14, 14);
+  furnTop(g, 7, 5, 5, 2, '#7d5f33', '#5c4423');
+  rc(g, 3, 8, 1, 5, '#4a3620'); rc(g, 10, 8, 1, 5, '#4a3620'); rc(g, 7, 9, 1, 4, '#3f2e1a');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genKeg() {
+  const g = mk(16, 20);
+  for (let i = 0; i < 10; i++) {
+    const x = 3 + i;
+    const top = (i <= 1 || i >= 8) ? 5 : 4, bot = (i <= 1 || i >= 8) ? 17 : 18;
+    for (let y = top; y <= bot; y++) {
+      let col = i <= 2 ? '#8a6a3a' : i >= 7 ? '#5c4423' : '#73562c';
+      if (y === 7 || y === 14) col = '#3c4046';
+      px(g, x, y, col);
+    }
+  }
+  furnTop(g, 7, 4, 4, 2, '#96763f', '#6b5231');
+  px(g, 12, 12, '#241f1a'); px(g, 13, 13, '#241f1a');            // канелка
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genFireplace(R) {
+  const g = mk(30, 26);
+  const st = '#6d7280', stD = '#4a4e56', stL = '#878d9c';
+  rc(g, 2, 8, 26, 14, st);                                       // каменна зидария
+  for (let i = 0; i < 40; i++) { const x = 2 + ((R() * 26) | 0), y = 8 + ((R() * 14) | 0); px(g, x, y, R() < 0.5 ? stD : stL); }
+  for (let y = 10; y < 22; y += 3) rc(g, 2, y, 26, 1, stD);      // фуги
+  rc(g, 6, 12, 18, 10, '#171310');                               // отворът
+  rc(g, 8, 19, 14, 2, '#3a2f24');                                // дървата
+  rc(g, 9, 18, 5, 1, '#54401f'); rc(g, 16, 18, 5, 1, '#4a3620');
+  rc(g, 10, 15, 10, 3, '#ff8a1f'); rc(g, 12, 13, 6, 3, '#ffb84d'); // пламък
+  rc(g, 13, 11, 4, 2, '#ffd23b'); px(g, 15, 10, '#fff2a0');
+  rc(g, 9, 20, 12, 1, '#c94f1f');                                // жар
+  rc(g, 2, 6, 26, 2, '#565a62'); rc(g, 2, 6, 26, 1, '#878d9c');  // полица над огнището
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genCauldron() {
+  const g = mk(18, 20);
+  rc(g, 3, 15, 1, 5, '#3c4046'); rc(g, 14, 15, 1, 5, '#3c4046'); // триножник
+  rc(g, 9, 16, 1, 4, '#2b2f36');
+  rc(g, 4, 8, 10, 7, '#2b2f36'); rc(g, 5, 7, 8, 1, '#3c4046');   // котле
+  rc(g, 4, 9, 2, 4, '#454b55');
+  rc(g, 5, 8, 8, 1, '#5a4a2a');                                  // яхния
+  px(g, 7, 7, '#8a7048'); px(g, 10, 7, '#8a7048');
+  rc(g, 3, 5, 12, 1, '#3c4046'); px(g, 3, 6, '#3c4046'); px(g, 14, 6, '#3c4046'); // дръжка
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genShelf() {
+  const g = mk(26, 20);
+  rc(g, 2, 6, 22, 2, '#6b5231'); rc(g, 2, 6, 22, 1, '#8a6a3a');  // горна дъска
+  rc(g, 2, 14, 22, 2, '#6b5231'); rc(g, 2, 14, 22, 1, '#8a6a3a');
+  rc(g, 2, 8, 1, 6, '#54401f'); rc(g, 23, 8, 1, 6, '#54401f');
+  rc(g, 5, 2, 4, 4, '#8a7a5e'); px(g, 5, 2, '#a3947a');          // делви
+  rc(g, 11, 3, 3, 3, '#6b5d47'); rc(g, 17, 2, 4, 4, '#7d6b52');
+  rc(g, 6, 10, 3, 4, '#8a97ad'); px(g, 6, 10, '#c6d3e6');        // калаени кани
+  rc(g, 13, 11, 4, 3, '#8a7a5e'); rc(g, 19, 10, 3, 4, '#6b5d47');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genBedRoll(R) {
+  const g = mk(28, 16);
+  furnTop(g, 14, 9, 12, 4, '#c9a463', '#8a6a3a');                // сламеник
+  for (let i = 0; i < 30; i++) { const x = 4 + ((R() * 20) | 0), y = 6 + ((R() * 7) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, R() < 0.5 ? '#b08a48' : '#dcc084'); }
+  furnTop(g, 8, 8, 5, 3, '#d8d2be', '#aca691');                  // възглавница
+  rc(g, 15, 6, 10, 1, '#6b5d47');                                // одеяло
+  furnTop(g, 19, 10, 7, 3, '#5e4a6b', '#453552');
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genSacks(R) {
+  const g = mk(20, 18);
+  rc(g, 2, 8, 8, 9, '#a3947a'); rc(g, 3, 7, 6, 1, '#b8a98c');    // чувал
+  rc(g, 4, 6, 4, 1, '#8a7a5e'); px(g, 5, 5, '#6b5d47');
+  rc(g, 11, 10, 7, 7, '#8a7a5e'); rc(g, 12, 9, 5, 1, '#a3947a');
+  rc(g, 13, 8, 3, 1, '#6b5d47');
+  for (let i = 0; i < 12; i++) { const x = 2 + ((R() * 16) | 0), y = 8 + ((R() * 8) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, '#7d6f57'); }
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
+function genCandleStand() {
+  const g = mk(10, 22);
+  rc(g, 3, 19, 4, 2, '#3c4046'); rc(g, 4, 20, 2, 1, '#2b2f36');  // стъпало
+  rc(g, 4, 6, 2, 13, '#565a62'); px(g, 4, 8, '#6d7280');
+  rc(g, 3, 5, 4, 1, '#3c4046');
+  rc(g, 4, 2, 2, 3, '#e8e4d0'); px(g, 4, 2, '#f6f3e6');          // свещ
+  px(g, 5, 1, '#ffb84d'); px(g, 5, 0, '#ffd23b');                // пламъче
+  outlineSprite(g, '#10131c');
+  return g.canvas;
+}
 function initInteriorSprites() {
   if (Spr.int) return;
   const R = mulberry32(0x1e7a2100 >>> 0);
@@ -2885,6 +3010,10 @@ function initSurfaceSprites() {
     fence2: genFence2(R),
     fence3: genFence3(R),
     fenceTiles: genFenceTiles(), // снапващите се огради (16 маски x 3 вида)
+    // МЕБЕЛИ (база за хана и стаите)
+    table: genTable(R), bench: genBench(R), stool: genStool(), keg: genKeg(),
+    fireplace: genFireplace(R), cauldron: genCauldron(), shelf: genShelf(),
+    bedroll: genBedRoll(R), sacks: genSacks(R), candle: genCandleStand(),
     cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
     wallseg: genMirWallBlock(R),
@@ -4180,7 +4309,7 @@ const Surface = {
     // навън: голи дървета, накъсани огради (изоставени ниви), камъни.
     // Ако дизайнерът е записал декор в подредбата — той замества процедурния.
     if (LAY && Array.isArray(LAY.decor)) {
-      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
+      const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
       for (const d2 of LAY.decor) {
         if (d2.k === 'custom') {
           const cd = G.customDefs[d2.id];
@@ -4188,7 +4317,7 @@ const Surface = {
           props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
           continue;
         }
-        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
+        props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll', flat: d2.k === 'puddle' });
       }
     } else {
     for (let j = B; j < h - B; j++) for (let i = B; i < w - B; i++) {
@@ -4267,7 +4396,7 @@ function generateInterior(id) {
   if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
   if (typeof buildCustomSprites === 'function') buildCustomSprites();
   if (LAY && Array.isArray(LAY.decor)) {
-    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0 };
+    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
     for (const d2 of LAY.decor) {
       if (d2.k === 'custom') {
         const cd = G.customDefs[d2.id];
@@ -4275,7 +4404,7 @@ function generateInterior(id) {
         props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
         continue;
       }
-      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle', flat: d2.k === 'puddle' });
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll', flat: d2.k === 'puddle' });
     }
   }
   G.fenceDirty = true;
@@ -11309,7 +11438,7 @@ function renderWorld() {
     const hearthGlow = pr.kind === 'cityportal';
     const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && (!G.onSurface ||
       ((pr.dungeon === 'mirhold' ? (G.mirCheckpoint || 1) : (G.checkpoint || 1)) > 1)));
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || pr.kind === 'fireplace' || pr.kind === 'candle' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = (hearthGlow || portalGlow) ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -11444,6 +11573,16 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = pr.vtype === 'tavern' ? Spr.int.innkeeper : Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'peddler') spr = Spr.surf.vendors.peddler; // странстващият търговец
     else if (pr.kind === 'exitdoor') spr = Spr.int.door;             // вратата навън
+    else if (pr.kind === 'table') spr = Spr.surf.table;
+    else if (pr.kind === 'bench') spr = Spr.surf.bench;
+    else if (pr.kind === 'stool') spr = Spr.surf.stool;
+    else if (pr.kind === 'keg') spr = Spr.surf.keg;
+    else if (pr.kind === 'fireplace') spr = Spr.surf.fireplace;
+    else if (pr.kind === 'cauldron') spr = Spr.surf.cauldron;
+    else if (pr.kind === 'shelf') spr = Spr.surf.shelf;
+    else if (pr.kind === 'bedroll') spr = Spr.surf.bedroll;
+    else if (pr.kind === 'sacks') spr = Spr.surf.sacks;
+    else if (pr.kind === 'candle') spr = Spr.surf.candle;
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал.
@@ -11944,6 +12083,16 @@ const BLD_DEFS = {
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
+  table:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bench:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  stool:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  keg:       { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  fireplace: { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  cauldron:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  shelf:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bedroll:   { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  sacks:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  candle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -11962,6 +12111,17 @@ const DECOR_KINDS = {
   fence2:   { r: 0.35, solid: true },
   fence3:   { r: 0.35, solid: true },
   puddle:   { r: 0, solid: false, flat: true }, // ляга НА земята, под всичко
+  // МЕБЕЛИ (базата за хана и стаите)
+  table:    { r: 0.42, solid: true },
+  bench:    { r: 0.34, solid: true },
+  stool:    { r: 0.22, solid: true },
+  keg:      { r: 0.26, solid: true },
+  fireplace:{ r: 0.45, solid: true },
+  cauldron: { r: 0.28, solid: true },
+  shelf:    { r: 0.38, solid: true },
+  bedroll:  { r: 0.4, solid: false },
+  sacks:    { r: 0.3, solid: true },
+  candle:   { r: 0.16, solid: true },
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -12379,6 +12539,17 @@ function drawCityEditOverlay() {
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
       ['puddle', Spr.surf.puddle],
+      // мебелите
+      ['table', Spr.surf.table],
+      ['bench', Spr.surf.bench],
+      ['stool', Spr.surf.stool],
+      ['keg', Spr.surf.keg],
+      ['fireplace', Spr.surf.fireplace],
+      ['cauldron', Spr.surf.cauldron],
+      ['shelf', Spr.surf.shelf],
+      ['bedroll', Spr.surf.bedroll],
+      ['sacks', Spr.surf.sacks],
+      ['candle', Spr.surf.candle],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     items.push(
@@ -12625,6 +12796,20 @@ function spriteByKey(key) {
     peddler: S2.vendors.peddler,
     vendor_weapon: S2.vendors.weapon, vendor_armor: S2.vendors.armor,
     vendor_potion: S2.vendors.potion, vendor_jewel: S2.vendors.jewel,
+    // гостилничарят и вратата на стаята се редактират като всичко останало
+    vendor_tavern: (Spr.int && Spr.int.innkeeper) || null,
+    exitdoor: (Spr.int && Spr.int.door) || null,
+    // мебелите
+    table: S2.table,
+    bench: S2.bench,
+    stool: S2.stool,
+    keg: S2.keg,
+    fireplace: S2.fireplace,
+    cauldron: S2.cauldron,
+    shelf: S2.shelf,
+    bedroll: S2.bedroll,
+    sacks: S2.sacks,
+    candle: S2.candle,
     // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,
@@ -12668,6 +12853,7 @@ function openPixelEditor(key) {
   const own = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 16);
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
+  G.pixDelArm = null;
   G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
@@ -12909,6 +13095,21 @@ function drawPixelEditor() {
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
   }, false, 1); bx2 += 22 * S;
+  if (e.key.slice(0, 5) === 'cust_') { // ИЗТРИВАНЕ на собствения спрайт (два клика)
+    const delId = e.key.slice(5);
+    const armed = G.pixDelArm === e.key;
+    tb(armed ? 'SURE?' : 'DEL', bx2, 22 * S, () => {
+      if (!armed) { G.pixDelArm = e.key; toast('Click DEL again to delete this sprite for good.', '#ff6b7a'); return; }
+      for (let i = G.props.length - 1; i >= 0; i--) if (G.props[i].kind === 'custom' && G.props[i].cid === delId) G.props.splice(i, 1);
+      if (G.customDefs) delete G.customDefs[delId];
+      if (Spr.custom) delete Spr.custom[delId];
+      if (G.editPlaceKind === e.key) G.editPlaceKind = null;
+      G.pixEdit = null; G.pixDelArm = null;
+      saveCityLayout();
+      toast('Sprite deleted.', '#ffd23b');
+      Sfx.play('deny');
+    }, armed, 1); bx2 += 24 * S;
+  }
   tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
   // палитрата
   ctx.textAlign = 'left';

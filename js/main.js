@@ -799,7 +799,7 @@ function renderWorld() {
     const hearthGlow = pr.kind === 'cityportal';
     const portalGlow = pr.kind === 'homeportal' || (pr.kind === 'portal' && (!G.onSurface ||
       ((pr.dungeon === 'mirhold' ? (G.mirCheckpoint || 1) : (G.checkpoint || 1)) > 1)));
-    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || hearthGlow || portalGlow) || pr.broken) continue;
+    if (!(pr.kind === 'brazier' || pr.kind === 'campfire' || pr.kind === 'church' || pr.kind === 'fireplace' || pr.kind === 'candle' || hearthGlow || portalGlow) || pr.broken) continue;
     const pi = Math.floor(pr.x), pj = Math.floor(pr.y);
     if (!tileVisible(pi, pj)) continue;
     const flick = (hearthGlow || portalGlow) ? 0.7 + 0.3 * Math.sin(G.time * 2.2) : 0.75 + 0.25 * Math.sin(G.time * 7 + pr.x * 3);
@@ -934,6 +934,16 @@ function renderWorld() {
     else if (pr.kind === 'vendor') spr = pr.vtype === 'tavern' ? Spr.int.innkeeper : Spr.surf.vendors[pr.vtype];
     else if (pr.kind === 'peddler') spr = Spr.surf.vendors.peddler; // странстващият търговец
     else if (pr.kind === 'exitdoor') spr = Spr.int.door;             // вратата навън
+    else if (pr.kind === 'table') spr = Spr.surf.table;
+    else if (pr.kind === 'bench') spr = Spr.surf.bench;
+    else if (pr.kind === 'stool') spr = Spr.surf.stool;
+    else if (pr.kind === 'keg') spr = Spr.surf.keg;
+    else if (pr.kind === 'fireplace') spr = Spr.surf.fireplace;
+    else if (pr.kind === 'cauldron') spr = Spr.surf.cauldron;
+    else if (pr.kind === 'shelf') spr = Spr.surf.shelf;
+    else if (pr.kind === 'bedroll') spr = Spr.surf.bedroll;
+    else if (pr.kind === 'sacks') spr = Spr.surf.sacks;
+    else if (pr.kind === 'candle') spr = Spr.surf.candle;
     else if (pr.kind === 'portal') {
       if (G.onSurface) {
         // на повърхността входът към подземието е ПЕЩЕРА, не портал.
@@ -1434,6 +1444,16 @@ const BLD_DEFS = {
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
+  table:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bench:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  stool:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  keg:       { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  fireplace: { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  cauldron:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  shelf:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  bedroll:   { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  sacks:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  candle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
 };
 // какво може да се ДОБАВЯ/ТРИЕ с едитора (палитрата) + физика на всяко
 const DECOR_KINDS = {
@@ -1452,6 +1472,17 @@ const DECOR_KINDS = {
   fence2:   { r: 0.35, solid: true },
   fence3:   { r: 0.35, solid: true },
   puddle:   { r: 0, solid: false, flat: true }, // ляга НА земята, под всичко
+  // МЕБЕЛИ (базата за хана и стаите)
+  table:    { r: 0.42, solid: true },
+  bench:    { r: 0.34, solid: true },
+  stool:    { r: 0.22, solid: true },
+  keg:      { r: 0.26, solid: true },
+  fireplace:{ r: 0.45, solid: true },
+  cauldron: { r: 0.28, solid: true },
+  shelf:    { r: 0.38, solid: true },
+  bedroll:  { r: 0.4, solid: false },
+  sacks:    { r: 0.3, solid: true },
+  candle:   { r: 0.16, solid: true },
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -1869,6 +1900,17 @@ function drawCityEditOverlay() {
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
       ['puddle', Spr.surf.puddle],
+      // мебелите
+      ['table', Spr.surf.table],
+      ['bench', Spr.surf.bench],
+      ['stool', Spr.surf.stool],
+      ['keg', Spr.surf.keg],
+      ['fireplace', Spr.surf.fireplace],
+      ['cauldron', Spr.surf.cauldron],
+      ['shelf', Spr.surf.shelf],
+      ['bedroll', Spr.surf.bedroll],
+      ['sacks', Spr.surf.sacks],
+      ['candle', Spr.surf.candle],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     items.push(
@@ -2115,6 +2157,20 @@ function spriteByKey(key) {
     peddler: S2.vendors.peddler,
     vendor_weapon: S2.vendors.weapon, vendor_armor: S2.vendors.armor,
     vendor_potion: S2.vendors.potion, vendor_jewel: S2.vendors.jewel,
+    // гостилничарят и вратата на стаята се редактират като всичко останало
+    vendor_tavern: (Spr.int && Spr.int.innkeeper) || null,
+    exitdoor: (Spr.int && Spr.int.door) || null,
+    // мебелите
+    table: S2.table,
+    bench: S2.bench,
+    stool: S2.stool,
+    keg: S2.keg,
+    fireplace: S2.fireplace,
+    cauldron: S2.cauldron,
+    shelf: S2.shelf,
+    bedroll: S2.bedroll,
+    sacks: S2.sacks,
+    candle: S2.candle,
     // оградите са авто-свързващи се (16 парчета) — моливът не важи за тях
     church: S2.church, tower: S2.tower, wallseg: S2.wallseg, gatetower: S2.gateTower,
     cave: S2.cave, hearth: S2.hearth,
@@ -2158,6 +2214,7 @@ function openPixelEditor(key) {
   const own = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 16);
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
+  G.pixDelArm = null;
   G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
@@ -2399,6 +2456,21 @@ function drawPixelEditor() {
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
   }, false, 1); bx2 += 22 * S;
+  if (e.key.slice(0, 5) === 'cust_') { // ИЗТРИВАНЕ на собствения спрайт (два клика)
+    const delId = e.key.slice(5);
+    const armed = G.pixDelArm === e.key;
+    tb(armed ? 'SURE?' : 'DEL', bx2, 22 * S, () => {
+      if (!armed) { G.pixDelArm = e.key; toast('Click DEL again to delete this sprite for good.', '#ff6b7a'); return; }
+      for (let i = G.props.length - 1; i >= 0; i--) if (G.props[i].kind === 'custom' && G.props[i].cid === delId) G.props.splice(i, 1);
+      if (G.customDefs) delete G.customDefs[delId];
+      if (Spr.custom) delete Spr.custom[delId];
+      if (G.editPlaceKind === e.key) G.editPlaceKind = null;
+      G.pixEdit = null; G.pixDelArm = null;
+      saveCityLayout();
+      toast('Sprite deleted.', '#ffd23b');
+      Sfx.play('deny');
+    }, armed, 1); bx2 += 24 * S;
+  }
   tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
   // палитрата
   ctx.textAlign = 'left';
