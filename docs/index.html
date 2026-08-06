@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 11:02 UTC";
+window.__BUILD__ = "2026-08-06 11:19 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1451,22 +1451,20 @@ function genIntWall(R, v) {
   return g.canvas;
 }
 function genIntDoor() {
-  // ВРАТАТА е блок с РАЗМЕРА НА СТЕНА (32 x 16+H) — ляга точно в редицата на
-  // стените, вместо да виси като отделно крило насред пролуката.
+  // Блок с РАЗМЕРА НА СТЕНА; крилото е върху ЛЯВОТО (югозападното) лице —
+  // както са вратите на магазините, за да не "плува" между двете лица.
   const H = WALL_HP;
   const g = mk(32, 16 + H);
   const plL = '#b3a183', plR = '#8f7f66', beamL = '#5c4a30', beamR = '#48391f';
   const wood = '#6b5231', woodD = '#4a3a24', woodL = '#8a6a3a', dark = '#171310';
-  // капакът на стената (за да съвпада с�съседните блокове)
-  fillDiamond(g, 0, '#7a6647');
+  fillDiamond(g, 0, '#7a6647');                                   // капакът, като на стената
   for (let y = 0; y < 8; y++) {
     const sp = diamondSpan(y);
     px(g, sp[0], y, '#8e7a55'); px(g, sp[0] + sp[1] - 1, y, '#5f4e34');
   }
-  // лицата на стената
-  for (let x = 0; x < 32; x++) {
-    const left = x < 16;
-    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+  const faceTop = (x) => (x < 16 ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1);
+  for (let x = 0; x < 32; x++) {                                   // мазилка и греди
+    const left = x < 16, yb = faceTop(x);
     for (let k = 0; k < H; k++) {
       let col = left ? plL : plR;
       if (k > H - 4) col = left ? '#7a6a52' : '#63563f';
@@ -1474,31 +1472,27 @@ function genIntDoor() {
       px(g, x, yb + k, col);
     }
   }
-  // ОТВОРЪТ: рамка от греди + дървено крило, следващи наклона на стената
-  for (let x = 8; x <= 23; x++) {
-    const left = x < 16;
-    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
-    const isPost = (x <= 9 || x >= 22);
-    for (let k = 4; k < H; k++) {
+  // ОТВОРЪТ само на лявото лице: рамка, крило с дъски, праг
+  const x0 = 3, x1 = 13, kTop = 5;
+  for (let x = x0; x <= x1; x++) {
+    const yb = faceTop(x);
+    for (let k = kTop; k < H - 1; k++) {
       const y = yb + k;
-      if (isPost) { px(g, x, y, k < 5 ? (left ? beamL : beamR) : (left ? '#54401f' : '#3f2e1a')); continue; }
-      if (k === 4 || k === 5) { px(g, x, y, left ? '#6b5636' : '#54401f'); continue; }   // горната греда
-      if (k >= H - 2) { px(g, x, y, woodD); continue; }                                  // праг
-      // крилото: дъски с фуги + тъмнина по ръба
-      let col = left ? wood : woodD;
-      if ((x - 10) % 4 === 0) col = left ? '#54401f' : '#3a2c18';
-      if (x === 10 || x === 21) col = dark;
+      if (x === x0 || x === x1) { px(g, x, y, beamL); continue; }            // страничните греди
+      if (k === kTop || k === kTop + 1) { px(g, x, y, '#6b5636'); continue; } // горната греда
+      let col = wood;
+      if ((x - x0) % 3 === 0) col = woodD;                                    // фуги между дъските
+      if (x === x0 + 1) col = dark;                                           // сянка при пантите
       px(g, x, y, col);
     }
+    px(g, x, faceTop(x) + H - 1, woodD);                                      // прагът
   }
-  // обков и дръжка
-  for (let x = 11; x <= 20; x++) {
-    const left = x < 16;
-    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
-    px(g, x, yb + 8, '#3c4046'); px(g, x, yb + H - 6, '#3c4046');
+  for (let x = x0 + 2; x <= x1 - 1; x++) {                                    // железен обков
+    const yb = faceTop(x);
+    px(g, x, yb + kTop + 3, '#3c4046'); px(g, x, yb + H - 5, '#3c4046');
   }
-  { const yb = 8 + ((31 - 19) >> 1) + 1; px(g, 19, yb + 11, '#c9a23b'); px(g, 19, yb + 12, '#8a6a3a'); }
-  px(g, 15, 12, woodL); px(g, 16, 12, woodL);                                            // светъл ръб горе
+  { const yb = faceTop(x1 - 2); px(g, x1 - 2, yb + 10, '#c9a23b'); px(g, x1 - 2, yb + 11, '#8a6a3a'); } // дръжка
+  for (let x = x0; x <= x1; x++) px(g, x, faceTop(x) + kTop - 1, woodL);      // светъл ръб над вратата
   return g.canvas;
 }
 function genInnkeeper() {
@@ -11819,7 +11813,7 @@ function renderWorld() {
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
       : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16
-      : pr.kind === 'exitdoor' ? 16
+      : pr.kind === 'exitdoor' ? 8
       : cdef ? (cdef.cw + cdef.ch) * 4 : undefined;
     o.alpha = 0;
   }
@@ -12387,6 +12381,7 @@ function saveCityLayout() {
   }
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs; // създадените спрайтове (с рисунките им)
+  if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
   // пътищата (боядисани с четката) — целият слой, пакетиран в base64
   try {
     const pb = G.map.path; const bytes = new Uint8Array((pb.length + 7) >> 3);
@@ -12452,6 +12447,7 @@ function saveInteriorLayout() {
   }
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs;
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
+  if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
   try { localStorage.setItem(interiorLayoutKey(G.inside.id), JSON.stringify(L)); } catch (e) {}
   return L;
 }
@@ -12472,7 +12468,8 @@ function placeDecorAt(cellX, cellY, loud) {
     if (loud) { saveCityLayout(); G.editDecorDirty = false; Sfx.play('coin'); }
     return;
   }
-  if (cellX < 2 || cellY < 2 || cellX >= m.w - 2 || cellY >= m.h - 2 || m.cells[idx] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
+  const B2 = G.inside ? 1 : 2; // в стаята стените са на ред 1 — там също се слага
+  if (cellX < B2 || cellY < B2 || cellX >= m.w - B2 || cellY >= m.h - B2 || m.cells[idx] !== FLOOR) { if (loud) { toast('Cannot place it here.', '#ff6b7a'); Sfx.play('deny'); } return; }
   // не дублираме същия вид върху същата клетка (моливът минава много пъти);
   // оградите не се трупат и МЕЖДУ видовете — една клетка носи една ограда
   for (const pr of G.props) {
@@ -12860,6 +12857,7 @@ function drawCityEditOverlay() {
 // нагоре и плътност; платното се ПОКАЗВА за преглед и чака ПОТВЪРЖДЕНИЕ —
 // чак след него се рисува. Дефинициите влизат в подредбата (COPY LAYOUT).
 function customCanvasSize(def) {
+  if (def.pw && def.ph) return { w: def.pw, h: def.ph }; // ръчно зададен размер
   return { w: (def.cw + def.ch) * 16, h: (def.cw + def.ch) * 8 + (def.top || 0) };
 }
 function customCells(def, bx, by) {
@@ -12871,9 +12869,26 @@ function customName(id) {
   const d2 = G.customDefs && G.customDefs[id];
   return (d2 && d2.name) ? d2.name : id;
 }
+// името на КОЙТО И ДА Е спрайт (вградените също се кръщават)
+function spriteName(key) {
+  if (G.spriteNames && G.spriteNames[key]) return G.spriteNames[key];
+  if (key && key.slice(0, 5) === 'cust_') return customName(key.slice(5));
+  return key;
+}
+function setSpriteName(key, name) {
+  if (key.slice(0, 5) === 'cust_') {
+    const id = key.slice(5);
+    if (G.customDefs && G.customDefs[id]) G.customDefs[id].name = name;
+  }
+  G.spriteNames = G.spriteNames || {};
+  G.spriteNames[key] = name;
+  saveCityLayout();
+}
 function editKindLabel(k) {
-  if (k && k.slice(0, 5) === 'cust_') return customName(k.slice(5));
-  if (k && k.slice(0, 2) === 'b_') return k.slice(2).replace(/_/g, ' ');
+  if (!k) return k;
+  if (G.spriteNames && G.spriteNames[k]) return G.spriteNames[k];
+  if (k.slice(0, 5) === 'cust_') return customName(k.slice(5));
+  if (k.slice(0, 2) === 'b_') return k.slice(2).replace(/_/g, ' ');
   return k;
 }
 function buildCustomSprites() {
@@ -13092,7 +13107,7 @@ function pixPanelRect() {
   const z = pixZoomScale();
   const { vw, vh } = pixViewport();
   const w = vw + 12 * S;
-  const extra = e.key.slice(0, 5) === 'cust_' ? 13 * S : 0; // редът за размера
+  const extra = 13 * S + (e.key.slice(0, 5) === 'cust_' ? 13 * S : 0); // редовете за размера
   const h = 59 * S + extra + Math.ceil(e.palette.length / 8) * 12 * S + 32 * S + vh + 16 * S;
   return { x: CW - w - 6 * S, y: 30 * S, w, h, z };
 }
@@ -13130,6 +13145,7 @@ function pixResize(dw, dh, dtop) {
   if (ncw === cd.cw && nch === cd.ch && ntop === (cd.top || 16)) return;
   const old = e.spr;
   cd.cw = ncw; cd.ch = nch; cd.top = ntop;
+  delete cd.pw; delete cd.ph;   // клетките наново определят платното
   const sz = customCanvasSize(cd);
   const nc = document.createElement('canvas');
   nc.width = sz.w; nc.height = sz.h;
@@ -13176,6 +13192,31 @@ function pixMoveSel(dx, dy) {
 function pixCommitSel() {
   const e = G.pixEdit; if (!e) return;
   e.sel = null; e.selDrag = null; e.selNew = null;
+}
+// Смяна на ПЛАТНОТО (в пиксели) за който и да е спрайт — и нагоре, и надолу.
+// Рисунката остава долу-центрирана, както обектът стъпва на земята.
+function pixResizeCanvas(dw, dh) {
+  const e = G.pixEdit; if (!e) return;
+  const nw = clamp(e.spr.width + dw, 8, 200), nh = clamp(e.spr.height + dh, 8, 220);
+  if (nw === e.spr.width && nh === e.spr.height) return;
+  const buf = document.createElement('canvas');
+  buf.width = e.spr.width; buf.height = e.spr.height;
+  buf.getContext('2d').drawImage(e.spr, 0, 0);
+  e.spr.width = nw; e.spr.height = nh;                    // платното се пресъздава (и се чисти)
+  const c = e.spr.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(buf, Math.round((nw - buf.width) / 2), nh - buf.height);
+  const bak = document.createElement('canvas');
+  bak.width = nw; bak.height = nh;
+  bak.getContext('2d').drawImage(e.spr, 0, 0);
+  e.bak = bak;
+  e.zoom = 0; e.panX = 0; e.panY = 0; e.hist = []; e.sel = null;
+  if (e.key.slice(0, 5) === 'cust_') {                    // собствените помнят размера си
+    const cd = G.customDefs && G.customDefs[e.key.slice(5)];
+    if (cd) { cd.pw = nw; cd.ph = nh; }
+  }
+  pixSaveOverride();
+  toast(nw + 'x' + nh + ' px', '#7fd0a0');
 }
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
@@ -13345,18 +13386,17 @@ function drawPixelEditor() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
   // (NAME бутонът се регистрира в pixBtns по-долу)
-  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16) + (e.tool === 'sel' ? '  ·  frame a part, then drag it' : ''), r.x + 6 * S, r.y + 10 * S);
-  if (e.key.slice(0, 5) === 'cust_') { // преименуване по всяко време
+  ctx.fillText('PIXEL: ' + String(spriteName(e.key)).slice(0, 16) + (e.tool === 'sel' ? '  ·  frame a part, then drag it' : ''), r.x + 6 * S, r.y + 10 * S);
+  { // преименуване на ВСЕКИ спрайт
     const nx = r.x + r.w - 50 * S, ny = r.y + 2 * S;
     panel(nx, ny, 26 * S, 10 * S);
     ctx.font = fontBold(5); ctx.textAlign = 'center'; ctx.fillStyle = '#a8b2c4';
     ctx.fillText('NAME', nx + 13 * S, ny + 7 * S);
     UI.pixBtns = UI.pixBtns || [];
     UI.pixBtns.push({ x: nx, y: ny, w: 26 * S, h: 10 * S, act: () => {
-      const id = e.key.slice(5);
       try {
-        const nm = (window.prompt('Name your sprite:', customName(id)) || '').trim().slice(0, 24);
-        if (nm && G.customDefs[id]) { G.customDefs[id].name = nm; saveCityLayout(); toast('Named: ' + nm, '#7fd0a0'); }
+        const nm = (window.prompt('Name this sprite:', spriteName(e.key)) || '').trim().slice(0, 24);
+        if (nm) { setSpriteName(e.key, nm); toast('Named: ' + nm, '#7fd0a0'); }
       } catch (err) {}
     } });
     ctx.textAlign = 'left';
@@ -13409,24 +13449,35 @@ function drawPixelEditor() {
     }, armed, 1); bx2 += 24 * S;
   }
   tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
-  // ТРЕТИ РЕД: преоразмеряване на платното (само за собствен спрайт)
+  // ТРЕТИ РЕД: ПЛАТНОТО в пиксели — за ВСЕКИ спрайт, нагоре и надолу
   const isCust = e.key.slice(0, 5) === 'cust_';
+  {
+    let rx = r.x + 4 * S;
+    ctx.font = fontPx(5); ctx.fillStyle = '#7d8899'; ctx.textAlign = 'left';
+    ctx.fillText(e.spr.width + 'x' + e.spr.height + 'px', rx, r.y + 47 * S);
+    rx += 30 * S;
+    tb('W-', rx, 15 * S, () => pixResizeCanvas(-4, 0), false, 2); rx += 17 * S;
+    tb('W+', rx, 15 * S, () => pixResizeCanvas(4, 0), false, 2); rx += 18 * S;
+    tb('H-', rx, 15 * S, () => pixResizeCanvas(0, -4), false, 2); rx += 17 * S;
+    tb('H+', rx, 15 * S, () => pixResizeCanvas(0, 4), false, 2);
+  }
+  // ЧЕТВЪРТИ РЕД (само собствени): колко КЛЕТКИ заема и височина нагоре
   if (isCust) {
     const cd = (G.customDefs && G.customDefs[e.key.slice(5)]) || { cw: 1, ch: 1, top: 16 };
     let rx = r.x + 4 * S;
     ctx.font = fontPx(5); ctx.fillStyle = '#7d8899'; ctx.textAlign = 'left';
-    ctx.fillText(cd.cw + 'x' + cd.ch + ' +' + (cd.top || 16), rx, r.y + 47 * S);
-    rx += 26 * S;
-    tb('W-', rx, 14 * S, () => pixResize(-1, 0, 0), false, 2); rx += 16 * S;
-    tb('W+', rx, 14 * S, () => pixResize(1, 0, 0), false, 2); rx += 17 * S;
-    tb('H-', rx, 14 * S, () => pixResize(0, -1, 0), false, 2); rx += 16 * S;
-    tb('H+', rx, 14 * S, () => pixResize(0, 1, 0), false, 2); rx += 17 * S;
-    tb('UP-', rx, 16 * S, () => pixResize(0, 0, -8), false, 2); rx += 18 * S;
-    tb('UP+', rx, 16 * S, () => pixResize(0, 0, 8), false, 2);
+    ctx.fillText(cd.cw + 'x' + cd.ch + ' +' + (cd.top || 16), rx, r.y + 60 * S);
+    rx += 30 * S;
+    tb('C-', rx, 14 * S, () => pixResize(-1, 0, 0), false, 3); rx += 16 * S;
+    tb('C+', rx, 14 * S, () => pixResize(1, 0, 0), false, 3); rx += 17 * S;
+    tb('R-', rx, 14 * S, () => pixResize(0, -1, 0), false, 3); rx += 16 * S;
+    tb('R+', rx, 14 * S, () => pixResize(0, 1, 0), false, 3); rx += 17 * S;
+    tb('U-', rx, 14 * S, () => pixResize(0, 0, -8), false, 3); rx += 16 * S;
+    tb('U+', rx, 14 * S, () => pixResize(0, 0, 8), false, 3);
   }
   // палитрата
   ctx.textAlign = 'left';
-  const py0 = r.y + (isCust ? 54 : 41) * S; // под редовете инструменти
+  const py0 = r.y + (isCust ? 67 : 54) * S; // под редовете инструменти
   e.palette.forEach((col, i) => {
     const sx2 = r.x + 4 * S + (i % 8) * 15 * S, sy2 = py0 + Math.floor(i / 8) * 12 * S;
     rcx(sx2, sy2, 13 * S, 10 * S, col);
@@ -13529,6 +13580,7 @@ function applySpriteOverrides() {
     const key = (G.inside && typeof interiorLayoutKey === 'function') ? interiorLayoutKey(G.inside.id) : 'sm_layout_mirhold';
     const L = JSON.parse(localStorage.getItem(key) || 'null');
     if (L && L.sprites) loc = L.sprites;
+    G.spriteNames = (L && L.names) ? L.names : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.names) || {});
   } catch (e) {}
   const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
   G.spriteOverrides = Object.assign({}, loc || {});
@@ -13536,7 +13588,11 @@ function applySpriteOverrides() {
     const img = new Image();
     img.onload = function () {
       const cv3 = spriteByKey(k);
-      if (!cv3 || cv3.width !== img.width || cv3.height !== img.height) return;
+      if (!cv3) return;
+      if (cv3.width !== img.width || cv3.height !== img.height) {
+        if (img.width > 256 || img.height > 256) return;   // разумна граница
+        cv3.width = img.width; cv3.height = img.height;    // платното приема новия размер
+      }
       // ПРАЗНА (или повредена) корекция не се прилага — тя прави сградата
       // невидима („прозрачната църква“). Локална такава се чисти завинаги,
       // а отдолу излиза вградената рисунка.
