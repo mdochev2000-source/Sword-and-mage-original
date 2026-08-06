@@ -2579,6 +2579,45 @@ function deleteSpriteEverywhere(key) {
   saveCityLayout();
   toast(isCust ? 'Sprite deleted.' : 'Sprite removed and hidden (HIDDEN filter brings it back).', '#ffd23b');
 }
+// ДУБЛИРАНЕ: прави КОПИЕ на текущия спрайт като нов СОБСТВЕН — оригиналът
+// остава непокътнат, а копието се отваря веднага за преработка.
+function pixDuplicate() {
+  const e = G.pixEdit; if (!e) return;
+  G.customDefs = G.customDefs || {};
+  const pre = G.inside ? (G.inside.id.slice(0, 2) + '_') : 'c';
+  let n = 1; while (G.customDefs[pre + n] || (Spr.custom && Spr.custom[pre + n])) n++;
+  const id = pre + n;
+  const w = e.spr.width, h = e.spr.height;
+  // клетки и височина: от оригинала, ако е собствен; иначе се смятат от платното
+  let cw = 1, ch = 1, top = 16, solid = true, flat = false;
+  if (e.key.slice(0, 5) === 'cust_') {
+    const src = G.customDefs[e.key.slice(5)];
+    if (src) { cw = src.cw; ch = src.ch; top = src.top || 16; solid = !!src.solid; flat = !!src.flat; }
+  } else {
+    const cells = Math.max(2, Math.round(w / 16));      // (cw+ch) от широчината на платното
+    cw = Math.max(1, Math.min(4, Math.round(cells / 2)));
+    ch = Math.max(1, Math.min(4, cells - cw));
+    top = clamp(h - (cw + ch) * 8, 8, 96);
+    const dk = DECOR_KINDS[e.key];
+    if (dk) { solid = !!dk.solid; flat = !!dk.flat; }
+  }
+  const base = spriteName(e.key);
+  let nm = base + ' (2)';
+  try { nm = (window.prompt('Name for the copy:', nm) || nm).trim().slice(0, 24) || nm; } catch (err) {}
+  G.customDefs[id] = { cw, ch, top, solid, flat, name: nm, pw: w, ph: h };
+  buildCustomSprites();
+  const cv = Spr.custom[id];
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.clearRect(0, 0, cv.width, cv.height);
+  c.drawImage(e.spr, 0, 0);                              // рисунката се пренася 1:1
+  G.editPlaceKind = 'cust_' + id;
+  G.editCat = 'MINE';
+  openPixelEditor('cust_' + id);
+  pixSaveOverride();
+  toast('Copy ready: ' + nm + ' — edit away, the original stays.', '#7fd0a0');
+  Sfx.play('coin');
+}
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
   pixSyncFull();   // пълното копие следва рисунката
@@ -2804,6 +2843,7 @@ function drawPixelEditor() {
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
   }, false, 1); bx2 += 22 * S;
+  tb('DUP', bx2, 20 * S, () => pixDuplicate(), false, 1); bx2 += 22 * S;   // дублиране
   if (e.key.slice(0, 5) !== 'tile_') { // ИЗТРИВАНЕ на ВСЕКИ спрайт (два клика)
     const armed = G.pixDelArm === e.key;
     tb(armed ? 'SURE?' : 'DEL', bx2, 22 * S, () => {
