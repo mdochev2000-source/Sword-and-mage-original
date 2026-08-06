@@ -1,0 +1,80 @@
+name: publish
+
+# СОБСТВЕНО публикуване на сайта (Source: GitHub Actions).
+# Вграденото разгръщане на GitHub падаше по 11 пъти от 12 — тук качването
+# е под наш контрол и се ПОВТАРЯ при провал, вместо да умира мълчаливо.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# едно публикуване наведнъж; новото ЧАКА, вместо да отменя текущото
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Провери какво качваме
+        run: |
+          echo "размер на сайта:"
+          du -sh docs/
+          ls -la docs/
+          grep -o '__BUILD__ = "[^"]*"' docs/index.html | head -1
+
+      - uses: actions/configure-pages@v5
+
+      - name: Опаковай сайта
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      # ТРИ опита за разгръщане — точката, в която вграденото падаше
+      - name: Разгърни (опит 1)
+        id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 900000
+
+      - name: Разгърни (опит 2)
+        if: steps.deploy.outcome == 'failure'
+        id: deploy2
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 900000
+
+      - name: Разгърни (опит 3)
+        if: steps.deploy.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        id: deploy3
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 900000
+
+      - name: Провери сайта на живо
+        run: |
+          sleep 20
+          for i in 1 2 3 4 5 6 7 8; do
+            LIVE=$(curl -s "https://mdochev2000-source.github.io/Sword-and-mage-original/?ci=$RANDOM" | grep -o '__BUILD__ = "[^"]*"' | head -1)
+            WANT=$(grep -o '__BUILD__ = "[^"]*"' docs/index.html | head -1)
+            echo "живо: $LIVE | качено: $WANT"
+            if [ "$LIVE" = "$WANT" ]; then echo "ПОТВЪРДЕНО: сайтът сервира новата версия."; exit 0; fi
+            sleep 25
+          done
+          echo "Разгръщането мина, но CDN още връща старото копие (кешът е 10 мин)."
