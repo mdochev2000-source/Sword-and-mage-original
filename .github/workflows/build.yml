@@ -29,8 +29,10 @@ jobs:
           cp docs/index.html /tmp/committed.html
           python build.py
           # времевият печат се различава при всяко сглобяване — махаме го от сравнението
-          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' /tmp/committed.html | tr -d '' > /tmp/a.html
-          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' docs/index.html | tr -d '' > /tmp/b.html
+          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' /tmp/committed.html | tr -d '
+' > /tmp/a.html
+          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' docs/index.html | tr -d '
+' > /tmp/b.html
           if diff -q /tmp/a.html /tmp/b.html > /dev/null; then
             echo "OK: качената сглобка отговаря на изворите."
           else
