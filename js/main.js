@@ -1721,10 +1721,24 @@ function eraseDecorAt(cellX, cellY) {
     }
   }
 }
+// Прицелът при СЪБАРЯНЕ: блокът на стената се рисува ~20px по-високо от
+// клетката си, затова мишката пада в пода ПРЕД нея — търсим стената, която
+// окото вижда под курсора.
+function pickWallCell() {
+  const m = G.map;
+  const bx = Math.floor(G.mouse.wx), by = Math.floor(G.mouse.wy);
+  for (const [dx, dy] of [[1, 1], [0, 0], [2, 2], [1, 0], [0, 1], [2, 1], [1, 2]]) {
+    const x = bx + dx, y = by + dy;
+    if (x < 0 || y < 0 || x >= m.w || y >= m.h) continue;
+    if (m.cells[y * m.w + x] === WALL) return { x, y };
+  }
+  return { x: bx, y: by };
+}
 // ЗИДАНЕ/СЪБАРЯНЕ на стена в стаята
 function paintWallCell(v) {
   const m = G.map;
-  const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+  const t = v === WALL ? { x: Math.floor(G.mouse.wx), y: Math.floor(G.mouse.wy) } : pickWallCell();
+  const cx2 = t.x, cy2 = t.y;
   if (cx2 < 1 || cy2 < 1 || cx2 >= m.w - 1 || cy2 >= m.h - 1) return;
   if (v === WALL && Math.floor(G.player.x) === cx2 && Math.floor(G.player.y) === cy2) return; // не зазиждай героя
   const idx = cy2 * m.w + cx2;
@@ -1748,7 +1762,7 @@ function cityEditClick(mx, my) {
   for (const b of (UI.cityEditBtns || [])) if (mx >= b.x && mx < b.x + b.w && my >= b.y && my < b.y + b.h) { b.act(); return true; }
   const tool = G.editTool || 'move';
   // горната UI зона не е карта — да не редим елементи зад лентата/палитрата
-  const uiBand = (tool === 'place' || tool === 'erase') && UI.editPaletteBottom ? UI.editPaletteBottom + 15 * SCALE : 60 * SCALE;
+  const uiBand = (tool === 'place' || tool === 'erase') && UI.editPaletteBottom ? UI.editPaletteBottom + 15 * SCALE : 40 * SCALE;
   if (tool !== 'move' && my < uiBand) return true;
   const cellX = Math.floor(G.mouse.wx), cellY = Math.floor(G.mouse.wy);
   // СЪЗДАВАНЕ: панелът поглъща кликовете си; при МАРКИРАНЕ влачиш рамка от клетки
@@ -1863,7 +1877,7 @@ function drawCityEditOverlay() {
   rcx(0, 0, CW, 17 * S, 'rgba(4,6,11,0.85)');
   ctx.font = fontBold(6.5); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23b';
   const toolH = G.editTool || 'move';
-  const hint = toolH === 'move' ? 'tap a building, then a tile' : toolH === 'pencil' ? (G.pixEdit ? 'pixel editing: ' + editKindLabel(G.pixEdit.key) : 'click an object to PIXEL-EDIT its sprite') : toolH === 'place' ? (G.editPlaceKind ? 'placing: ' + editKindLabel(G.editPlaceKind) : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + editKindLabel(G.editPlaceKind) + ' only' : 'PICK an element to erase') : toolH === 'create' ? 'create your own sprite — pick cells & height' : 'paint the ground';
+  const hint = toolH === 'move' ? 'tap a building, then a tile' : toolH === 'pencil' ? (G.pixEdit ? 'pixel editing: ' + editKindLabel(G.pixEdit.key) : 'click an object to PIXEL-EDIT its sprite') : toolH === 'place' ? (G.editPlaceKind ? 'placing: ' + editKindLabel(G.editPlaceKind) : 'PICK an element from the palette') : toolH === 'erase' ? (G.editPlaceKind ? 'erasing: ' + editKindLabel(G.editPlaceKind) + ' only' : 'PICK an element to erase') : toolH === 'create' ? 'create your own sprite — pick cells & height' : toolH === 'wall' ? 'drag to BUILD walls' : toolH === 'floor' ? 'drag to TEAR DOWN walls' : 'paint the ground';
   ctx.fillText('CITY EDITOR — ' + hint + ' · F2/ESC exit', CW / 2, 7 * S);
   UI.cityEditBtns = [];
   const btn = (label, x, wpx, col, act) => {
@@ -2008,8 +2022,9 @@ function drawCityEditOverlay() {
   if (G.pixEdit) drawPixelEditor();
   // курсорната клетка при четка/добавяне/триене (не и в пиксел-режим)
   if (tool !== 'move' && !G.pixEdit) {
-    const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
-    const col = tool === 'erase' ? 'rgba(255,107,122,0.9)' : tool === 'grass' ? 'rgba(140,160,90,0.9)' : tool === 'path' ? 'rgba(150,120,80,0.9)' : 'rgba(127,208,160,0.9)';
+    let cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+    if (tool === 'floor') { const t = pickWallCell(); cx2 = t.x; cy2 = t.y; } // показваме СТЕНАТА, която ще падне
+    const col = tool === 'erase' ? 'rgba(255,107,122,0.9)' : tool === 'floor' ? 'rgba(255,150,90,0.95)' : tool === 'wall' ? 'rgba(150,170,200,0.95)' : tool === 'grass' ? 'rgba(140,160,90,0.9)' : tool === 'path' ? 'rgba(150,120,80,0.9)' : 'rgba(127,208,160,0.9)';
     const cdC = (tool === 'place' || tool === 'erase') && G.editPlaceKind && G.editPlaceKind.slice(0, 5) === 'cust_' ? (G.customDefs && G.customDefs[G.editPlaceKind.slice(5)]) : null;
     if (cdC) { for (const [x, y] of customCells(cdC, cx2, cy2)) diamond(x, y, col); }
     else {
@@ -2260,7 +2275,8 @@ function pixPanelRect() {
   const z = pixZoomScale();
   const { vw, vh } = pixViewport();
   const w = vw + 12 * S;
-  const h = 59 * S + Math.ceil(e.palette.length / 8) * 12 * S + 32 * S + vh + 16 * S;
+  const extra = e.key.slice(0, 5) === 'cust_' ? 13 * S : 0; // редът за размера
+  const h = 59 * S + extra + Math.ceil(e.palette.length / 8) * 12 * S + 32 * S + vh + 16 * S;
   return { x: CW - w - 6 * S, y: 30 * S, w, h, z };
 }
 function pixPaintAt(mx, my) {
@@ -2286,11 +2302,52 @@ function pixPaintAt(mx, my) {
     pixSet(c, px2, py2, false);
   }
 }
+// ПРЕОРАЗМЕРЯВАНЕ на готов собствен спрайт: платното се сменя, а рисунката
+// ляга долу-центрирано (както стъпва на земята), за да не се губи трудът.
+function pixResize(dw, dh, dtop) {
+  const e = G.pixEdit; if (!e || e.key.slice(0, 5) !== 'cust_') return;
+  const id = e.key.slice(5), cd = G.customDefs && G.customDefs[id];
+  if (!cd) return;
+  const ncw = clamp(cd.cw + dw, 1, 4), nch = clamp(cd.ch + dh, 1, 4);
+  const ntop = clamp((cd.top || 16) + dtop, 8, 96);
+  if (ncw === cd.cw && nch === cd.ch && ntop === (cd.top || 16)) return;
+  const old = e.spr;
+  cd.cw = ncw; cd.ch = nch; cd.top = ntop;
+  const sz = customCanvasSize(cd);
+  const nc = document.createElement('canvas');
+  nc.width = sz.w; nc.height = sz.h;
+  const g2 = nc.getContext('2d');
+  g2.imageSmoothingEnabled = false;
+  g2.drawImage(old, Math.round((sz.w - old.width) / 2), sz.h - old.height); // долу-центрирано
+  Spr.custom[id] = nc;
+  e.spr = nc;
+  const bak = document.createElement('canvas');
+  bak.width = sz.w; bak.height = sz.h;
+  bak.getContext('2d').drawImage(nc, 0, 0);
+  e.bak = bak;
+  e.zoom = 0; e.panX = 0; e.panY = 0; e.hist = [];
+  // поставените копия приемат новия размер
+  for (const pr of G.props) {
+    if (pr.kind !== 'custom' || pr.cid !== id) continue;
+    pr.cw = ncw; pr.ch = nch;
+    pr.x = pr.bx + ncw / 2; pr.y = pr.by + nch / 2;
+    pr.solid = !!cd.solid && !cd.flat;
+  }
+  pixSaveOverride();
+  toast(ncw + 'x' + nch + ' cells  ·  +' + ntop + ' up  ·  ' + sz.w + 'x' + sz.h + ' px', '#7fd0a0');
+}
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
   if (e.key.slice(0, 5) === 'cust_') {
     const id = e.key.slice(5);
-    if (G.customDefs && G.customDefs[id]) { try { G.customDefs[id].png = e.spr.toDataURL('image/png'); saveCityLayout(); } catch (err) {} }
+    if (G.customDefs && G.customDefs[id]) {
+      try {
+        const png = e.spr.toDataURL('image/png');
+        G.customDefs[id].png = png;
+        e.spr.__png = png;                    // кешът да не презарежда същото
+        saveCityLayout();
+      } catch (err) {}
+    }
     return;
   }
   // изцяло ИЗТРИТ базов спрайт не се записва — само би направил сградата невидима
@@ -2499,9 +2556,24 @@ function drawPixelEditor() {
     }, armed, 1); bx2 += 24 * S;
   }
   tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
+  // ТРЕТИ РЕД: преоразмеряване на платното (само за собствен спрайт)
+  const isCust = e.key.slice(0, 5) === 'cust_';
+  if (isCust) {
+    const cd = (G.customDefs && G.customDefs[e.key.slice(5)]) || { cw: 1, ch: 1, top: 16 };
+    let rx = r.x + 4 * S;
+    ctx.font = fontPx(5); ctx.fillStyle = '#7d8899'; ctx.textAlign = 'left';
+    ctx.fillText(cd.cw + 'x' + cd.ch + ' +' + (cd.top || 16), rx, r.y + 47 * S);
+    rx += 26 * S;
+    tb('W-', rx, 14 * S, () => pixResize(-1, 0, 0), false, 2); rx += 16 * S;
+    tb('W+', rx, 14 * S, () => pixResize(1, 0, 0), false, 2); rx += 17 * S;
+    tb('H-', rx, 14 * S, () => pixResize(0, -1, 0), false, 2); rx += 16 * S;
+    tb('H+', rx, 14 * S, () => pixResize(0, 1, 0), false, 2); rx += 17 * S;
+    tb('UP-', rx, 16 * S, () => pixResize(0, 0, -8), false, 2); rx += 18 * S;
+    tb('UP+', rx, 16 * S, () => pixResize(0, 0, 8), false, 2);
+  }
   // палитрата
   ctx.textAlign = 'left';
-  const py0 = r.y + 41 * S; // под двата реда инструменти
+  const py0 = r.y + (isCust ? 54 : 41) * S; // под редовете инструменти
   e.palette.forEach((col, i) => {
     const sx2 = r.x + 4 * S + (i % 8) * 15 * S, sy2 = py0 + Math.floor(i / 8) * 12 * S;
     rcx(sx2, sy2, 13 * S, 10 * S, col);
