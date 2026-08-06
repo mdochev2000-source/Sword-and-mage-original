@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 00:24 UTC";
+window.__BUILD__ = "2026-08-06 00:42 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -4395,6 +4395,7 @@ function generateInterior(id) {
   const LAY = interiorLayout(id);
   if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
   if (typeof buildCustomSprites === 'function') buildCustomSprites();
+  if (typeof applySpriteOverrides === 'function') applySpriteOverrides(); // корекциите на стаята
   if (LAY && Array.isArray(LAY.decor)) {
     const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
     for (const d2 of LAY.decor) {
@@ -7015,6 +7016,8 @@ function migrateOldProfile() {
 // ================= ВЛИЗАНЕ В СГРАДА =================
 function enterInterior(id, retX, retY) {
   if (!INTERIOR_DEFS[id]) return;
+  if (G.inside) return;                              // от стая не се влиза в стая
+  G.editSelBld = null; G.pixEdit = null; G.pixPaint = false; G.createSt = null; G.editPlaceKind = null;
   const ret = { city: G.city || 'mirhold', x: retX !== undefined ? retX : G.player.x, y: retY !== undefined ? retY : G.player.y };
   G.inside = { id, ret };
   initInteriorSprites();
@@ -7023,7 +7026,9 @@ function enterInterior(id, retX, retY) {
   G.props = gen.props;
   G.visible = new Uint8Array(gen.map.w * gen.map.h).fill(1);
   G.explored = new Uint8Array(gen.map.w * gen.map.h).fill(1);
-  G.enemies = []; G.projectiles = []; G.particles = []; G.texts = []; G.ground = [];
+  G.groundOutside = G.ground || [];                 // каквото е паднало навън — чака те там
+  G.ground = G.groundInside && G.groundInside[id] ? G.groundInside[id] : [];
+  G.enemies = []; G.projectiles = []; G.particles = []; G.texts = [];
   G.decals = []; G.explosions = []; G.hazards = []; G.orbitals = []; G.zaps = []; G.novaFx = [];
   G.slashFx = null; G.bossName = null; G.bossRoom = null; G.bossGates = [];
   G.player.x = gen.map.start.x; G.player.y = gen.map.start.y;
@@ -7037,8 +7042,14 @@ function enterInterior(id, retX, retY) {
 function exitInterior() {
   if (!G.inside) return;
   const ret = G.inside.ret;
+  G.groundInside = G.groundInside || {};
+  G.groundInside[G.inside.id] = G.ground || [];      // каквото си оставил в стаята, си стои
+  const back = G.groundOutside || [];
+  const hp = G.player.hp, mp = G.player.mp;          // излизането не лекува
   G.inside = null;
   startSurface(ret.city);
+  G.ground = back;
+  G.player.hp = hp; G.player.mp = mp;
   // излизаш пред вратата, а не в началото на картата
   if (ret && !hitsWall(ret.x, ret.y, 0.3)) { G.player.x = ret.x; G.player.y = ret.y; }
   G.camInit = false;
@@ -7047,6 +7058,7 @@ function exitInterior() {
   saveProfile();
 }
 function startSurface(city) {
+  if (G.inside) { G.editSelBld = null; G.pixEdit = null; G.pixPaint = false; G.createSt = null; G.editPlaceKind = null; }
   G.inside = null; // навън сме
   if (city) G.city = city;
   G.city = G.city || 'camp';
@@ -11406,7 +11418,7 @@ function renderWorld() {
     const idx = j * m.w + i;
     if (!G.explored[idx]) continue;
     // в Мирхолд блокираните клетки (сгради/стена) също са върху трева — без черни дупки
-    if (m.cells[idx] !== FLOOR && !(G.onSurface && G.city === 'mirhold')) continue;
+    if (m.cells[idx] !== FLOOR && !(!G.inside && G.onSurface && G.city === 'mirhold') && !(G.inside && m.cells[idx] === WALL)) continue;
     const vis = G.visible[idx] === 1;
     const sx = isoX(i, j) + camX - TW / 2;
     const sy = isoY(i, j) + camY;
@@ -11644,7 +11656,7 @@ function renderWorld() {
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     // (създадените спрайтове се подреждат по югозападната клетка, като сградите)
-    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
+    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 1.2 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
@@ -12265,7 +12277,7 @@ function placeBuildingAt(bk, cellX, cellY, loud) {
 }
 // подредбата на СТАЯТА: мебели (декор + собствени спрайтове) и пикселни корекции
 function saveInteriorLayout() {
-  const L = { decor: [] };
+  const L = { room: G.inside.id, decor: [] }; // белегът коя стая е — за вграждане
   for (const pr of G.props) {
     if (pr.kind === 'custom') { L.decor.push({ k: 'custom', id: pr.cid, x: pr.bx, y: pr.by }); continue; }
     if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: Math.floor(pr.x), y: Math.floor(pr.y) });
@@ -12485,33 +12497,26 @@ function drawCityEditOverlay() {
     ctx.fillText(label, x + wpx / 2, 17.5 * S);
     UI.cityEditBtns.push({ x, y: 9 * S, w: wpx, h: 12 * S, act });
   };
-  btn('COPY LAYOUT', CW / 2 - 76 * S, 62 * S, '#7fd0a0', () => {
+  btn('COPY LAYOUT', CW / 2 - 58 * S, 62 * S, '#7fd0a0', () => {
     const lay = saveCityLayout();
-    if (!lay) { toast('The layout is Mirhold only.', '#ff6b7a'); return; }
+    if (!lay) { toast('Nothing to copy here.', '#ff6b7a'); return; }
+    const room = G.inside ? G.inside.id : null;
+    if (room) lay.room = room;                       // белег кой интериор е това
     const code = JSON.stringify(lay);
     try { navigator.clipboard.writeText(code); } catch (e) {}
-    console.log('MIRHOLD_LAYOUT =', code);
+    console.log((room ? ('INTERIOR_LAYOUT[' + room + '] =') : 'MIRHOLD_LAYOUT ='), code);
     // и като ФАЙЛ: дългите кодове (с PNG рисунки) се развалят при копиране през чат
     try {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([code], { type: 'application/json' }));
-      a.download = 'mirhold_layout.json';
+      a.download = room ? ('interior_' + room + '.json') : 'mirhold_layout.json';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     } catch (e) {}
     toast('Layout copied + saved as a FILE — send the file to Claude.', '#7fd0a0');
   });
-  btn('RESET', CW / 2 - 8 * S, 44 * S, '#ff6b7a', () => {
-    try { localStorage.removeItem('sm_layout_mirhold'); } catch (e) {}
-    // недовършен щрих се записва, редакторът и CREATE се затварят чисто
-    if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); }
-    G.pixEdit = null; G.pixShape = null; G.createSt = null; G.editPlaceKind = null; G.editSelBld = null;
-    const keep = G.customDefs; // БИБЛИОТЕКАТА от създадени спрайтове оцелява при RESET
-    startSurface('mirhold');
-    if (keep && Object.keys(keep).length) { G.customDefs = keep; buildCustomSprites(); }
-    toast('Back to the automatic layout (your sprites are kept).', '#ffd23b');
-  });
-  btn('EXIT', CW / 2 + 42 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
+  // RESET е ПРЕМАХНАТ: трореше цялата подредба на града с едно кликване
+  btn('EXIT', CW / 2 + 24 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
   // ВТОРИ РЕД: инструментите
   const tool = G.editTool || 'move';
   const tbtn = (label, x, wpx, id) => {
@@ -12552,7 +12557,7 @@ function drawCityEditOverlay() {
       ['candle', Spr.surf.candle],
     ];
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
-    items.push(
+    if (!G.inside) items.push(
       ['b_house_0_0', Spr.surf.houses[0]], ['b_house_0_1', Spr.surf.houses[1]],
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
@@ -12665,9 +12670,11 @@ function buildCustomSprites() {
   for (const id in Spr.custom) if (!defs[id]) delete Spr.custom[id]; // осиротелите платна умират с дефиницията
   for (const id in defs) {
     const { w, h } = customCanvasSize(defs[id]);
-    if (Spr.custom[id] && Spr.custom[id].width === w && Spr.custom[id].height === h) continue;
-    const cv3 = document.createElement('canvas');
-    cv3.width = w; cv3.height = h;
+    const same = Spr.custom[id] && Spr.custom[id].width === w && Spr.custom[id].height === h;
+    if (same && Spr.custom[id].__png === (defs[id].png || '')) continue; // същият спрайт — нищо за правене
+    const cv3 = (same ? Spr.custom[id] : document.createElement('canvas'));
+    cv3.width = w; cv3.height = h;                    // (пре)зарежда и чисти платното
+    cv3.__png = defs[id].png || '';
     Spr.custom[id] = cv3;
     if (defs[id].png) {
       const img = new Image();
@@ -12732,8 +12739,9 @@ function drawCreatePanel(diamond) {
     ctx.fillText('green diamond = on the ground', x + w / 2, py0 + ph + 8 * S);
     bt('CONFIRM', x + 14 * S, y + 155 * S, 46 * S, () => {
       G.customDefs = G.customDefs || {};
-      let n = 1; while (G.customDefs['c' + n]) n++;
-      const id = 'c' + n;
+      const pre = G.inside ? (G.inside.id.slice(0, 2) + '_') : 'c'; // своя редица за всяка стая
+      let n = 1; while (G.customDefs[pre + n] || (Spr.custom && Spr.custom[pre + n])) n++;
+      const id = pre + n;
       G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: st.body === 'solid', flat: st.body === 'flat' };
       // кръщаването: празно = служебното id
       try {
@@ -13196,7 +13204,11 @@ function drawPixelEditor() {
 // прилага записаните пикселни корекции върху сглобените спрайтове
 function applySpriteOverrides() {
   let loc = null;
-  try { const L = JSON.parse(localStorage.getItem('sm_layout_mirhold') || 'null'); if (L && L.sprites) loc = L.sprites; } catch (e) {}
+  try {
+    const key = (G.inside && typeof interiorLayoutKey === 'function') ? interiorLayoutKey(G.inside.id) : 'sm_layout_mirhold';
+    const L = JSON.parse(localStorage.getItem(key) || 'null');
+    if (L && L.sprites) loc = L.sprites;
+  } catch (e) {}
   const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
   G.spriteOverrides = Object.assign({}, loc || {});
   const applyOne = (k, src, isLocal) => {

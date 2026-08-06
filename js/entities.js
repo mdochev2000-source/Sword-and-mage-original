@@ -2516,6 +2516,8 @@ function migrateOldProfile() {
 // ================= ВЛИЗАНЕ В СГРАДА =================
 function enterInterior(id, retX, retY) {
   if (!INTERIOR_DEFS[id]) return;
+  if (G.inside) return;                              // от стая не се влиза в стая
+  G.editSelBld = null; G.pixEdit = null; G.pixPaint = false; G.createSt = null; G.editPlaceKind = null;
   const ret = { city: G.city || 'mirhold', x: retX !== undefined ? retX : G.player.x, y: retY !== undefined ? retY : G.player.y };
   G.inside = { id, ret };
   initInteriorSprites();
@@ -2524,7 +2526,9 @@ function enterInterior(id, retX, retY) {
   G.props = gen.props;
   G.visible = new Uint8Array(gen.map.w * gen.map.h).fill(1);
   G.explored = new Uint8Array(gen.map.w * gen.map.h).fill(1);
-  G.enemies = []; G.projectiles = []; G.particles = []; G.texts = []; G.ground = [];
+  G.groundOutside = G.ground || [];                 // каквото е паднало навън — чака те там
+  G.ground = G.groundInside && G.groundInside[id] ? G.groundInside[id] : [];
+  G.enemies = []; G.projectiles = []; G.particles = []; G.texts = [];
   G.decals = []; G.explosions = []; G.hazards = []; G.orbitals = []; G.zaps = []; G.novaFx = [];
   G.slashFx = null; G.bossName = null; G.bossRoom = null; G.bossGates = [];
   G.player.x = gen.map.start.x; G.player.y = gen.map.start.y;
@@ -2538,8 +2542,14 @@ function enterInterior(id, retX, retY) {
 function exitInterior() {
   if (!G.inside) return;
   const ret = G.inside.ret;
+  G.groundInside = G.groundInside || {};
+  G.groundInside[G.inside.id] = G.ground || [];      // каквото си оставил в стаята, си стои
+  const back = G.groundOutside || [];
+  const hp = G.player.hp, mp = G.player.mp;          // излизането не лекува
   G.inside = null;
   startSurface(ret.city);
+  G.ground = back;
+  G.player.hp = hp; G.player.mp = mp;
   // излизаш пред вратата, а не в началото на картата
   if (ret && !hitsWall(ret.x, ret.y, 0.3)) { G.player.x = ret.x; G.player.y = ret.y; }
   G.camInit = false;
@@ -2548,6 +2558,7 @@ function exitInterior() {
   saveProfile();
 }
 function startSurface(city) {
+  if (G.inside) { G.editSelBld = null; G.pixEdit = null; G.pixPaint = false; G.createSt = null; G.editPlaceKind = null; }
   G.inside = null; // навън сме
   if (city) G.city = city;
   G.city = G.city || 'camp';

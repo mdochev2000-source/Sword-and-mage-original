@@ -497,6 +497,7 @@ function generateInterior(id) {
   const LAY = interiorLayout(id);
   if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
   if (typeof buildCustomSprites === 'function') buildCustomSprites();
+  if (typeof applySpriteOverrides === 'function') applySpriteOverrides(); // корекциите на стаята
   if (LAY && Array.isArray(LAY.decor)) {
     const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
     for (const d2 of LAY.decor) {
