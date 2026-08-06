@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 16:14 UTC";
+window.__BUILD__ = "2026-08-06 17:26 UTC";
 
 (function () {
   // Страницата се сервира с Cache-Control: max-age=600, тоест обикновеното
@@ -13015,7 +13015,7 @@ function drawCityEditOverlay() {
   }
   if (tool === 'create' && !G.pixEdit) drawCreatePanel(diamond);
   if (G.pixPaint && G.pixEdit) pixPaintAt(G.mouse.x, G.mouse.y);
-  if (G.pixEdit && (G.pixEdit.selNew || G.pixEdit.selDrag) && G.mouse.down) {
+  if (G.pixEdit && (G.pixEdit.selNew || G.pixEdit.selDrag)) {
     const e2 = G.pixEdit, hit = pixHitPixel(G.mouse.x, G.mouse.y);
     if (hit) {
       if (e2.selNew) { e2.selNew.x1 = hit.px; e2.selNew.y1 = hit.py; }
@@ -13521,6 +13521,20 @@ function pixDuplicate() {
   toast('Copy ready: ' + nm + ' — edit away, the original stays.', '#7fd0a0');
   Sfx.play('coin');
 }
+// МЕСТЕНЕ на цялата рисунка с по един пиксел във всяка посока
+function pixShift(dx, dy) {
+  const e = G.pixEdit; if (!e) return;
+  pixPushHist();
+  const buf = document.createElement('canvas');
+  buf.width = e.spr.width; buf.height = e.spr.height;
+  buf.getContext('2d').drawImage(e.spr, 0, 0);
+  const c = e.spr.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.clearRect(0, 0, e.spr.width, e.spr.height);
+  c.drawImage(buf, dx, dy);
+  if (e.sel) { e.sel = { x0: e.sel.x0 + dx, y0: e.sel.y0 + dy, x1: e.sel.x1 + dx, y1: e.sel.y1 + dy }; }
+  pixSaveOverride();
+}
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
   pixSyncFull();   // пълното копие следва рисунката
@@ -13778,7 +13792,12 @@ function drawPixelEditor() {
     tb('W-', rx, 15 * S, () => pixResizeCanvas(-4, 0), false, 2); rx += 17 * S;
     tb('W+', rx, 15 * S, () => pixResizeCanvas(4, 0), false, 2); rx += 18 * S;
     tb('H-', rx, 15 * S, () => pixResizeCanvas(0, -4), false, 2); rx += 17 * S;
-    tb('H+', rx, 15 * S, () => pixResizeCanvas(0, 4), false, 2);
+    tb('H+', rx, 15 * S, () => pixResizeCanvas(0, 4), false, 2); rx += 20 * S;
+    // МЕСТЕНЕ на цялата рисунка (по 1 пиксел)
+    tb('<', rx, 11 * S, () => pixShift(-1, 0), false, 2); rx += 13 * S;
+    tb('>', rx, 11 * S, () => pixShift(1, 0), false, 2); rx += 13 * S;
+    tb('^', rx, 11 * S, () => pixShift(0, -1), false, 2); rx += 13 * S;
+    tb('v', rx, 11 * S, () => pixShift(0, 1), false, 2);
   }
   // ЧЕТВЪРТИ РЕД (само собствени): колко КЛЕТКИ заема и височина нагоре
   if (isCust) {
