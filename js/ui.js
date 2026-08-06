@@ -2867,6 +2867,10 @@ function drawSettings() {
   ctx.font = fontPx(6);
   ctx.fillStyle = '#7d8899';
   ctx.fillText('ESC — close', x0 + 70 * S, y0 + 14 * S);
+  // ВЕРСИЯТА на играта — долу вляво на екрана, за да се следи лесно
+  ctx.font = fontPx(5.5);
+  ctx.fillStyle = '#5a677f';
+  ctx.fillText('version ' + (window.__BUILD__ || 'dev'), 6 * S, CH - 6 * S);
 
   const row = (label, y, act) => {
     const rx = x0 + 10 * S, rw = pw - 20 * S, rh = 16 * S;
