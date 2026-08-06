@@ -1455,6 +1455,7 @@ const BLD_DEFS = {
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
   exitdoor:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
+  tomb:      { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   table:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   bench:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   stool:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
@@ -1495,6 +1496,7 @@ const DECOR_KINDS = {
   sacks:    { r: 0.3, solid: true },
   candle:   { r: 0.16, solid: true },
   exitdoor: { r: 0.2, solid: false },   // вратата навън — слага се и се мести като всичко
+  tomb:     { r: 0.3, solid: true },    // надгробна плоча
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -1566,6 +1568,38 @@ function moveBuilding(pr, bx, by) {
   saveCityLayout();
   Sfx.play('open');
 }
+// Записът пази ТРИ предишни копия — нищо не изчезва безвъзвратно.
+function saveLayoutSafe(key, L) {
+  try {
+    const prev = localStorage.getItem(key);
+    const txt = JSON.stringify(L);
+    if (prev && prev !== txt) {
+      localStorage.setItem(key + '_bak3', localStorage.getItem(key + '_bak2') || '');
+      localStorage.setItem(key + '_bak2', localStorage.getItem(key + '_bak1') || '');
+      localStorage.setItem(key + '_bak1', prev);
+    }
+    localStorage.setItem(key, txt);
+  } catch (e) {}
+}
+// връща последното запазено копие (за бутона RESTORE)
+function restoreLayoutBackup() {
+  const key = G.inside ? interiorLayoutKey(G.inside.id) : 'sm_layout_mirhold';
+  let src = null;
+  for (const suf of ['_bak1', '_bak2', '_bak3']) {
+    const v = localStorage.getItem(key + suf);
+    if (v && v.length > 2) { src = { suf, v }; break; }
+  }
+  if (!src) { toast('No backup found.', '#ff6b7a'); Sfx.play('deny'); return; }
+  if (G.restoreArm !== key) { G.restoreArm = key; toast('Click RESTORE again to load the previous version.', '#ffd23b'); return; }
+  G.restoreArm = null;
+  try {
+    localStorage.setItem(key + '_bak0', localStorage.getItem(key) || ''); // и сегашното се пази
+    localStorage.setItem(key, src.v);
+  } catch (e) {}
+  if (G.inside) { const id = G.inside.id, ret = G.inside.ret; G.inside = null; enterInterior(id, ret.x, ret.y); }
+  else startSurface('mirhold');
+  toast('Previous version restored.', '#7fd0a0');
+}
 function saveCityLayout() {
   if (G.inside) return saveInteriorLayout();
   if (G.city !== 'mirhold') return null; // подредбата е само на Мирхолд — друг град не я пипа
@@ -1594,7 +1628,7 @@ function saveCityLayout() {
     for (let i = 0; i < pb.length; i++) if (pb[i]) bytes[i >> 3] |= 1 << (i & 7);
     L.paths = btoa(String.fromCharCode.apply(null, bytes));
   } catch (e) {}
-  try { localStorage.setItem('sm_layout_mirhold', JSON.stringify(L)); } catch (e) {}
+  saveLayoutSafe('sm_layout_mirhold', L);
   return L;
 }
 // поставяне на СГРАДА от палитрата (за възстановяване и дострояване)
@@ -1654,7 +1688,7 @@ function saveInteriorLayout() {
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs;
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
-  try { localStorage.setItem(interiorLayoutKey(G.inside.id), JSON.stringify(L)); } catch (e) {}
+  saveLayoutSafe(interiorLayoutKey(G.inside.id), L);
   return L;
 }
 function placeDecorAt(cellX, cellY, loud) {
@@ -1917,8 +1951,10 @@ function drawCityEditOverlay() {
     } catch (e) {}
     toast('Layout copied + saved as a FILE — send the file to Claude.', '#7fd0a0');
   });
-  // RESET е ПРЕМАХНАТ: трореше цялата подредба на града с едно кликване
-  btn('EXIT', CW / 2 + 24 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
+  // RESET е ПРЕМАХНАТ: трореше цялата подредба с едно кликване.
+  // Вместо него — връщане към предишното запазено копие (с потвърждение).
+  btn(G.restoreArm ? 'SURE?' : 'RESTORE', CW / 2 + 24 * S, 44 * S, G.restoreArm ? '#ff6b7a' : '#8ab0ff', () => restoreLayoutBackup());
+  btn('EXIT', CW / 2 + 72 * S, 36 * S, '#e8e4d0', () => cityEditToggle());
   // ВТОРИ РЕД: инструментите
   const tool = G.editTool || 'move';
   const tbtn = (label, x, wpx, id) => {
@@ -1949,6 +1985,7 @@ function drawCityEditOverlay() {
       ['tuft', Spr.surf.tufts[0]], ['tuft2', Spr.surf.tufts[1]],
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
       ['puddle', Spr.surf.puddle],
+      ['tomb', Spr.surf.tomb],
       // мебелите
       ['table', Spr.surf.table],
       ['bench', Spr.surf.bench],
@@ -2232,7 +2269,7 @@ function spriteByKey(key) {
     tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
     rock: S2.rock, rock2: S2.rock2, rock3: S2.rock3,
     bush: S2.bushes[0], bush2: S2.bushes[1], tuft: S2.tufts[0], tuft2: S2.tufts[1],
-    puddle: S2.puddle,
+    puddle: S2.puddle, tomb: S2.tomb,
     // хората: странстващият търговец и продавачите зад сергиите
     peddler: S2.vendors.peddler,
     vendor_weapon: S2.vendors.weapon, vendor_armor: S2.vendors.armor,
@@ -2295,7 +2332,7 @@ function openPixelEditor(key) {
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
   G.pixDelArm = null;
-  G.pixEdit = { key, spr, bak, palette, sel: null, selNew: null, selDrag: null, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
+  G.pixEdit = { key, spr, bak, palette, full: null, sel: null, selNew: null, selDrag: null, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
 function pixZoomScale() {
@@ -2401,22 +2438,38 @@ function pixCommitSel() {
 }
 // Смяна на ПЛАТНОТО (в пиксели) за който и да е спрайт — и нагоре, и надолу.
 // Рисунката остава долу-центрирана, както обектът стъпва на земята.
+// ПЪЛНОТО копие: рисунката живее в голямо платно, а видимото е само изрезка
+// от него — затова смаляването НЕ трие нищо и уголемяването го връща.
+const PIX_FULL = 256;
+function pixSyncFull() {
+  const e = G.pixEdit; if (!e) return;
+  if (!e.full) {
+    const f = document.createElement('canvas');
+    f.width = PIX_FULL; f.height = PIX_FULL;
+    e.full = f;
+  }
+  const g = e.full.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  const ox = Math.round((PIX_FULL - e.spr.width) / 2), oy = PIX_FULL - e.spr.height;
+  g.clearRect(ox, oy, e.spr.width, e.spr.height);
+  g.drawImage(e.spr, ox, oy);
+}
 function pixResizeCanvas(dw, dh) {
   const e = G.pixEdit; if (!e) return;
   const nw = clamp(e.spr.width + dw, 8, 200), nh = clamp(e.spr.height + dh, 8, 220);
   if (nw === e.spr.width && nh === e.spr.height) return;
-  const buf = document.createElement('canvas');
-  buf.width = e.spr.width; buf.height = e.spr.height;
-  buf.getContext('2d').drawImage(e.spr, 0, 0);
+  pixSyncFull();                                          // каквото е нарисувано влиза в пълното копие
+  pixPushHist();                                          // и стъпката се връща с UNDO
   e.spr.width = nw; e.spr.height = nh;                    // платното се пресъздава (и се чисти)
   const c = e.spr.getContext('2d');
   c.imageSmoothingEnabled = false;
-  c.drawImage(buf, Math.round((nw - buf.width) / 2), nh - buf.height);
+  const sx = Math.round((PIX_FULL - nw) / 2), sy = PIX_FULL - nh;
+  c.drawImage(e.full, sx, sy, nw, nh, 0, 0, nw, nh);      // изрязваме от пълното копие
   const bak = document.createElement('canvas');
   bak.width = nw; bak.height = nh;
   bak.getContext('2d').drawImage(e.spr, 0, 0);
   e.bak = bak;
-  e.zoom = 0; e.panX = 0; e.panY = 0; e.hist = []; e.sel = null;
+  e.zoom = 0; e.panX = 0; e.panY = 0; e.sel = null;
   if (e.key.slice(0, 5) === 'cust_') {                    // собствените помнят размера си
     const cd = G.customDefs && G.customDefs[e.key.slice(5)];
     if (cd) { cd.pw = nw; cd.ph = nh; }
@@ -2426,6 +2479,7 @@ function pixResizeCanvas(dw, dh) {
 }
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
+  pixSyncFull();   // пълното копие следва рисунката
   if (e.key.slice(0, 5) === 'cust_') {
     const id = e.key.slice(5);
     if (G.customDefs && G.customDefs[id]) {
@@ -2574,13 +2628,22 @@ function pixPushHist() {
   const e = G.pixEdit; if (!e) return;
   e.hist = e.hist || [];
   try {
-    e.hist.push(e.spr.getContext('2d').getImageData(0, 0, e.spr.width, e.spr.height));
+    e.hist.push({ w: e.spr.width, h: e.spr.height, img: e.spr.getContext('2d').getImageData(0, 0, e.spr.width, e.spr.height) });
     if (e.hist.length > 30) e.hist.shift();
   } catch (err) {}
 }
 function pixUndo() {
   const e = G.pixEdit; if (!e || !e.hist || !e.hist.length) return;
-  e.spr.getContext('2d').putImageData(e.hist.pop(), 0, 0);
+  const st = e.hist.pop();
+  if (st.w !== e.spr.width || st.h !== e.spr.height) {   // връща се и РАЗМЕРЪТ
+    e.spr.width = st.w; e.spr.height = st.h;
+    e.zoom = 0; e.panX = 0; e.panY = 0; e.sel = null;
+    if (e.key.slice(0, 5) === 'cust_') {
+      const cd = G.customDefs && G.customDefs[e.key.slice(5)];
+      if (cd) { cd.pw = st.w; cd.ph = st.h; }
+    }
+  }
+  e.spr.getContext('2d').putImageData(st.img, 0, 0);
   pixSaveOverride();
   Sfx.play('open');
 }
