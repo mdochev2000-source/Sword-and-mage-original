@@ -701,7 +701,7 @@ function drawItem(it) {
       break;
     }
     case 'enemy': drawEnemy(it.e, it.sx, it.sy); break;
-    case 'player': drawPlayer(it.p, it.sx, it.sy); break;
+    case 'player': drawPlayer(it.p, it.sx, it.sy, it.elev || 0); break;
     case 'proj': {
       const pr = it.pr, sx = it.sx, sy = it.sy;
       let spr;
@@ -1014,8 +1014,10 @@ function renderWorld() {
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     // (създадените спрайтове се подреждат по югозападната клетка, като сградите)
-    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 0 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
-    o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
+    // хората стъпват върху стъпалата като героя
+    const pelev = (pr.kind === 'vendor' || pr.kind === 'peddler') ? elevationAt(pr.x, pr.y, 0.28) : 0;
+    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 0 : cdef ? (cdef.ch - cdef.cw) / 2 : 0) + (pelev > 0.5 ? 0.45 : 0));
+    o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy - pelev * S; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
       : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16
@@ -1044,7 +1046,10 @@ function renderWorld() {
   {
     const p = G.player;
     const sx = isoX(p.x, p.y) + camX, sy = isoY(p.x, p.y) + camY;
-    const o = pushDraw(p.x + p.y); o.kind = 'player'; o.p = p; o.sx = sx; o.sy = sy;
+    const target = elevationAt(p.x, p.y, 0.28);          // КАЧВАНЕ
+    p.elev = (p.elev || 0) + (target - (p.elev || 0)) * 0.28;
+    if (Math.abs(target - p.elev) < 0.4) p.elev = target;
+    const o = pushDraw(p.x + p.y + (p.elev > 0.5 ? 0.45 : 0)); o.kind = 'player'; o.p = p; o.sx = sx; o.sy = sy - p.elev * S; o.elev = p.elev;
   }
   // снаряди
   for (const pr of G.projectiles) {
@@ -1168,9 +1173,16 @@ function renderWorld() {
   }
 }
 
-function drawPlayer(p, sx, sy) {
+function drawPlayer(p, sx, sy, elev) {
   const S = SCALE;
-  blit(ctx, Spr.shadow, sx - Spr.shadow.width * S / 2, sy - Spr.shadow.height * S / 2 + 2 * S);
+  const e0 = elev || 0;
+  // сянката остава на ЗЕМЯТА и се смалява, когато си качен — личи, че си горе
+  const k0 = e0 > 0.5 ? 0.72 : 1;
+  const shw = Spr.shadow.width * S * k0, shh = Spr.shadow.height * S * k0;
+  ctx.globalAlpha = e0 > 0.5 ? 0.5 : 1;
+  ctx.drawImage(Spr.shadow, 0, 0, Spr.shadow.width, Spr.shadow.height,
+    (sx - shw / 2) | 0, (sy + e0 * S - shh / 2 + 2 * S) | 0, shw, shh);
+  ctx.globalAlpha = 1;
   const wt = (p.equip.weapon && Spr.player[p.equip.weapon.type]) ? p.equip.weapon.type : 'sword';
   const set = Spr.player[wt];
   const A = Spr.playerAnchors;
@@ -1511,6 +1523,39 @@ function recomputeFenceMasks() {
   }
   G.fenceDirty = false;
 }
+// ================= СТЪПАЛА =================
+// Спрайт, отбелязан като СТЪПАЛО, не спира героя — той се качва отгоре.
+// Височината се смята САМА от рисунката: колко стърчи над земната клетка.
+function stepKeyOf(pr) { return pr.kind === 'custom' ? ('cust_' + pr.cid) : pr.kind; }
+function isStepProp(pr) {
+  if (pr.kind === 'custom') {
+    const cd = G.customDefs && G.customDefs[pr.cid];
+    if (cd && cd.step) return true;
+  }
+  return !!(G.stepKinds && G.stepKinds[stepKeyOf(pr)]);
+}
+function stepHeight(pr) {
+  let spr = null, foot = 1;
+  if (pr.kind === 'custom') {
+    spr = Spr.custom && Spr.custom[pr.cid];
+    const cd = G.customDefs && G.customDefs[pr.cid];
+    if (cd) foot = (cd.cw + cd.ch) / 2;
+  } else spr = spriteByKey(stepKeyOf(pr));
+  if (!spr) return 0;
+  const h = Math.max(0, spr.height - 8 * foot - 4);   // земната част са ~8px на клетка
+  return Math.min(28, Math.round(h * 0.75));          // таван, за да не хвърчи
+}
+function elevationAt(x, y, r) {
+  let best = 0;
+  for (const pr of G.props) {
+    if (!isStepProp(pr)) continue;
+    let on;
+    if (pr.cw) on = (x > pr.bx - 0.15 && x < pr.bx + pr.cw + 0.15 && y > pr.by - 0.15 && y < pr.by + pr.ch + 0.15);
+    else { const dx = x - pr.x, dy = y - pr.y, rr = pr.r + (r || 0.28); on = (dx * dx + dy * dy) < rr * rr; }
+    if (on) best = Math.max(best, stepHeight(pr));
+  }
+  return best;
+}
 function bldBase(pr) {
   const def = BLD_DEFS[pr.kind];
   return { bx: Math.round(pr.x - def.ax), by: Math.round(pr.y - def.ay) };
@@ -1623,6 +1668,7 @@ function saveCityLayout() {
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs; // създадените спрайтове (с рисунките им)
   if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
   if (G.spriteHidden && Object.keys(G.spriteHidden).length) L.hidden = G.spriteHidden;
+  if (G.stepKinds && Object.keys(G.stepKinds).length) L.steps = G.stepKinds;
   try {                                            // избраните видове плочки
     const v = G.map.variant, b = [];
     for (let i = 0; i < v.length; i++) b.push(String.fromCharCode(v[i]));
@@ -1695,6 +1741,7 @@ function saveInteriorLayout() {
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
   if (G.spriteHidden && Object.keys(G.spriteHidden).length) L.hidden = G.spriteHidden;
+  if (G.stepKinds && Object.keys(G.stepKinds).length) L.steps = G.stepKinds;
   try {                                            // избраните видове плочки
     const v = G.map.variant, b = [];
     for (let i = 0; i < v.length; i++) b.push(String.fromCharCode(v[i]));
@@ -2256,7 +2303,8 @@ function drawCreatePanel(diamond) {
   st.body = st.body || (st.solid ? 'solid' : 'walk');
   bt('SOLID', x + 4 * S, y + 77 * S, 30 * S, () => { st.body = 'solid'; }, st.body === 'solid');
   bt('WALK', x + 36 * S, y + 77 * S, 28 * S, () => { st.body = 'walk'; }, st.body === 'walk');
-  bt('FLAT', x + 66 * S, y + 77 * S, 28 * S, () => { st.body = 'flat'; }, st.body === 'flat'); // терен: ляга НА земята, под всичко
+  bt('FLAT', x + 66 * S, y + 77 * S, 22 * S, () => { st.body = 'flat'; }, st.body === 'flat');
+  bt('STEP', x + 90 * S, y + 77 * S, 24 * S, () => { st.body = 'step'; }, st.body === 'step'); // стъпало: героят се качва // терен: ляга НА земята, под всичко
   // ПРЕГЛЕДЪТ: платното се показва и чака ПОТВЪРЖДЕНИЕ — чак тогава се рисува
   if (ready) {
     const cvw = (st.cw + st.ch) * 16, cvh = (st.cw + st.ch) * 8 + st.top;
@@ -2280,7 +2328,7 @@ function drawCreatePanel(diamond) {
       const pre = G.inside ? (G.inside.id.slice(0, 2) + '_') : 'c'; // своя редица за всяка стая
       let n = 1; while (G.customDefs[pre + n] || (Spr.custom && Spr.custom[pre + n])) n++;
       const id = pre + n;
-      G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: st.body === 'solid', flat: st.body === 'flat' };
+      G.customDefs[id] = { cw: st.cw, ch: st.ch, top: st.top, solid: st.body === 'solid' || st.body === 'step', flat: st.body === 'flat', step: st.body === 'step' };
       // кръщаването: празно = служебното id
       try {
         const nm = (window.prompt('Name your sprite:', '') || '').trim().slice(0, 24);
@@ -2861,6 +2909,17 @@ function drawPixelEditor() {
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
   }, false, 1); bx2 += 22 * S;
+  if (e.key.slice(0, 5) !== 'tile_') { // СТЪПАЛО: героят се качва върху този спрайт
+    const isCustKey = e.key.slice(0, 5) === 'cust_';
+    const cdS = isCustKey ? (G.customDefs && G.customDefs[e.key.slice(5)]) : null;
+    const onStep = isCustKey ? !!(cdS && cdS.step) : !!(G.stepKinds && G.stepKinds[e.key]);
+    tb('STEP', bx2, 22 * S, () => {
+      if (isCustKey) { if (cdS) { cdS.step = !cdS.step; if (cdS.step) { cdS.solid = true; cdS.flat = false; } } }
+      else { G.stepKinds = G.stepKinds || {}; if (G.stepKinds[e.key]) delete G.stepKinds[e.key]; else G.stepKinds[e.key] = 1; }
+      saveCityLayout();
+      toast(onStep ? 'No longer a step.' : 'Now a STEP — the hero climbs on it.', '#7fd0a0');
+    }, onStep, 1); bx2 += 24 * S;
+  }
   tb('DUP', bx2, 20 * S, () => pixDuplicate(), false, 1); bx2 += 22 * S;   // дублиране
   if (e.key.slice(0, 5) !== 'tile_') { // ИЗТРИВАНЕ на ВСЕКИ спрайт (два клика)
     const armed = G.pixDelArm === e.key;
@@ -3033,6 +3092,7 @@ function applySpriteOverrides() {
     if (L && L.sprites) loc = L.sprites;
     G.spriteNames = (L && L.names) ? L.names : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.names) || {});
     G.spriteHidden = (L && L.hidden) ? L.hidden : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.hidden) || {});
+    G.stepKinds = (L && L.steps) ? L.steps : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.steps) || {});
   } catch (e) {}
   const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
   G.spriteOverrides = Object.assign({}, loc || {});

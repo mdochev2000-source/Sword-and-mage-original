@@ -216,6 +216,7 @@ function hitsWall(x, y, r, ghost) {
   // плътен реквизит
   for (const pr of G.props) {
     if (!pr.solid) continue;
+    if (typeof isStepProp === 'function' && isStepProp(pr)) continue;   // СТЪПАЛО: качва се отгоре
     if (pr.cw) { // създадените спрайтове: правоъгълният им футпринт, не кръг
       if (x > pr.bx - r && x < pr.bx + pr.cw + r && y > pr.by - r && y < pr.by + pr.ch + r) return true;
       continue;
