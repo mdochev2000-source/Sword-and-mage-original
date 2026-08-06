@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 10:42 UTC";
+window.__BUILD__ = "2026-08-06 11:01 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1450,15 +1450,55 @@ function genIntWall(R, v) {
   }
   return g.canvas;
 }
-function genIntDoor() {                                             // вратата навън
-  const g = mk(20, 26);
-  rc(g, 1, 2, 18, 24, '#4a3a24');                                   // каса
-  rc(g, 3, 4, 14, 22, '#6b5231');                                   // крило
-  for (let x = 4; x < 17; x += 4) rc(g, x, 4, 1, 22, '#54401f');    // дъски
-  rc(g, 3, 7, 14, 1, '#3c4046'); rc(g, 3, 20, 14, 1, '#3c4046');    // обков
-  rc(g, 13, 14, 2, 2, '#c9a23b'); px(g, 13, 14, '#e8c04a');         // дръжка
-  rc(g, 3, 4, 14, 1, '#8a6a3a');
-  outlineSprite(g, '#10131c');
+function genIntDoor() {
+  // ВРАТАТА е блок с РАЗМЕРА НА СТЕНА (32 x 16+H) — ляга точно в редицата на
+  // стените, вместо да виси като отделно крило насред пролуката.
+  const H = WALL_HP;
+  const g = mk(32, 16 + H);
+  const plL = '#b3a183', plR = '#8f7f66', beamL = '#5c4a30', beamR = '#48391f';
+  const wood = '#6b5231', woodD = '#4a3a24', woodL = '#8a6a3a', dark = '#171310';
+  // капакът на стената (за да съвпада с�съседните блокове)
+  fillDiamond(g, 0, '#7a6647');
+  for (let y = 0; y < 8; y++) {
+    const sp = diamondSpan(y);
+    px(g, sp[0], y, '#8e7a55'); px(g, sp[0] + sp[1] - 1, y, '#5f4e34');
+  }
+  // лицата на стената
+  for (let x = 0; x < 32; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    for (let k = 0; k < H; k++) {
+      let col = left ? plL : plR;
+      if (k > H - 4) col = left ? '#7a6a52' : '#63563f';
+      if (x % 8 === 0 || k === 3) col = left ? beamL : beamR;
+      px(g, x, yb + k, col);
+    }
+  }
+  // ОТВОРЪТ: рамка от греди + дървено крило, следващи наклона на стената
+  for (let x = 8; x <= 23; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    const isPost = (x <= 9 || x >= 22);
+    for (let k = 4; k < H; k++) {
+      const y = yb + k;
+      if (isPost) { px(g, x, y, k < 5 ? (left ? beamL : beamR) : (left ? '#54401f' : '#3f2e1a')); continue; }
+      if (k === 4 || k === 5) { px(g, x, y, left ? '#6b5636' : '#54401f'); continue; }   // горната греда
+      if (k >= H - 2) { px(g, x, y, woodD); continue; }                                  // праг
+      // крилото: дъски с фуги + тъмнина по ръба
+      let col = left ? wood : woodD;
+      if ((x - 10) % 4 === 0) col = left ? '#54401f' : '#3a2c18';
+      if (x === 10 || x === 21) col = dark;
+      px(g, x, y, col);
+    }
+  }
+  // обков и дръжка
+  for (let x = 11; x <= 20; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    px(g, x, yb + 8, '#3c4046'); px(g, x, yb + H - 6, '#3c4046');
+  }
+  { const yb = 8 + ((31 - 19) >> 1) + 1; px(g, 19, yb + 11, '#c9a23b'); px(g, 19, yb + 12, '#8a6a3a'); }
+  px(g, 15, 12, woodL); px(g, 16, 12, woodL);                                            // светъл ръб горе
   return g.canvas;
 }
 function genInnkeeper() {
@@ -4493,7 +4533,7 @@ function generateInterior(id) {
   // ВРАТАТА навън — по подразбиране на южната стена (ако дизайнерът не е сложил своя)
   const dx = (w >> 1), dy = h - 3;
   const ownDoor = LAY0 && Array.isArray(LAY0.decor) && LAY0.decor.some(d => d.k === 'exitdoor');
-  if (!ownDoor) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false });
+  if (!ownDoor) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.5, r: 0.2, solid: false });
   // стопанинът зад тезгяха (в църквата няма никого — свещеникът идва по-нататък)
   if (id !== 'church') {
     props.push({ kind: 'vendor', vtype: id, x: dx + 0.5, y: 3.5, r: 0.3, solid: true, name: VENDOR_DEFS[id].name });
@@ -4513,10 +4553,10 @@ function generateInterior(id) {
         props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
         continue;
       }
-      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + (d2.k === 'exitdoor' ? 0.85 : 0.5), r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
     }
   }
-  if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false }); // без врата не се остава
+  if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.5, r: 0.2, solid: false }); // без врата не се остава
   G.fenceDirty = true;
   return { map: { w, h, cells, variant, rooms: [], start: { x: dx + 0.5, y: dy - 0.4 }, path }, props, spots: {}, name: def.name };
 }
@@ -10927,6 +10967,15 @@ function setupInput() {
         }
         G.pixShape = null;
       }
+      if (G.pixEdit && G.pixEdit.selNew) {           // край на оградяването
+        const s = pixNormSel(G.pixEdit.selNew);
+        G.pixEdit.sel = (s.x1 > s.x0 || s.y1 > s.y0) ? s : null;
+        G.pixEdit.selNew = null;
+      }
+      if (G.pixEdit && G.pixEdit.selDrag) {           // край на местенето
+        pixMoveSel(G.pixEdit.selDrag.dx, G.pixEdit.selDrag.dy);
+        G.pixEdit.selDrag = null;
+      }
       G.pixPanning = null;
       G.pixSVDrag = false; G.pixHueDrag = false;
       // МАРКИРАНЕ на клетки (CREATE): при пускане рамката става размер на платното
@@ -11765,11 +11814,12 @@ function renderWorld() {
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     // (създадените спрайтове се подреждат по югозападната клетка, като сградите)
-    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 1.2 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
+    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 0 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
       : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16
+      : pr.kind === 'exitdoor' ? 16
       : cdef ? (cdef.cw + cdef.ch) * 4 : undefined;
     o.alpha = 0;
   }
@@ -12773,6 +12823,13 @@ function drawCityEditOverlay() {
   }
   if (tool === 'create' && !G.pixEdit) drawCreatePanel(diamond);
   if (G.pixPaint && G.pixEdit) pixPaintAt(G.mouse.x, G.mouse.y);
+  if (G.pixEdit && (G.pixEdit.selNew || G.pixEdit.selDrag) && G.mouse.down) {
+    const e2 = G.pixEdit, hit = pixHitPixel(G.mouse.x, G.mouse.y);
+    if (hit) {
+      if (e2.selNew) { e2.selNew.x1 = hit.px; e2.selNew.y1 = hit.py; }
+      else if (e2.selDrag) { e2.selDrag.dx = hit.px - e2.selDrag.px; e2.selDrag.dy = hit.py - e2.selDrag.py; }
+    }
+  }
   if (G.pixPanning && G.pixEdit) {
     G.pixEdit.panX = G.pixPanning.ox - (G.mouse.x - G.pixPanning.sx);
     G.pixEdit.panY = G.pixPanning.oy - (G.mouse.y - G.pixPanning.sy);
@@ -13017,7 +13074,7 @@ function openPixelEditor(key) {
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
   G.pixDelArm = null;
-  G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
+  G.pixEdit = { key, spr, bak, palette, sel: null, selNew: null, selDrag: null, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
 function pixZoomScale() {
@@ -13096,6 +13153,30 @@ function pixResize(dw, dh, dtop) {
   pixSaveOverride();
   toast(ncw + 'x' + nch + ' cells  ·  +' + ntop + ' up  ·  ' + sz.w + 'x' + sz.h + ' px', '#7fd0a0');
 }
+// ================= РЯЗАНЕ: ограждаш част и я местиш =================
+function pixNormSel(s) {
+  return { x0: Math.min(s.x0, s.x1), y0: Math.min(s.y0, s.y1), x1: Math.max(s.x0, s.x1), y1: Math.max(s.y0, s.y1) };
+}
+// пренася оградените пиксели с (dx,dy): изрязва ги и ги слага на новото място
+function pixMoveSel(dx, dy) {
+  const e = G.pixEdit; if (!e || !e.sel || (!dx && !dy)) return;
+  const s = pixNormSel(e.sel);
+  const w = s.x1 - s.x0 + 1, h = s.y1 - s.y0 + 1;
+  const c = e.spr.getContext('2d');
+  const buf = document.createElement('canvas');
+  buf.width = w; buf.height = h;
+  buf.getContext('2d').drawImage(e.spr, s.x0, s.y0, w, h, 0, 0, w, h);
+  pixPushHist();
+  c.clearRect(s.x0, s.y0, w, h);                       // изрязваме
+  c.imageSmoothingEnabled = false;
+  c.drawImage(buf, s.x0 + dx, s.y0 + dy);              // и лепим на новото място
+  e.sel = { x0: s.x0 + dx, y0: s.y0 + dy, x1: s.x1 + dx, y1: s.y1 + dy };
+  pixSaveOverride();
+}
+function pixCommitSel() {
+  const e = G.pixEdit; if (!e) return;
+  e.sel = null; e.selDrag = null; e.selNew = null;
+}
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
   if (e.key.slice(0, 5) === 'cust_') {
@@ -13132,6 +13213,17 @@ function pixClick(mx, my) {
     if (mx >= zr.x && my >= zr.y && mx < zr.x + zr.vw && my < zr.y + zr.vh) {
       if (e.tool === 'hand') {
         G.pixPanning = { sx: mx, sy: my, ox: e.panX, oy: e.panY };
+      } else if (e.tool === 'sel') {
+        const hit = pixHitPixel(mx, my);
+        if (hit) {
+          const s = e.sel ? pixNormSel(e.sel) : null;
+          if (s && hit.px >= s.x0 && hit.px <= s.x1 && hit.py >= s.y0 && hit.py <= s.y1) {
+            e.selDrag = { px: hit.px, py: hit.py, dx: 0, dy: 0 };   // местене на оградената част
+          } else {
+            e.selNew = { x0: hit.px, y0: hit.py, x1: hit.px, y1: hit.py }; // ново оградяване
+            e.sel = null;
+          }
+        }
       } else if (e.tool === 'fill') {
         const hit = pixHitPixel(mx, my);
         if (hit) { pixPushHist(); pixFloodFill(hit.px, hit.py); pixSaveOverride(); }
@@ -13253,7 +13345,7 @@ function drawPixelEditor() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
   // (NAME бутонът се регистрира в pixBtns по-долу)
-  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16), r.x + 6 * S, r.y + 10 * S);
+  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16) + (e.tool === 'sel' ? '  ·  frame a part, then drag it' : ''), r.x + 6 * S, r.y + 10 * S);
   if (e.key.slice(0, 5) === 'cust_') { // преименуване по всяко време
     const nx = r.x + r.w - 50 * S, ny = r.y + 2 * S;
     panel(nx, ny, 26 * S, 10 * S);
@@ -13285,7 +13377,8 @@ function drawPixelEditor() {
   tb('PIK', bx2, 20 * S, () => { e.tool = 'pick'; }, e.tool === 'pick'); bx2 += 22 * S;
   tb('FIL', bx2, 20 * S, () => { e.tool = 'fill'; }, e.tool === 'fill'); bx2 += 22 * S;
   tb('LIN', bx2, 20 * S, () => { e.tool = 'line'; }, e.tool === 'line'); bx2 += 22 * S;
-  tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect');
+  tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect'); bx2 += 22 * S;
+  tb('SEL', bx2, 20 * S, () => { pixCommitSel(); e.tool = 'sel'; }, e.tool === 'sel');
   bx2 = r.x + 4 * S;
   tb('HND', bx2, 20 * S, () => { e.tool = 'hand'; }, e.tool === 'hand', 1); bx2 += 22 * S;
   tb('MIR', bx2, 20 * S, () => { e.mirror = !e.mirror; }, !!e.mirror, 1); bx2 += 22 * S;
@@ -13405,6 +13498,22 @@ function drawPixelEditor() {
       if (e.mirror && e.tool === 'pen') cell(e.spr.width - 1 - hx2, hy2, e.color, 0.35);
     }
     strokeRect(zx0 + ox + hx2 * z, zy0 + oy2 + hy2 * z, z, z, e.tool === 'erase' ? '#ff6b7a' : '#ffffff', 1);
+  }
+  // РЯЗАНЕТО: рамка от "мравки" + преглед на местеното парче
+  const selRect = e.selNew ? pixNormSel(e.selNew) : (e.sel ? pixNormSel(e.sel) : null);
+  if (selRect) {
+    const off = e.selDrag ? e.selDrag : { dx: 0, dy: 0 };
+    const rx = zx0 + ox + (selRect.x0 + off.dx) * z, ry = zy0 + oy2 + (selRect.y0 + off.dy) * z;
+    const rw = (selRect.x1 - selRect.x0 + 1) * z, rh = (selRect.y1 - selRect.y0 + 1) * z;
+    if (e.selDrag && (off.dx || off.dy)) {             // полупрозрачен преглед на новото място
+      ctx.globalAlpha = 0.75;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(e.spr, selRect.x0, selRect.y0, selRect.x1 - selRect.x0 + 1, selRect.y1 - selRect.y0 + 1, rx, ry, rw, rh);
+      ctx.globalAlpha = 1;
+    }
+    const dash = Math.floor(G.time * 8) % 2;           // движещи се чертички
+    for (let i = 0; i < rw; i += 2) { if (((i >> 1) + dash) % 2) { rcx(rx + i, ry - 1, 2, 1, '#ffffff'); rcx(rx + i, ry + rh, 2, 1, '#ffffff'); } }
+    for (let i = 0; i < rh; i += 2) { if (((i >> 1) + dash) % 2) { rcx(rx - 1, ry + i, 1, 2, '#ffffff'); rcx(rx + rw, ry + i, 1, 2, '#ffffff'); } }
   }
   ctx.restore();
   strokeRect(zx0, zy0, vw, vh, '#3a4456', S);

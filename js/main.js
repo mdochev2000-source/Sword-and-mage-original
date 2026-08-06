@@ -167,6 +167,15 @@ function setupInput() {
         }
         G.pixShape = null;
       }
+      if (G.pixEdit && G.pixEdit.selNew) {           // край на оградяването
+        const s = pixNormSel(G.pixEdit.selNew);
+        G.pixEdit.sel = (s.x1 > s.x0 || s.y1 > s.y0) ? s : null;
+        G.pixEdit.selNew = null;
+      }
+      if (G.pixEdit && G.pixEdit.selDrag) {           // край на местенето
+        pixMoveSel(G.pixEdit.selDrag.dx, G.pixEdit.selDrag.dy);
+        G.pixEdit.selDrag = null;
+      }
       G.pixPanning = null;
       G.pixSVDrag = false; G.pixHueDrag = false;
       // МАРКИРАНЕ на клетки (CREATE): при пускане рамката става размер на платното
@@ -1005,11 +1014,12 @@ function renderWorld() {
     }
     // гредата със знамената се рисува РАНО (зад всичко в прохода) — никога не скрива героя
     // (създадените спрайтове се подреждат по югозападната клетка, като сградите)
-    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 1.2 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
+    const o = pushDraw(pr.x + pr.y + (flat ? (cdef ? 0.4 - (cdef.cw + cdef.ch) / 2 : -0.6) : pr.kind === 'gatebanner' ? -2.5 : pr.kind === 'exitdoor' ? 0 : cdef ? (cdef.ch - cdef.cw) / 2 : 0));
     o.kind = 'prop'; o.spr = spr; o.sx = sx; o.sy = sy; o.flat = flat; o.vis = vis;
     // pyo: изометрична котва — дъното ляга на южния връх на футпринта
     o.pyo = (pr.kind === 'wallseg' || pr.kind === 'gatetower') ? 8
       : (pr.kind === 'house' || pr.kind === 'shophouse' || pr.kind === 'church' || pr.kind === 'tower') ? 16
+      : pr.kind === 'exitdoor' ? 16
       : cdef ? (cdef.cw + cdef.ch) * 4 : undefined;
     o.alpha = 0;
   }
@@ -2013,6 +2023,13 @@ function drawCityEditOverlay() {
   }
   if (tool === 'create' && !G.pixEdit) drawCreatePanel(diamond);
   if (G.pixPaint && G.pixEdit) pixPaintAt(G.mouse.x, G.mouse.y);
+  if (G.pixEdit && (G.pixEdit.selNew || G.pixEdit.selDrag) && G.mouse.down) {
+    const e2 = G.pixEdit, hit = pixHitPixel(G.mouse.x, G.mouse.y);
+    if (hit) {
+      if (e2.selNew) { e2.selNew.x1 = hit.px; e2.selNew.y1 = hit.py; }
+      else if (e2.selDrag) { e2.selDrag.dx = hit.px - e2.selDrag.px; e2.selDrag.dy = hit.py - e2.selDrag.py; }
+    }
+  }
   if (G.pixPanning && G.pixEdit) {
     G.pixEdit.panX = G.pixPanning.ox - (G.mouse.x - G.pixPanning.sx);
     G.pixEdit.panY = G.pixPanning.oy - (G.mouse.y - G.pixPanning.sy);
@@ -2257,7 +2274,7 @@ function openPixelEditor(key) {
   const std = ['#10131c', '#e8e4d0', '#c9a23b', '#8f2a3a', '#2a4a8f', '#2f6e3a', '#ffb84d', '#c84fff'];
   const palette = own.concat(std.filter(c => own.indexOf(c) === -1)).slice(0, 24);
   G.pixDelArm = null;
-  G.pixEdit = { key, spr, bak, palette, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
+  G.pixEdit = { key, spr, bak, palette, sel: null, selNew: null, selDrag: null, color: palette[0] || '#e8e4d0', tool: 'pen', zoom: 0, panX: 0, panY: 0, hue: 0, sat: 1, val: 1, mirror: false, hist: [] };
   Sfx.play('open');
 }
 function pixZoomScale() {
@@ -2336,6 +2353,30 @@ function pixResize(dw, dh, dtop) {
   pixSaveOverride();
   toast(ncw + 'x' + nch + ' cells  ·  +' + ntop + ' up  ·  ' + sz.w + 'x' + sz.h + ' px', '#7fd0a0');
 }
+// ================= РЯЗАНЕ: ограждаш част и я местиш =================
+function pixNormSel(s) {
+  return { x0: Math.min(s.x0, s.x1), y0: Math.min(s.y0, s.y1), x1: Math.max(s.x0, s.x1), y1: Math.max(s.y0, s.y1) };
+}
+// пренася оградените пиксели с (dx,dy): изрязва ги и ги слага на новото място
+function pixMoveSel(dx, dy) {
+  const e = G.pixEdit; if (!e || !e.sel || (!dx && !dy)) return;
+  const s = pixNormSel(e.sel);
+  const w = s.x1 - s.x0 + 1, h = s.y1 - s.y0 + 1;
+  const c = e.spr.getContext('2d');
+  const buf = document.createElement('canvas');
+  buf.width = w; buf.height = h;
+  buf.getContext('2d').drawImage(e.spr, s.x0, s.y0, w, h, 0, 0, w, h);
+  pixPushHist();
+  c.clearRect(s.x0, s.y0, w, h);                       // изрязваме
+  c.imageSmoothingEnabled = false;
+  c.drawImage(buf, s.x0 + dx, s.y0 + dy);              // и лепим на новото място
+  e.sel = { x0: s.x0 + dx, y0: s.y0 + dy, x1: s.x1 + dx, y1: s.y1 + dy };
+  pixSaveOverride();
+}
+function pixCommitSel() {
+  const e = G.pixEdit; if (!e) return;
+  e.sel = null; e.selDrag = null; e.selNew = null;
+}
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
   if (e.key.slice(0, 5) === 'cust_') {
@@ -2372,6 +2413,17 @@ function pixClick(mx, my) {
     if (mx >= zr.x && my >= zr.y && mx < zr.x + zr.vw && my < zr.y + zr.vh) {
       if (e.tool === 'hand') {
         G.pixPanning = { sx: mx, sy: my, ox: e.panX, oy: e.panY };
+      } else if (e.tool === 'sel') {
+        const hit = pixHitPixel(mx, my);
+        if (hit) {
+          const s = e.sel ? pixNormSel(e.sel) : null;
+          if (s && hit.px >= s.x0 && hit.px <= s.x1 && hit.py >= s.y0 && hit.py <= s.y1) {
+            e.selDrag = { px: hit.px, py: hit.py, dx: 0, dy: 0 };   // местене на оградената част
+          } else {
+            e.selNew = { x0: hit.px, y0: hit.py, x1: hit.px, y1: hit.py }; // ново оградяване
+            e.sel = null;
+          }
+        }
       } else if (e.tool === 'fill') {
         const hit = pixHitPixel(mx, my);
         if (hit) { pixPushHist(); pixFloodFill(hit.px, hit.py); pixSaveOverride(); }
@@ -2493,7 +2545,7 @@ function drawPixelEditor() {
   ctx.textAlign = 'left';
   ctx.font = fontBold(6.5); ctx.fillStyle = '#ffd23b';
   // (NAME бутонът се регистрира в pixBtns по-долу)
-  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16), r.x + 6 * S, r.y + 10 * S);
+  ctx.fillText('PIXEL: ' + editKindLabel(e.key).slice(0, 16) + (e.tool === 'sel' ? '  ·  frame a part, then drag it' : ''), r.x + 6 * S, r.y + 10 * S);
   if (e.key.slice(0, 5) === 'cust_') { // преименуване по всяко време
     const nx = r.x + r.w - 50 * S, ny = r.y + 2 * S;
     panel(nx, ny, 26 * S, 10 * S);
@@ -2525,7 +2577,8 @@ function drawPixelEditor() {
   tb('PIK', bx2, 20 * S, () => { e.tool = 'pick'; }, e.tool === 'pick'); bx2 += 22 * S;
   tb('FIL', bx2, 20 * S, () => { e.tool = 'fill'; }, e.tool === 'fill'); bx2 += 22 * S;
   tb('LIN', bx2, 20 * S, () => { e.tool = 'line'; }, e.tool === 'line'); bx2 += 22 * S;
-  tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect');
+  tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect'); bx2 += 22 * S;
+  tb('SEL', bx2, 20 * S, () => { pixCommitSel(); e.tool = 'sel'; }, e.tool === 'sel');
   bx2 = r.x + 4 * S;
   tb('HND', bx2, 20 * S, () => { e.tool = 'hand'; }, e.tool === 'hand', 1); bx2 += 22 * S;
   tb('MIR', bx2, 20 * S, () => { e.mirror = !e.mirror; }, !!e.mirror, 1); bx2 += 22 * S;
@@ -2645,6 +2698,22 @@ function drawPixelEditor() {
       if (e.mirror && e.tool === 'pen') cell(e.spr.width - 1 - hx2, hy2, e.color, 0.35);
     }
     strokeRect(zx0 + ox + hx2 * z, zy0 + oy2 + hy2 * z, z, z, e.tool === 'erase' ? '#ff6b7a' : '#ffffff', 1);
+  }
+  // РЯЗАНЕТО: рамка от "мравки" + преглед на местеното парче
+  const selRect = e.selNew ? pixNormSel(e.selNew) : (e.sel ? pixNormSel(e.sel) : null);
+  if (selRect) {
+    const off = e.selDrag ? e.selDrag : { dx: 0, dy: 0 };
+    const rx = zx0 + ox + (selRect.x0 + off.dx) * z, ry = zy0 + oy2 + (selRect.y0 + off.dy) * z;
+    const rw = (selRect.x1 - selRect.x0 + 1) * z, rh = (selRect.y1 - selRect.y0 + 1) * z;
+    if (e.selDrag && (off.dx || off.dy)) {             // полупрозрачен преглед на новото място
+      ctx.globalAlpha = 0.75;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(e.spr, selRect.x0, selRect.y0, selRect.x1 - selRect.x0 + 1, selRect.y1 - selRect.y0 + 1, rx, ry, rw, rh);
+      ctx.globalAlpha = 1;
+    }
+    const dash = Math.floor(G.time * 8) % 2;           // движещи се чертички
+    for (let i = 0; i < rw; i += 2) { if (((i >> 1) + dash) % 2) { rcx(rx + i, ry - 1, 2, 1, '#ffffff'); rcx(rx + i, ry + rh, 2, 1, '#ffffff'); } }
+    for (let i = 0; i < rh; i += 2) { if (((i >> 1) + dash) % 2) { rcx(rx - 1, ry + i, 1, 2, '#ffffff'); rcx(rx + rw, ry + i, 1, 2, '#ffffff'); } }
   }
   ctx.restore();
   strokeRect(zx0, zy0, vw, vh, '#3a4456', S);

@@ -1201,15 +1201,55 @@ function genIntWall(R, v) {
   }
   return g.canvas;
 }
-function genIntDoor() {                                             // вратата навън
-  const g = mk(20, 26);
-  rc(g, 1, 2, 18, 24, '#4a3a24');                                   // каса
-  rc(g, 3, 4, 14, 22, '#6b5231');                                   // крило
-  for (let x = 4; x < 17; x += 4) rc(g, x, 4, 1, 22, '#54401f');    // дъски
-  rc(g, 3, 7, 14, 1, '#3c4046'); rc(g, 3, 20, 14, 1, '#3c4046');    // обков
-  rc(g, 13, 14, 2, 2, '#c9a23b'); px(g, 13, 14, '#e8c04a');         // дръжка
-  rc(g, 3, 4, 14, 1, '#8a6a3a');
-  outlineSprite(g, '#10131c');
+function genIntDoor() {
+  // ВРАТАТА е блок с РАЗМЕРА НА СТЕНА (32 x 16+H) — ляга точно в редицата на
+  // стените, вместо да виси като отделно крило насред пролуката.
+  const H = WALL_HP;
+  const g = mk(32, 16 + H);
+  const plL = '#b3a183', plR = '#8f7f66', beamL = '#5c4a30', beamR = '#48391f';
+  const wood = '#6b5231', woodD = '#4a3a24', woodL = '#8a6a3a', dark = '#171310';
+  // капакът на стената (за да съвпада с�съседните блокове)
+  fillDiamond(g, 0, '#7a6647');
+  for (let y = 0; y < 8; y++) {
+    const sp = diamondSpan(y);
+    px(g, sp[0], y, '#8e7a55'); px(g, sp[0] + sp[1] - 1, y, '#5f4e34');
+  }
+  // лицата на стената
+  for (let x = 0; x < 32; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    for (let k = 0; k < H; k++) {
+      let col = left ? plL : plR;
+      if (k > H - 4) col = left ? '#7a6a52' : '#63563f';
+      if (x % 8 === 0 || k === 3) col = left ? beamL : beamR;
+      px(g, x, yb + k, col);
+    }
+  }
+  // ОТВОРЪТ: рамка от греди + дървено крило, следващи наклона на стената
+  for (let x = 8; x <= 23; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    const isPost = (x <= 9 || x >= 22);
+    for (let k = 4; k < H; k++) {
+      const y = yb + k;
+      if (isPost) { px(g, x, y, k < 5 ? (left ? beamL : beamR) : (left ? '#54401f' : '#3f2e1a')); continue; }
+      if (k === 4 || k === 5) { px(g, x, y, left ? '#6b5636' : '#54401f'); continue; }   // горната греда
+      if (k >= H - 2) { px(g, x, y, woodD); continue; }                                  // праг
+      // крилото: дъски с фуги + тъмнина по ръба
+      let col = left ? wood : woodD;
+      if ((x - 10) % 4 === 0) col = left ? '#54401f' : '#3a2c18';
+      if (x === 10 || x === 21) col = dark;
+      px(g, x, y, col);
+    }
+  }
+  // обков и дръжка
+  for (let x = 11; x <= 20; x++) {
+    const left = x < 16;
+    const yb = left ? 8 + (x >> 1) + 1 : 8 + ((31 - x) >> 1) + 1;
+    px(g, x, yb + 8, '#3c4046'); px(g, x, yb + H - 6, '#3c4046');
+  }
+  { const yb = 8 + ((31 - 19) >> 1) + 1; px(g, 19, yb + 11, '#c9a23b'); px(g, 19, yb + 12, '#8a6a3a'); }
+  px(g, 15, 12, woodL); px(g, 16, 12, woodL);                                            // светъл ръб горе
   return g.canvas;
 }
 function genInnkeeper() {

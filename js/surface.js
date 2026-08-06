@@ -500,7 +500,7 @@ function generateInterior(id) {
   // ВРАТАТА навън — по подразбиране на южната стена (ако дизайнерът не е сложил своя)
   const dx = (w >> 1), dy = h - 3;
   const ownDoor = LAY0 && Array.isArray(LAY0.decor) && LAY0.decor.some(d => d.k === 'exitdoor');
-  if (!ownDoor) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false });
+  if (!ownDoor) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.5, r: 0.2, solid: false });
   // стопанинът зад тезгяха (в църквата няма никого — свещеникът идва по-нататък)
   if (id !== 'church') {
     props.push({ kind: 'vendor', vtype: id, x: dx + 0.5, y: 3.5, r: 0.3, solid: true, name: VENDOR_DEFS[id].name });
@@ -520,10 +520,10 @@ function generateInterior(id) {
         props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
         continue;
       }
-      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + (d2.k === 'exitdoor' ? 0.85 : 0.5), r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
     }
   }
-  if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false }); // без врата не се остава
+  if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.5, r: 0.2, solid: false }); // без врата не се остава
   G.fenceDirty = true;
   return { map: { w, h, cells, variant, rooms: [], start: { x: dx + 0.5, y: dy - 0.4 }, path }, props, spots: {}, name: def.name };
 }
