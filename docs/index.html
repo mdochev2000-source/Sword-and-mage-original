@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 00:44 UTC";
+window.__BUILD__ = "2026-08-06 01:14 UTC";
 // ==== core.js ====
 'use strict';
 // ================= БЕЗДНА — ядро: константи, помощни функции, глобално състояние =================
@@ -1532,128 +1532,215 @@ function genInnkeeper() {
   outlineSprite(g, '#10141c');
   return g.canvas;
 }
-// --- МЕБЕЛИ (база за хана; слагат се от едитора навсякъде) ---
-// Всички стъпват на пода: горната плоскост е ромб като плочката, краката слизат надолу.
-function furnTop(g, cx, cy, hw, hh, top, edge) {          // изометричен плот
-  for (let dy = -hh; dy <= hh; dy++) {
-    const w = Math.round(hw * (1 - Math.abs(dy) / (hh + 1)));
-    for (let dx = -w; dx <= w; dx++) px(g, cx + dx, cy + dy, top);
-  }
-  for (let dy = -hh; dy <= hh; dy++) {
-    const w = Math.round(hw * (1 - Math.abs(dy) / (hh + 1)));
-    px(g, cx - w, cy + dy, edge); px(g, cx + w, cy + dy, edge);
+// --- МЕБЕЛИ: изометрични обеми (плот с дебелина + крака, светла и тъмна страна) ---
+// isoBox рисува кутия: ромбичен плот 2:1 + две странични лица надолу.
+function isoBox(g, cx, cy, hw, hh, hgt, cTop, cL, cR, cEdge, cTopL) {
+  for (let dx = -hw; dx <= hw; dx++) {
+    const ext = Math.round(hh * (1 - Math.abs(dx) / (hw + 0.999)));
+    for (let dy = -ext; dy <= ext; dy++) px(g, cx + dx, cy + dy, cTop);
+    if (cTopL) px(g, cx + dx, cy - ext, cTopL);            // светъл ръб горе
+    const yb = cy + ext;
+    if (cEdge) px(g, cx + dx, yb, cEdge);                  // тъмен ръб долу
+    for (let k = 1; k <= hgt; k++) px(g, cx + dx, yb + k, dx < 0 ? cL : cR);
   }
 }
+function isoLeg(g, x, y, h, c1, c2) { for (let k = 0; k < h; k++) { px(g, x, y + k, c1); px(g, x + 1, y + k, c2); } }
+function woodGrain(g, R, x0, y0, w, h, cols) {
+  for (let i = 0; i < w * h / 6; i++) {
+    const x = x0 + ((R() * w) | 0), y = y0 + ((R() * h) | 0);
+    if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, cols[(R() * cols.length) | 0]);
+  }
+}
+const WD = { top: '#96763f', topL: '#ab8b4f', left: '#6b5231', right: '#54401f', edge: '#3f2e1a', leg: '#5c4423', legD: '#3f2e1a' };
+
 function genTable(R) {
-  const g = mk(30, 22);
-  const top = '#8a6a3a', topD = '#6b5231', leg = '#54401f';
-  furnTop(g, 15, 8, 13, 5, top, topD);
-  for (let i = 0; i < 26; i++) { const x = 3 + ((R() * 24) | 0), y = 4 + ((R() * 8) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, R() < 0.5 ? '#7d5f33' : '#96763f'); }
-  rc(g, 3, 12, 2, 6, leg); rc(g, 25, 12, 2, 6, leg);            // крака
-  rc(g, 9, 14, 2, 7, leg); rc(g, 19, 14, 2, 7, leg);
-  rc(g, 3, 13, 24, 1, topD);                                     // ръб на плота
+  const g = mk(32, 26);
+  isoLeg(g, 15, 6, 14, '#4a3620', '#33240f');                  // северният крак (зад плота)
+  isoBox(g, 16, 9, 14, 7, 3, WD.top, WD.left, WD.right, WD.edge, WD.topL);
+  woodGrain(g, R, 4, 4, 24, 10, ['#8a6b39', '#a1804a', '#7d5f33']);
+  for (let dx = -9; dx <= 9; dx += 9) {                        // две фуги между дъските
+    const ext = Math.round(7 * (1 - Math.abs(dx) / 14.999));
+    for (let dy = -ext; dy <= ext; dy++) px(g, 16 + dx, 9 + dy, '#7a5c30');
+  }
+  isoLeg(g, 2, 13, 9, WD.leg, WD.legD);                        // западният
+  isoLeg(g, 28, 13, 9, WD.leg, WD.legD);                       // източният
+  isoLeg(g, 15, 17, 8, WD.leg, WD.legD);                       // южният
+  rc(g, 4, 19, 24, 1, '#4a3620'); px(g, 3, 19, '#3f2e1a');     // напречна летва
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 function genBench(R) {
-  const g = mk(24, 16);
-  furnTop(g, 12, 6, 10, 3, '#7d5f33', '#5c4423');
-  for (let i = 0; i < 14; i++) { const x = 4 + ((R() * 16) | 0), y = 4 + ((R() * 5) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, '#8f6f3c'); }
-  rc(g, 3, 9, 2, 5, '#4a3620'); rc(g, 19, 9, 2, 5, '#4a3620');
-  rc(g, 3, 9, 18, 1, '#5c4423');
+  const g = mk(28, 16);
+  isoLeg(g, 13, 4, 8, '#4a3620', '#33240f');                   // северният крак
+  isoBox(g, 14, 6, 12, 6, 2, '#8a6b39', '#63502f', '#4d3b1c', '#3a2b16', '#9c7c45');
+  woodGrain(g, R, 4, 2, 20, 8, ['#7d5f33', '#93733e']);
+  isoLeg(g, 2, 9, 5, WD.leg, WD.legD);
+  isoLeg(g, 24, 9, 5, WD.leg, WD.legD);
+  isoLeg(g, 13, 12, 3, WD.leg, WD.legD);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
-function genStool() {
-  const g = mk(14, 14);
-  furnTop(g, 7, 5, 5, 2, '#7d5f33', '#5c4423');
-  rc(g, 3, 8, 1, 5, '#4a3620'); rc(g, 10, 8, 1, 5, '#4a3620'); rc(g, 7, 9, 1, 4, '#3f2e1a');
+function genStool(R) {
+  const g = mk(16, 16);
+  isoBox(g, 8, 5, 6, 3, 2, '#8a6b39', '#63502f', '#4d3b1c', '#3a2b16', '#9c7c45');
+  woodGrain(g, R, 4, 3, 8, 4, ['#7d5f33']);
+  isoLeg(g, 2, 8, 6, WD.leg, WD.legD);
+  isoLeg(g, 12, 8, 6, WD.leg, WD.legD);
+  isoLeg(g, 7, 10, 5, '#4a3620', '#33240f');
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
-function genKeg() {
-  const g = mk(16, 20);
-  for (let i = 0; i < 10; i++) {
-    const x = 3 + i;
-    const top = (i <= 1 || i >= 8) ? 5 : 4, bot = (i <= 1 || i >= 8) ? 17 : 18;
-    for (let y = top; y <= bot; y++) {
-      let col = i <= 2 ? '#8a6a3a' : i >= 7 ? '#5c4423' : '#73562c';
-      if (y === 7 || y === 14) col = '#3c4046';
+function genKeg(R) {
+  const g = mk(20, 24);
+  // легнала бъчва на дървена стойка (както са в кръчмите)
+  rc(g, 2, 17, 5, 4, '#4a3620'); rc(g, 2, 17, 5, 1, '#5c4423');   // стойка (клинове)
+  rc(g, 13, 17, 5, 4, '#3f2e1a'); rc(g, 13, 17, 5, 1, '#54401f');
+  for (let x = 2; x <= 17; x++) {                              // корем
+    const t = Math.abs(x - 9.5) / 8.5;
+    const half = Math.round(6 * (1 - t * t * 0.55));
+    for (let y = 10 - half; y <= 10 + half; y++) {
+      let col = y < 10 - half + 3 ? '#8a6a3a' : y > 10 + half - 3 ? '#54401f' : '#73562c';
+      if (x === 5 || x === 6 || x === 13 || x === 14) col = (x === 5 || x === 13) ? '#4d525c' : '#33373d'; // железни обръчи
       px(g, x, y, col);
     }
   }
-  furnTop(g, 7, 4, 4, 2, '#96763f', '#6b5231');
-  px(g, 12, 12, '#241f1a'); px(g, 13, 13, '#241f1a');            // канелка
+  for (let y = 5; y <= 15; y++) px(g, 2, y, '#4a3620');        // дъното
+  for (let y = 6; y <= 14; y++) px(g, 17, y, '#96763f');       // капакът
+  px(g, 16, 8, '#a3823f'); px(g, 16, 12, '#6b5231');
+  woodGrain(g, R, 3, 6, 14, 8, ['#7d5f33', '#63502f']);
+  px(g, 18, 13, '#241f1a'); px(g, 18, 14, '#241f1a');          // канелка
+  px(g, 17, 16, '#c6a15a');                                    // капка
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 function genFireplace(R) {
-  const g = mk(30, 26);
-  const st = '#6d7280', stD = '#4a4e56', stL = '#878d9c';
-  rc(g, 2, 8, 26, 14, st);                                       // каменна зидария
-  for (let i = 0; i < 40; i++) { const x = 2 + ((R() * 26) | 0), y = 8 + ((R() * 14) | 0); px(g, x, y, R() < 0.5 ? stD : stL); }
-  for (let y = 10; y < 22; y += 3) rc(g, 2, y, 26, 1, stD);      // фуги
-  rc(g, 6, 12, 18, 10, '#171310');                               // отворът
-  rc(g, 8, 19, 14, 2, '#3a2f24');                                // дървата
-  rc(g, 9, 18, 5, 1, '#54401f'); rc(g, 16, 18, 5, 1, '#4a3620');
-  rc(g, 10, 15, 10, 3, '#ff8a1f'); rc(g, 12, 13, 6, 3, '#ffb84d'); // пламък
-  rc(g, 13, 11, 4, 2, '#ffd23b'); px(g, 15, 10, '#fff2a0');
-  rc(g, 9, 20, 12, 1, '#c94f1f');                                // жар
-  rc(g, 2, 6, 26, 2, '#565a62'); rc(g, 2, 6, 26, 1, '#878d9c');  // полица над огнището
+  const g = mk(32, 30);
+  const st = '#6d7280', stD = '#4a4e56', stL = '#878d9c', stX = '#585d68';
+  // ЗИДАНИЯТ комин: стеснява се нагоре
+  for (let y = 0; y < 10; y++) {
+    const inset = 4 - Math.round(y * 0.35);
+    rc(g, 4 + inset, y, 24 - inset * 2, 1, y < 2 ? stL : st);
+  }
+  rc(g, 2, 10, 28, 3, st); rc(g, 2, 10, 28, 1, stL);           // полицата над огъня
+  rc(g, 2, 13, 28, 14, st);                                     // тялото
+  // камъни с фуги
+  for (let y = 14; y < 27; y += 3) {
+    rc(g, 2, y, 28, 1, stD);
+    for (let x = 3 + ((y % 6) ? 0 : 4); x < 30; x += 8) px(g, x, y + 1, stD), px(g, x, y + 2, stD);
+  }
+  for (let i = 0; i < 60; i++) { const x = 2 + ((R() * 28) | 0), y = 13 + ((R() * 14) | 0); px(g, x, y, R() < 0.5 ? stX : stL); }
+  // ОТВОРЪТ: арка
+  rc(g, 8, 17, 16, 10, '#120f0d');
+  for (let x = 8; x < 24; x++) {                                // заоблена арка
+    const t = Math.abs(x - 15.5) / 8;
+    const top = 17 - Math.round(3 * (1 - t * t));
+    for (let y = top; y < 17; y++) px(g, x, y, '#120f0d');
+  }
+  rc(g, 7, 26, 18, 2, stD); rc(g, 7, 27, 18, 1, '#3a3e46');    // огнището (под)
+  // дърва и огън
+  rc(g, 10, 23, 12, 2, '#4a3620'); rc(g, 11, 22, 4, 1, '#5c4423'); rc(g, 17, 22, 4, 1, '#3f2e1a');
+  px(g, 10, 24, '#2e2214'); px(g, 21, 24, '#2e2214');
+  rc(g, 11, 19, 10, 4, '#c94f1f');                              // жар
+  rc(g, 12, 17, 8, 3, '#ff8a1f'); rc(g, 13, 15, 6, 3, '#ffb84d');
+  rc(g, 14, 13, 4, 2, '#ffd23b'); px(g, 15, 12, '#fff2a0'); px(g, 17, 13, '#fff2a0');
+  px(g, 12, 21, '#ffd23b'); px(g, 19, 20, '#ffd23b');
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
-function genCauldron() {
-  const g = mk(18, 20);
-  rc(g, 3, 15, 1, 5, '#3c4046'); rc(g, 14, 15, 1, 5, '#3c4046'); // триножник
-  rc(g, 9, 16, 1, 4, '#2b2f36');
-  rc(g, 4, 8, 10, 7, '#2b2f36'); rc(g, 5, 7, 8, 1, '#3c4046');   // котле
-  rc(g, 4, 9, 2, 4, '#454b55');
-  rc(g, 5, 8, 8, 1, '#5a4a2a');                                  // яхния
-  px(g, 7, 7, '#8a7048'); px(g, 10, 7, '#8a7048');
-  rc(g, 3, 5, 12, 1, '#3c4046'); px(g, 3, 6, '#3c4046'); px(g, 14, 6, '#3c4046'); // дръжка
+function genCauldron(R) {
+  const g = mk(22, 24);
+  // триножник
+  for (let k = 0; k < 9; k++) { const o = Math.round(k * 0.35); rc(g, 3 - o, 13 + k, 2, 1, '#4d525c'); rc(g, 16 + o, 13 + k, 2, 1, '#33373d'); }
+  for (let k = 0; k < 7; k++) rc(g, 10, 16 + k, 2, 1, '#3c4046');
+  // тумбесто котле
+  for (let y = 6; y <= 17; y++) {
+    const t = (y - 6) / 11;
+    const half = Math.round(8 * Math.sin(Math.PI * (0.28 + t * 0.62)));
+    for (let x = 11 - half; x <= 10 + half; x++) {
+      let col = x < 11 - half + 3 ? '#454b55' : x > 10 + half - 3 ? '#1e2126' : '#2b2f36';
+      if (y === 6 || y === 7) col = x < 8 ? '#565d6e' : '#33373d';
+      px(g, x, y, col);
+    }
+  }
+  isoBox(g, 10, 7, 7, 3, 0, '#6b5424', '#4f3d18', '#3f3014', '#2e2410', '#7d6430'); // яхнията
+  px(g, 8, 5, '#8a7048'); px(g, 12, 6, '#8a7048');              // мехури
+  px(g, 10, 4, '#6b5d47'); px(g, 13, 4, '#5c4f3c');             // пара
+  // дръжка
+  for (let x = 2; x <= 18; x++) { const y = 3 - Math.round(2 * Math.sin(Math.PI * (x - 2) / 16)); px(g, x, y, '#3c4046'); }
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
-function genShelf() {
-  const g = mk(26, 20);
-  rc(g, 2, 6, 22, 2, '#6b5231'); rc(g, 2, 6, 22, 1, '#8a6a3a');  // горна дъска
-  rc(g, 2, 14, 22, 2, '#6b5231'); rc(g, 2, 14, 22, 1, '#8a6a3a');
-  rc(g, 2, 8, 1, 6, '#54401f'); rc(g, 23, 8, 1, 6, '#54401f');
-  rc(g, 5, 2, 4, 4, '#8a7a5e'); px(g, 5, 2, '#a3947a');          // делви
-  rc(g, 11, 3, 3, 3, '#6b5d47'); rc(g, 17, 2, 4, 4, '#7d6b52');
-  rc(g, 6, 10, 3, 4, '#8a97ad'); px(g, 6, 10, '#c6d3e6');        // калаени кани
-  rc(g, 13, 11, 4, 3, '#8a7a5e'); rc(g, 19, 10, 3, 4, '#6b5d47');
+function genShelf(R) {
+  const g = mk(30, 30);
+  const bd = '#7d5f33', bdL = '#96763f', bdD = '#5c4423';
+  isoBox(g, 15, 13, 13, 6, 14, bd, '#63502f', '#4d3b1c', '#3f2e1a', bdL);   // тялото на шкафа
+  // ВРАТИЧКИТЕ: рамка по лявото лице, следваща наклона
+  for (let dx = -12; dx <= -1; dx++) {
+    const ext = Math.round(6 * (1 - Math.abs(dx) / 13.999));
+    const yTop = 13 + ext + 2, x = 15 + dx;
+    for (let k = 0; k < 10; k++) px(g, x, yTop + k, k < 1 || k > 8 ? bdD : '#6e5530');
+    if (dx === -12 || dx === -1 || dx === -7) for (let k = 0; k < 10; k++) px(g, x, yTop + k, bdD); // рамка и среда
+  }
+  px(g, 8, 22, '#3c4046'); px(g, 8, 26, '#3c4046');                          // панти
+  px(g, 6, 24, '#c9a23b');                                                    // дръжка
+  // делви и кани ОТГОРЕ
+  const jar = (x, y, c1, c2, c3, h) => {
+    rc(g, x, y + 1, 4, h, c1); rc(g, x, y + 1, 2, h, c2);
+    rc(g, x + 1, y, 2, 1, c3); px(g, x + 4, y + 2, c3);
+  };
+  jar(4, 4, '#8a7a5e', '#a3947a', '#6b5d47', 5);
+  jar(11, 2, '#6b5d47', '#7d6f57', '#54493a', 6);
+  jar(18, 3, '#8a97ad', '#c6d3e6', '#67738c', 5);
+  jar(24, 5, '#7d6b52', '#94816a', '#5c4f3c', 4);
+  woodGrain(g, R, 3, 10, 24, 16, ['#6e5530', '#87683a']);
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 function genBedRoll(R) {
-  const g = mk(28, 16);
-  furnTop(g, 14, 9, 12, 4, '#c9a463', '#8a6a3a');                // сламеник
-  for (let i = 0; i < 30; i++) { const x = 4 + ((R() * 20) | 0), y = 6 + ((R() * 7) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, R() < 0.5 ? '#b08a48' : '#dcc084'); }
-  furnTop(g, 8, 8, 5, 3, '#d8d2be', '#aca691');                  // възглавница
-  rc(g, 15, 6, 10, 1, '#6b5d47');                                // одеяло
-  furnTop(g, 19, 10, 7, 3, '#5e4a6b', '#453552');
+  const g = mk(32, 20);
+  // рамка от дъски + сламеник + завивка
+  isoBox(g, 16, 12, 15, 7, 2, '#5c4423', '#47341a', '#382812', '#241d12', '#6b5231');
+  isoBox(g, 16, 10, 13, 6, 1, '#c9a463', '#a8863f', '#8f6f34', '#6b5231', '#dcc084'); // слама
+  woodGrain(g, R, 5, 5, 22, 9, ['#b08a48', '#dcc084', '#c09a56']);
+  isoBox(g, 9, 8, 6, 3, 2, '#e0dac6', '#bab399', '#9c957c', '#7d7660', '#f0ebd9');   // възглавница
+  isoBox(g, 21, 11, 8, 4, 2, '#5e4a6b', '#463553', '#372943', '#241a2c', '#75608a'); // завивка
+  px(g, 26, 12, '#8a74a3'); px(g, 18, 13, '#453552');
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 function genSacks(R) {
-  const g = mk(20, 18);
-  rc(g, 2, 8, 8, 9, '#a3947a'); rc(g, 3, 7, 6, 1, '#b8a98c');    // чувал
-  rc(g, 4, 6, 4, 1, '#8a7a5e'); px(g, 5, 5, '#6b5d47');
-  rc(g, 11, 10, 7, 7, '#8a7a5e'); rc(g, 12, 9, 5, 1, '#a3947a');
-  rc(g, 13, 8, 3, 1, '#6b5d47');
-  for (let i = 0; i < 12; i++) { const x = 2 + ((R() * 16) | 0), y = 8 + ((R() * 8) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, '#7d6f57'); }
+  const g = mk(26, 24);
+  // профилът е зададен ред по ред: 2-3 реда врат, издути рамене, широко тяло
+  const sack = (cx, base, prof, c1, cL, cD, rope) => {
+    for (let k = 0; k < prof.length; k++) {
+      const half = prof[k], y = base - prof.length + k;
+      for (let x = cx - half; x <= cx + half; x++) {
+        px(g, x, y, x <= cx - half + 2 ? cL : (x >= cx + half - 1 ? cD : c1));
+      }
+    }
+    const nh = prof[0];
+    rc(g, cx - nh, base - prof.length - 1, nh * 2 + 1, 1, rope);          // въжето
+    px(g, cx - nh - 1, base - prof.length, cD); px(g, cx + nh + 1, base - prof.length, cD);
+    rc(g, cx - 1, base - prof.length - 3, 3, 2, c1);                      // гърлото над възела
+    px(g, cx - 2, base - prof.length - 2, cL); px(g, cx + 2, base - prof.length - 2, cD);
+  };
+  sack(7, 22, [2, 3, 4, 5, 6, 6, 7, 7, 7, 7, 7, 6, 6], '#a3947a', '#c0b295', '#7d6f57', '#6b5d47');
+  sack(18, 23, [2, 3, 4, 5, 5, 6, 6, 6, 6, 5], '#8a7a5e', '#a3947a', '#665a45', '#54493a');
+  for (let i = 0; i < 34; i++) { const x = 1 + ((R() * 24) | 0), y = 8 + ((R() * 15) | 0); if (g.getImageData(x, y, 1, 1).data[3]) px(g, x, y, R() < 0.5 ? '#94866c' : '#77694f'); }
+  px(g, 4, 15, '#7d6f57'); px(g, 5, 18, '#7d6f57'); px(g, 9, 17, '#8f8168'); // гънки
+  px(g, 16, 19, '#665a45'); px(g, 20, 18, '#77694f');
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
 function genCandleStand() {
-  const g = mk(10, 22);
-  rc(g, 3, 19, 4, 2, '#3c4046'); rc(g, 4, 20, 2, 1, '#2b2f36');  // стъпало
-  rc(g, 4, 6, 2, 13, '#565a62'); px(g, 4, 8, '#6d7280');
-  rc(g, 3, 5, 4, 1, '#3c4046');
-  rc(g, 4, 2, 2, 3, '#e8e4d0'); px(g, 4, 2, '#f6f3e6');          // свещ
-  px(g, 5, 1, '#ffb84d'); px(g, 5, 0, '#ffd23b');                // пламъче
+  const g = mk(12, 26);
+  isoBox(g, 6, 21, 5, 2, 2, '#565a62', '#3c4046', '#2b2f36', '#20242b', '#6d7280'); // стъпало
+  for (let y = 8; y <= 21; y++) { px(g, 5, y, '#6d7280'); px(g, 6, y, '#454b55'); }  // стълб
+  px(g, 4, 13, '#565a62'); px(g, 7, 16, '#3c4046');                                  // възелчета
+  isoBox(g, 6, 7, 4, 2, 1, '#6d7280', '#454b55', '#33373d', '#24272c', '#878d9c');   // чиния
+  rc(g, 5, 2, 2, 5, '#efe9d6'); px(g, 5, 2, '#fdf8ec'); px(g, 6, 6, '#cdc6b0');      // свещ
+  px(g, 5, 1, '#ffb84d'); px(g, 5, 0, '#ffd23b'); px(g, 6, 1, '#ff8a1f');            // пламъче
+  px(g, 4, 4, '#d8d2be');                                                             // капнал восък
   outlineSprite(g, '#10131c');
   return g.canvas;
 }
@@ -3011,8 +3098,8 @@ function initSurfaceSprites() {
     fence3: genFence3(R),
     fenceTiles: genFenceTiles(), // снапващите се огради (16 маски x 3 вида)
     // МЕБЕЛИ (база за хана и стаите)
-    table: genTable(R), bench: genBench(R), stool: genStool(), keg: genKeg(),
-    fireplace: genFireplace(R), cauldron: genCauldron(), shelf: genShelf(),
+    table: genTable(R), bench: genBench(R), stool: genStool(R), keg: genKeg(R),
+    fireplace: genFireplace(R), cauldron: genCauldron(R), shelf: genShelf(R),
     bedroll: genBedRoll(R), sacks: genSacks(R), candle: genCandleStand(),
     cave: genCaveMouth(R),                   // входът към всяко подземие
     tower: genMirTower(R),
