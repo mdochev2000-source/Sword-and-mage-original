@@ -1,7 +1,9 @@
 name: build
 
-# Пуска се само при промяна на ИЗВОРА (js/, index.html, build.py, manifest, икони).
-# Сглобеният bezdna-online.html и docs/ НЕ са в paths -> авто-commit-ът не пуска нов цикъл.
+# ПРОВЕРКА, не пре-сглобяване. Досега този Action пресглобяваше и правеше СВОЙ
+# commit — това пораждаше допълнителни деплойменти на Pages, които отменяха
+# текущия и обновлението не стигаше до играча. Сега само проверява, че
+# качената сглобка отговаря на изворите. Нищо не комитва и нищо не бута.
 on:
   push:
     branches: [main]
@@ -9,37 +11,30 @@ on:
       - 'js/**'
       - 'index.html'
       - 'build.py'
-      - 'make_icons.py'
-      - 'manifest.json'
-      - 'icon-192.png'
-      - 'icon-512.png'
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+  contents: read
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Сглоби bezdna-online.html + docs/
-        run: python build.py
-      - name: Commit-ни сглобката, ако се е променила
+      - name: Сглоби наново и сравни
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bezdna-online.html docs/
-          if git diff --cached --quiet; then
-            echo "Няма промяна в сглобката."
+          cp docs/index.html /tmp/committed.html
+          python build.py
+          # времевият печат се различава при всяко сглобяване — махаме го от сравнението
+          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' /tmp/committed.html > /tmp/a.html
+          sed -E 's/__BUILD__ = "[^"]*"/__BUILD__ = "X"/' docs/index.html > /tmp/b.html
+          if diff -q /tmp/a.html /tmp/b.html > /dev/null; then
+            echo "OK: качената сглобка отговаря на изворите."
           else
-            git commit -m "build: обнови сглобката [skip ci]"
-            git push
+            echo "ВНИМАНИЕ: docs/index.html не е пресглобен след промяна в js/."
+            diff /tmp/a.html /tmp/b.html | head -20
+            exit 1
           fi
