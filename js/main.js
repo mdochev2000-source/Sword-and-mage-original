@@ -1622,6 +1622,12 @@ function saveCityLayout() {
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs; // създадените спрайтове (с рисунките им)
   if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
+  if (G.spriteHidden && Object.keys(G.spriteHidden).length) L.hidden = G.spriteHidden;
+  try {                                            // избраните видове плочки
+    const v = G.map.variant, b = [];
+    for (let i = 0; i < v.length; i++) b.push(String.fromCharCode(v[i]));
+    L.vars = btoa(b.join(''));
+  } catch (e) {}
   // пътищата (боядисани с четката) — целият слой, пакетиран в base64
   try {
     const pb = G.map.path; const bytes = new Uint8Array((pb.length + 7) >> 3);
@@ -1688,13 +1694,36 @@ function saveInteriorLayout() {
   if (G.customDefs && Object.keys(G.customDefs).length) L.custom = G.customDefs;
   if (G.spriteOverrides && Object.keys(G.spriteOverrides).length) L.sprites = G.spriteOverrides;
   if (G.spriteNames && Object.keys(G.spriteNames).length) L.names = G.spriteNames;
+  if (G.spriteHidden && Object.keys(G.spriteHidden).length) L.hidden = G.spriteHidden;
+  try {                                            // избраните видове плочки
+    const v = G.map.variant, b = [];
+    for (let i = 0; i < v.length; i++) b.push(String.fromCharCode(v[i]));
+    L.vars = btoa(b.join(''));
+  } catch (e) {}
   saveLayoutSafe(interiorLayoutKey(G.inside.id), L);
   return L;
+}
+// РИСУВАНЕ НА ПЛОЧКА: сменя вида на самата клетка (земя/под/стена)
+function paintTileAt(cellX, cellY, key) {
+  const m = G.map;
+  const B2 = G.inside ? 1 : 2;
+  if (cellX < B2 || cellY < B2 || cellX >= m.w - B2 || cellY >= m.h - B2) return;
+  const idx = cellY * m.w + cellX;
+  const n = parseInt(key.slice(key.search(/\d/)), 10) || 0;
+  if (key.indexOf('tile_grass') === 0) { m.path[idx] = 0; m.variant[idx] = n; G.editPathDirty = true; }
+  else if (key.indexOf('tile_dirt') === 0) { m.path[idx] = 1; m.variant[idx] = n; G.editPathDirty = true; }
+  else if (key.indexOf('tile_ifloor') === 0) { m.cells[idx] = FLOOR; m.variant[idx] = n; G.editWallDirty = true; }
+  else if (key.indexOf('tile_iwall') === 0) {
+    if (Math.floor(G.player.x) === cellX && Math.floor(G.player.y) === cellY) return; // не зазиждай героя
+    m.cells[idx] = WALL; m.variant[idx] = n; G.editWallDirty = true;
+  }
+  G.editVarDirty = true;
 }
 function placeDecorAt(cellX, cellY, loud) {
   const m = G.map, idx = cellY * m.w + cellX;
   const kind = G.editPlaceKind;
   if (!kind) { if (loud) toast('Pick an element from the palette first.', '#ffd23b'); return; }
+  if (kind.slice(0, 5) === 'tile_') { paintTileAt(cellX, cellY, kind); return; }
   if (kind.slice(0, 2) === 'b_') { placeBuildingAt(kind.slice(2), cellX, cellY, loud); return; }
   if (kind.slice(0, 5) === 'cust_') {
     const id = kind.slice(5), cd = G.customDefs && G.customDefs[id];
@@ -1840,7 +1869,7 @@ function cityEditClick(mx, my) {
   // оградите се редят с ВЛАЧЕНЕ (свързват се сами)
   if (tool === 'place') {
     placeDecorAt(cellX, cellY, true);
-    if (G.editPlaceKind && FENCE_SET[G.editPlaceKind] !== undefined) G.editPaint = true;
+    if (G.editPlaceKind && (FENCE_SET[G.editPlaceKind] !== undefined || G.editPlaceKind.slice(0, 5) === 'tile_')) G.editPaint = true;
     return true;
   }
   // МОЛИВЪТ: избираш поставен обект -> отваря се пиксел-редакторът за спрайта му
@@ -1860,6 +1889,19 @@ function cityEditClick(mx, my) {
         hitP = Math.floor(pr.x) === cellX && Math.floor(pr.y) === cellY;
       }
       if (hitP) { openPixelEditor(key); return true; }
+    }
+    { // няма обект — значи редактираме ПЛОЧКАТА под курсора (под, трева, стена)
+      const m2 = G.map;
+      let tx = cellX, ty = cellY;
+      if (G.inside) { const w2 = pickWallCell(); if (m2.cells[w2.y * m2.w + w2.x] === WALL) { tx = w2.x; ty = w2.y; } }
+      const idx2 = ty * m2.w + tx;
+      if (idx2 >= 0 && idx2 < m2.cells.length) {
+        const v = m2.variant[idx2] || 0;
+        let key = null;
+        if (G.inside) key = (m2.cells[idx2] === WALL) ? ('tile_iwall' + (v % Spr.int.wall.length)) : ('tile_ifloor' + (v % Spr.int.floor.length));
+        else if (m2.cells[idx2] === FLOOR) key = m2.path[idx2] ? ('tile_dirt' + (v % Spr.surf.dirt.length)) : ('tile_grass' + (v % Spr.surf.grass.length));
+        if (key) { openPixelEditor(key); return true; }
+      }
     }
     toast('Click a placed object to edit its pixels.', '#ffd23b');
     return true;
@@ -1976,9 +2018,10 @@ function drawCityEditOverlay() {
     tbtn('FLOOR', CW / 2 + 52 * S, 40 * S, 'floor');
   }
   tbtn('CREATE', CW / 2 + 94 * S, 44 * S, 'create');
-  // ПАЛИТРАТА (при ADD/PENCIL/ERASE): моливът и гумата работят САМО по избрания елемент
+  // ПАЛИТРАТА (при ADD/ERASE) с ФИЛТРИ по вид — иначе всичко е в една каша
   if (tool === 'place' || tool === 'erase') {
-    const items = [
+    G.editCat = G.editCat || 'NATURE';
+    const nature = [
       ['tree', Spr.surf.tree], ['tree2', Spr.surf.tree2], ['deadTree', Spr.surf.deadTree], ['deadTree2', Spr.surf.deadTree2],
       ['rock', Spr.surf.rock], ['rock2', Spr.surf.rock2], ['rock3', Spr.surf.rock3],
       ['bush', Spr.surf.bushes[0]], ['bush2', Spr.surf.bushes[1]],
@@ -1986,39 +2029,60 @@ function drawCityEditOverlay() {
       ['fence', Spr.surf.fenceTiles[0][10]], ['fence2', Spr.surf.fenceTiles[1][10]], ['fence3', Spr.surf.fenceTiles[2][10]],
       ['puddle', Spr.surf.puddle],
       ['tomb', Spr.surf.tomb],
-      // мебелите
-      ['table', Spr.surf.table],
-      ['bench', Spr.surf.bench],
-      ['stool', Spr.surf.stool],
-      ['keg', Spr.surf.keg],
-      ['fireplace', Spr.surf.fireplace],
-      ['cauldron', Spr.surf.cauldron],
-      ['shelf', Spr.surf.shelf],
-      ['bedroll', Spr.surf.bedroll],
-      ['sacks', Spr.surf.sacks],
+    ];
+    const furniture = [
+      ['table', Spr.surf.table], ['bench', Spr.surf.bench], ['stool', Spr.surf.stool],
+      ['keg', Spr.surf.keg], ['fireplace', Spr.surf.fireplace], ['cauldron', Spr.surf.cauldron],
+      ['shelf', Spr.surf.shelf], ['bedroll', Spr.surf.bedroll], ['sacks', Spr.surf.sacks],
       ['candle', Spr.surf.candle],
     ];
-    if (G.inside && Spr.int) items.push(['exitdoor', Spr.int.door]); // вратата — само вътре
-    // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
-    if (!G.inside) items.push(
+    if (G.inside && Spr.int) furniture.push(['exitdoor', Spr.int.door]);
+    const builds = G.inside ? [] : [
       ['b_house_0_0', Spr.surf.houses[0]], ['b_house_0_1', Spr.surf.houses[1]],
       ['b_house_1_0', Spr.surf.houses2[0]], ['b_house_1_1', Spr.surf.houses2[1]],
       ['b_shop_weapon', Spr.surf.shophouses.weapon], ['b_shop_armor', Spr.surf.shophouses.armor],
       ['b_shop_potion', Spr.surf.shophouses.potion], ['b_shop_jewel', Spr.surf.shophouses.jewel],
       ['b_shop_tavern', Spr.surf.shophouses.tavern],
       ['b_church', Spr.surf.church], ['b_tower', Spr.surf.tower],
-      ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower]
-    );
-    for (const id in (G.customDefs || {})) if (Spr.custom && Spr.custom[id]) items.push(['cust_' + id, Spr.custom[id]]);
+      ['b_wallseg', Spr.surf.wallseg], ['b_gatetower', Spr.surf.gateTower],
+    ];
+    // ПЛОЧКИТЕ: земята навън, подът и стените вътре — всяка като отделен спрайт
+    const tiles = [];
+    if (G.inside && Spr.int) {
+      Spr.int.floor.forEach((sp, i) => tiles.push(['tile_ifloor' + i, sp]));
+      Spr.int.wall.forEach((sp, i) => tiles.push(['tile_iwall' + i, sp]));
+    } else {
+      Spr.surf.grass.forEach((sp, i) => tiles.push(['tile_grass' + i, sp]));
+      Spr.surf.dirt.forEach((sp, i) => tiles.push(['tile_dirt' + i, sp]));
+    }
+    const mine = [];
+    for (const id in (G.customDefs || {})) if (Spr.custom && Spr.custom[id]) mine.push(['cust_' + id, Spr.custom[id]]);
+    const hiddenList = [];
+    for (const k in (G.spriteHidden || {})) { const sp = spriteByKey(k) || (k.slice(0, 2) === 'b_' ? spriteByKey(k.slice(2)) : null); if (sp) hiddenList.push([k, sp]); }
+    const CATS = [['NATURE', nature], ['FURNI', furniture], ['BUILD', builds], ['TILES', tiles], ['MINE', mine], ['HIDDEN', hiddenList]];
+    // редът с филтрите
+    let fx = CW / 2 - CATS.length * 21 * S / 2;
+    for (const [cname, list] of CATS) {
+      const on = G.editCat === cname;
+      panel(fx, 37 * S, 40 * S, 11 * S);
+      if (on) strokeRect(fx, 37 * S, 40 * S, 11 * S, '#ffd23b', S);
+      ctx.font = fontBold(5); ctx.textAlign = 'center';
+      ctx.fillStyle = on ? '#ffd23b' : (list.length ? '#a8b2c4' : '#4a5468');
+      ctx.fillText(cname + (list.length ? ' ' + list.length : ''), fx + 20 * S, 44.5 * S);
+      UI.cityEditBtns.push({ x: fx, y: 37 * S, w: 40 * S, h: 11 * S, act: () => { G.editCat = cname; } });
+      fx += 42 * S;
+    }
+    let items = (CATS.find(c => c[0] === G.editCat) || CATS[0])[1];
+    if (G.editCat !== 'HIDDEN') items = items.filter(([k]) => !(G.spriteHidden && G.spriteHidden[k]));
     const per = 16, cw2 = 18 * S;
     const palRows = Math.ceil(items.length / per);
-    UI.editPaletteBottom = (37 + palRows * 20) * S;
+    UI.editPaletteBottom = (50 + palRows * 20) * S;
 
     items.forEach(([k, spr2], i) => {
       const colI = i % per, rowI = Math.floor(i / per);
       const cntI = Math.min(per, items.length - rowI * per);
       const x0r = CW / 2 - cntI * (cw2 + 2 * S) / 2;
-      const bx2 = x0r + colI * (cw2 + 2 * S), by2 = (37 + rowI * 20) * S;
+      const bx2 = x0r + colI * (cw2 + 2 * S), by2 = (50 + rowI * 20) * S;
       panel(bx2, by2, cw2, cw2);
       if (G.editPlaceKind === k) strokeRect(bx2, by2, cw2, cw2, '#7fd0a0', S);
       const f = Math.min((cw2 - 4 * S) / spr2.width, (cw2 - 4 * S) / spr2.height);
@@ -2030,7 +2094,10 @@ function drawCityEditOverlay() {
         ctx.font = fontBold(8); ctx.fillStyle = '#7d8899'; ctx.textAlign = 'center';
         ctx.fillText('?', bx2 + cw2 / 2, by2 + cw2 / 2 + 3 * S);
       }
-      UI.cityEditBtns.push({ x: bx2, y: by2, w: cw2, h: cw2, act: () => { G.editPlaceKind = k; if (G.editDelArm !== k) G.editDelArm = null; } });
+      UI.cityEditBtns.push({ x: bx2, y: by2, w: cw2, h: cw2, act: () => {
+        if (G.editCat === 'HIDDEN') { delete G.spriteHidden[k]; saveCityLayout(); toast('Restored.', '#7fd0a0'); return; }
+        G.editPlaceKind = k; if (G.editDelArm !== k) G.editDelArm = null;
+      } });
     });
     // изтриване на СЪЗДАДЕН спрайт: дефиницията + всички поставени копия (два клика)
     if (G.editPlaceKind && G.editPlaceKind.slice(0, 5) === 'cust_') {
@@ -2058,6 +2125,7 @@ function drawCityEditOverlay() {
   if (G.editPaint && (tool === 'wall' || tool === 'floor')) paintWallCell(tool === 'wall' ? WALL : FLOOR);
   if (G.editPaint && tool === 'erase') eraseDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy));
   if (G.editPaint && tool === 'place' && G.editPlaceKind && FENCE_SET[G.editPlaceKind] !== undefined) placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
+  if (G.editPaint && tool === 'place' && G.editPlaceKind && G.editPlaceKind.slice(0, 5) === 'tile_') placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
   if (G.editPaint && tool === 'create' && !G.pixEdit && G.createSt && G.createSt.drag) {
     G.createSt.drag.x1 = Math.floor(G.mouse.wx); G.createSt.drag.y1 = Math.floor(G.mouse.wy);
   }
@@ -2262,8 +2330,18 @@ function pixPickerDrag(mx, my) {
 // ================= ПИКСЕЛ-РЕДАКТОРЪТ (моливът на дизайнера) =================
 // Избираш обект -> панел отстрани: увеличен спрайт, цветове, молив/гума/пипета.
 // Промените важат за ВСИЧКИ копия и влизат в подредбата (COPY LAYOUT).
+// ПЛОЧКИТЕ: земята и стените са спрайтове като всичко останало
+function tileSprite(key) {
+  const n = parseInt(key.slice(key.search(/\d/)), 10) || 0;
+  if (key.indexOf('tile_grass') === 0) return Spr.surf && Spr.surf.grass[n % Spr.surf.grass.length];
+  if (key.indexOf('tile_dirt') === 0) return Spr.surf && Spr.surf.dirt[n % Spr.surf.dirt.length];
+  if (key.indexOf('tile_ifloor') === 0) return Spr.int && Spr.int.floor[n % Spr.int.floor.length];
+  if (key.indexOf('tile_iwall') === 0) return Spr.int && Spr.int.wall[n % Spr.int.wall.length];
+  return null;
+}
 function spriteByKey(key) {
   if (key && key.slice(0, 5) === 'cust_') return (Spr.custom && Spr.custom[key.slice(5)]) || null;
+  if (key && key.slice(0, 5) === 'tile_') return tileSprite(key);
   const S2 = Spr.surf; if (!S2) return null;
   const map = {
     tree: S2.tree, tree2: S2.tree2, deadTree: S2.deadTree, deadTree2: S2.deadTree2,
@@ -2476,6 +2554,30 @@ function pixResizeCanvas(dw, dh) {
   }
   pixSaveOverride();
   toast(nw + 'x' + nh + ' px', '#7fd0a0');
+}
+// Изтрива спрайт ОТВСЯКЪДЕ: маха поставените копия и го скрива от палитрата.
+// Собствените изчезват завинаги; вградените се крият (връщат се от филтъра HIDDEN).
+function deleteSpriteEverywhere(key) {
+  const isCust = key.slice(0, 5) === 'cust_';
+  const kind = isCust ? null : (key.slice(0, 2) === 'b_' ? key.slice(2) : key);
+  for (let i = G.props.length - 1; i >= 0; i--) {
+    const pr = G.props[i];
+    if (isCust) { if (pr.kind === 'custom' && pr.cid === key.slice(5)) G.props.splice(i, 1); continue; }
+    if (pr.kind === kind) { G.props.splice(i, 1); continue; }
+    if (kind && kind.slice(0, 5) === 'shop_' && pr.kind === 'shophouse' && pr.vtype === kind.slice(5)) G.props.splice(i, 1);
+    else if (kind && kind.slice(0, 5) === 'house' && pr.kind === 'house') G.props.splice(i, 1);
+  }
+  if (isCust) {
+    const id = key.slice(5);
+    if (G.customDefs) delete G.customDefs[id];
+    if (Spr.custom) delete Spr.custom[id];
+  } else {
+    G.spriteHidden = G.spriteHidden || {};
+    G.spriteHidden[key] = 1;
+  }
+  if (G.editPlaceKind === key) G.editPlaceKind = null;
+  saveCityLayout();
+  toast(isCust ? 'Sprite deleted.' : 'Sprite removed and hidden (HIDDEN filter brings it back).', '#ffd23b');
 }
 function pixSaveOverride() {
   const e = G.pixEdit; if (!e) return;
@@ -2702,18 +2804,12 @@ function drawPixelEditor() {
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
   }, false, 1); bx2 += 22 * S;
-  if (e.key.slice(0, 5) === 'cust_') { // ИЗТРИВАНЕ на собствения спрайт (два клика)
-    const delId = e.key.slice(5);
+  if (e.key.slice(0, 5) !== 'tile_') { // ИЗТРИВАНЕ на ВСЕКИ спрайт (два клика)
     const armed = G.pixDelArm === e.key;
     tb(armed ? 'SURE?' : 'DEL', bx2, 22 * S, () => {
-      if (!armed) { G.pixDelArm = e.key; toast('Click DEL again to delete this sprite for good.', '#ff6b7a'); return; }
-      for (let i = G.props.length - 1; i >= 0; i--) if (G.props[i].kind === 'custom' && G.props[i].cid === delId) G.props.splice(i, 1);
-      if (G.customDefs) delete G.customDefs[delId];
-      if (Spr.custom) delete Spr.custom[delId];
-      if (G.editPlaceKind === e.key) G.editPlaceKind = null;
+      if (!armed) { G.pixDelArm = e.key; toast('Click DEL again — the sprite and everything placed of it goes.', '#ff6b7a'); return; }
+      deleteSpriteEverywhere(e.key);
       G.pixEdit = null; G.pixDelArm = null;
-      saveCityLayout();
-      toast('Sprite deleted.', '#ffd23b');
       Sfx.play('deny');
     }, armed, 1); bx2 += 24 * S;
   }
@@ -2850,6 +2946,7 @@ function applySpriteOverrides() {
     const L = JSON.parse(localStorage.getItem(key) || 'null');
     if (L && L.sprites) loc = L.sprites;
     G.spriteNames = (L && L.names) ? L.names : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.names) || {});
+    G.spriteHidden = (L && L.hidden) ? L.hidden : ((typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT.hidden) || {});
   } catch (e) {}
   const baked = (typeof MIRHOLD_LAYOUT !== 'undefined' && MIRHOLD_LAYOUT && MIRHOLD_LAYOUT.sprites) || {};
   G.spriteOverrides = Object.assign({}, loc || {});

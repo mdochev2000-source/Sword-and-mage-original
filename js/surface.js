@@ -440,6 +440,13 @@ const Surface = {
     }
     }
 
+    // РЪЧНО избраните видове плочки (от палитрата TILES)
+    if (LAY && typeof LAY.vars === 'string') {
+      try {
+        const raw = atob(LAY.vars);
+        for (let i = 0; i < variant.length && i < raw.length; i++) variant[i] = raw.charCodeAt(i);
+      } catch (e) {}
+    }
     // РЪЧНО боядисаните пътища (от четката в едитора) заместват процедурните
     if (LAY && typeof LAY.paths === 'string') {
       try {
@@ -522,6 +529,12 @@ function generateInterior(id) {
       }
       props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
     }
+  }
+  if (LAY0 && typeof LAY0.vars === 'string') {   // избраните видове под и стени
+    try {
+      const raw = atob(LAY0.vars);
+      for (let i = 0; i < variant.length && i < raw.length; i++) variant[i] = raw.charCodeAt(i);
+    } catch (e) {}
   }
   if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.5, r: 0.2, solid: false }); // без врата не се остава
   G.fenceDirty = true;
