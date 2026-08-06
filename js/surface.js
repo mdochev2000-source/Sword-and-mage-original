@@ -485,21 +485,34 @@ function generateInterior(id) {
     cells[idx] = inRoom ? FLOOR : (isWall ? WALL : VOID);
   }
   const props = [];
-  // ВРАТАТА навън — на южната стена, по средата
+  const LAY0 = interiorLayout(id);
+  // РЪЧНО зиданите стени заместват правоъгълника по подразбиране
+  if (LAY0 && LAY0.walls && LAY0.w === w && LAY0.h === h) {
+    try {
+      const raw = atob(LAY0.walls);
+      for (let i = 0; i < cells.length; i++) {
+        const bit = (raw.charCodeAt(i >> 3) >> (i & 7)) & 1;
+        if (bit) cells[i] = WALL;
+        else if (cells[i] === WALL) cells[i] = FLOOR;
+      }
+    } catch (e) {}
+  }
+  // ВРАТАТА навън — по подразбиране на южната стена (ако дизайнерът не е сложил своя)
   const dx = (w >> 1), dy = h - 3;
-  props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false });
+  const ownDoor = LAY0 && Array.isArray(LAY0.decor) && LAY0.decor.some(d => d.k === 'exitdoor');
+  if (!ownDoor) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false });
   // стопанинът зад тезгяха (в църквата няма никого — свещеникът идва по-нататък)
   if (id !== 'church') {
     props.push({ kind: 'vendor', vtype: id, x: dx + 0.5, y: 3.5, r: 0.3, solid: true, name: VENDOR_DEFS[id].name });
   }
   // мебелите на дизайнера
   G.customDefs = {};
-  const LAY = interiorLayout(id);
+  const LAY = LAY0;
   if (LAY && LAY.custom) G.customDefs = JSON.parse(JSON.stringify(LAY.custom));
   if (typeof buildCustomSprites === 'function') buildCustomSprites();
   if (typeof applySpriteOverrides === 'function') applySpriteOverrides(); // корекциите на стаята
   if (LAY && Array.isArray(LAY.decor)) {
-    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16 };
+    const DR = { tree: 0.38, tree2: 0.38, deadTree: 0.38, deadTree2: 0.38, rock: 0.3, rock2: 0.35, rock3: 0.45, bush: 0.3, bush2: 0.3, tuft: 0, tuft2: 0, fence: 0.35, fence2: 0.35, fence3: 0.35, puddle: 0, table: 0.42, bench: 0.34, stool: 0.22, keg: 0.26, fireplace: 0.45, cauldron: 0.28, shelf: 0.38, bedroll: 0.4, sacks: 0.3, candle: 0.16, exitdoor: 0.2 };
     for (const d2 of LAY.decor) {
       if (d2.k === 'custom') {
         const cd = G.customDefs[d2.id];
@@ -507,9 +520,10 @@ function generateInterior(id) {
         props.push({ kind: 'custom', cid: d2.id, bx: d2.x, by: d2.y, cw: cd.cw, ch: cd.ch, x: d2.x + cd.cw / 2, y: d2.y + cd.ch / 2, r: 0.5, solid: !!cd.solid && !cd.flat, flat: !!cd.flat });
         continue;
       }
-      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + 0.5, r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll', flat: d2.k === 'puddle' });
+      props.push({ kind: d2.k, x: d2.x + 0.5, y: d2.y + (d2.k === 'exitdoor' ? 0.85 : 0.5), r: DR[d2.k] !== undefined ? DR[d2.k] : 0.35, solid: d2.k !== 'tuft' && d2.k !== 'tuft2' && d2.k !== 'puddle' && d2.k !== 'bedroll' && d2.k !== 'exitdoor', flat: d2.k === 'puddle' });
     }
   }
+  if (!props.some(q => q.kind === 'exitdoor')) props.push({ kind: 'exitdoor', x: dx + 0.5, y: dy + 0.85, r: 0.2, solid: false }); // без врата не се остава
   G.fenceDirty = true;
   return { map: { w, h, cells, variant, rooms: [], start: { x: dx + 0.5, y: dy - 0.4 }, path }, props, spots: {}, name: def.name };
 }

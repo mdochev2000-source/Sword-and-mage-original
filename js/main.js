@@ -153,7 +153,7 @@ function setupInput() {
       G.mouse.down = false; G.editDrag = null; G.setDrag = false;
       if (G.editPaint) {
         G.editPaint = false;
-        if (G.editPathDirty || G.editDecorDirty) { G.editPathDirty = false; G.editDecorDirty = false; saveCityLayout(); }
+        if (G.editPathDirty || G.editDecorDirty || G.editWallDirty) { G.editPathDirty = false; G.editDecorDirty = false; G.editWallDirty = false; saveCityLayout(); }
       }
       if (G.pixPaint) { G.pixPaint = false; pixSaveOverride(); }
       if (G.pixShape && G.pixEdit) { // ЛИНИЯ/ПРАВОЪГЪЛНИК: пускането нанася фигурата
@@ -1444,6 +1444,7 @@ const BLD_DEFS = {
   fence3:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   puddle:    { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   peddler:   { ax: 0.5, ay: 0.5, cells: () => [], free: true }, // мястото на странстващия търговец
+  exitdoor:  { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   table:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   bench:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
   stool:     { ax: 0.5, ay: 0.5, cells: () => [], free: true },
@@ -1483,6 +1484,7 @@ const DECOR_KINDS = {
   bedroll:  { r: 0.4, solid: false },
   sacks:    { r: 0.3, solid: true },
   candle:   { r: 0.16, solid: true },
+  exitdoor: { r: 0.2, solid: false },   // вратата навън — слага се и се мести като всичко
 };
 // оградите се СНАПВАТ: маска по съседите (N=1,E=2,S=4,W=8), трите вида се връзват взаимно
 const FENCE_SET = { fence: 0, fence2: 1, fence3: 2 };
@@ -1627,6 +1629,13 @@ function placeBuildingAt(bk, cellX, cellY, loud) {
 // подредбата на СТАЯТА: мебели (декор + собствени спрайтове) и пикселни корекции
 function saveInteriorLayout() {
   const L = { room: G.inside.id, decor: [] }; // белегът коя стая е — за вграждане
+  // СТЕНИТЕ на стаята (битова маска, за да не расте записът)
+  try {
+    const m = G.map, bytes = new Uint8Array((m.cells.length + 7) >> 3);
+    for (let i = 0; i < m.cells.length; i++) if (m.cells[i] === WALL) bytes[i >> 3] |= 1 << (i & 7);
+    L.w = m.w; L.h = m.h;
+    L.walls = btoa(String.fromCharCode.apply(null, bytes));
+  } catch (e) {}
   for (const pr of G.props) {
     if (pr.kind === 'custom') { L.decor.push({ k: 'custom', id: pr.cid, x: pr.bx, y: pr.by }); continue; }
     if (DECOR_KINDS[pr.kind]) L.decor.push({ k: pr.kind, x: Math.floor(pr.x), y: Math.floor(pr.y) });
@@ -1712,6 +1721,17 @@ function eraseDecorAt(cellX, cellY) {
     }
   }
 }
+// ЗИДАНЕ/СЪБАРЯНЕ на стена в стаята
+function paintWallCell(v) {
+  const m = G.map;
+  const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
+  if (cx2 < 1 || cy2 < 1 || cx2 >= m.w - 1 || cy2 >= m.h - 1) return;
+  if (v === WALL && Math.floor(G.player.x) === cx2 && Math.floor(G.player.y) === cy2) return; // не зазиждай героя
+  const idx = cy2 * m.w + cx2;
+  if (m.cells[idx] === v) return;
+  m.cells[idx] = v;
+  G.editWallDirty = true;
+}
 function paintPathCell(v) {
   const m = G.map;
   const cx2 = Math.floor(G.mouse.wx), cy2 = Math.floor(G.mouse.wy);
@@ -1747,6 +1767,12 @@ function cityEditClick(mx, my) {
   if (tool === 'path' || tool === 'grass') {
     G.editPaint = true;
     paintPathCell(tool === 'path' ? 1 : 0);
+    return true;
+  }
+  // ЧЕТКИ за стена/под (в стаята)
+  if (tool === 'wall' || tool === 'floor') {
+    G.editPaint = true;
+    paintWallCell(tool === 'wall' ? WALL : FLOOR);
     return true;
   }
   // ДОБАВЯНЕ (клик) — поставя избрания от палитрата елемент;
@@ -1882,6 +1908,9 @@ function drawCityEditOverlay() {
   if (!G.inside) { // пътищата и тревата са само навън
     tbtn('PATH', CW / 2 + 16 * S, 34 * S, 'path');
     tbtn('GRASS', CW / 2 + 52 * S, 40 * S, 'grass');
+  } else {         // вътре: зидане и събаряне на стени
+    tbtn('WALL', CW / 2 + 16 * S, 34 * S, 'wall');
+    tbtn('FLOOR', CW / 2 + 52 * S, 40 * S, 'floor');
   }
   tbtn('CREATE', CW / 2 + 94 * S, 44 * S, 'create');
   // ПАЛИТРАТА (при ADD/PENCIL/ERASE): моливът и гумата работят САМО по избрания елемент
@@ -1905,6 +1934,7 @@ function drawCityEditOverlay() {
       ['sacks', Spr.surf.sacks],
       ['candle', Spr.surf.candle],
     ];
+    if (G.inside && Spr.int) items.push(['exitdoor', Spr.int.door]); // вратата — само вътре
     // ВСИЧКИ СГРАДИ — да могат да се възстановяват/дострояват направо от палитрата
     if (!G.inside) items.push(
       ['b_house_0_0', Spr.surf.houses[0]], ['b_house_0_1', Spr.surf.houses[1]],
@@ -1961,6 +1991,7 @@ function drawCityEditOverlay() {
   }
   // влаченето: четките за път/трева + моливът + гумата
   if (G.editPaint && (tool === 'path' || tool === 'grass')) paintPathCell(tool === 'path' ? 1 : 0);
+  if (G.editPaint && (tool === 'wall' || tool === 'floor')) paintWallCell(tool === 'wall' ? WALL : FLOOR);
   if (G.editPaint && tool === 'erase') eraseDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy));
   if (G.editPaint && tool === 'place' && G.editPlaceKind && FENCE_SET[G.editPlaceKind] !== undefined) placeDecorAt(Math.floor(G.mouse.wx), Math.floor(G.mouse.wy), false);
   if (G.editPaint && tool === 'create' && !G.pixEdit && G.createSt && G.createSt.drag) {
