@@ -22,7 +22,7 @@
 <canvas id="game"></canvas>
 <script>
 // сглобено от build.py — не редактирай ръчно; промени js/*.js
-window.__BUILD__ = "2026-08-06 17:26 UTC";
+window.__BUILD__ = "2026-08-06 18:21 UTC";
 
 (function () {
   // Страницата се сервира с Cache-Control: max-age=600, тоест обикновеното
@@ -13746,42 +13746,42 @@ function drawPixelEditor() {
   tb('LIN', bx2, 20 * S, () => { e.tool = 'line'; }, e.tool === 'line'); bx2 += 22 * S;
   tb('REC', bx2, 20 * S, () => { e.tool = 'rect'; }, e.tool === 'rect'); bx2 += 22 * S;
   tb('SEL', bx2, 20 * S, () => { pixCommitSel(); e.tool = 'sel'; }, e.tool === 'sel');
-  bx2 = r.x + 4 * S;
-  tb('HND', bx2, 20 * S, () => { e.tool = 'hand'; }, e.tool === 'hand', 1); bx2 += 22 * S;
-  tb('MIR', bx2, 20 * S, () => { e.mirror = !e.mirror; }, !!e.mirror, 1); bx2 += 22 * S;
-  tb('UND', bx2, 20 * S, () => pixUndo(), false, 1); bx2 += 22 * S;
-  tb('-', bx2, 12 * S, () => pixZoomStep(-1), false, 1); bx2 += 14 * S;
-  tb('+', bx2, 12 * S, () => pixZoomStep(1), false, 1); bx2 += 14 * S;
-  tb('RST', bx2, 20 * S, () => {
+  bx2 = r.x + 3 * S;
+  tb('HND', bx2, 18 * S, () => { e.tool = 'hand'; }, e.tool === 'hand', 1); bx2 += 19 * S;
+  tb('MIR', bx2, 18 * S, () => { e.mirror = !e.mirror; }, !!e.mirror, 1); bx2 += 19 * S;
+  tb('UND', bx2, 18 * S, () => pixUndo(), false, 1); bx2 += 19 * S;
+  tb('-', bx2, 10 * S, () => pixZoomStep(-1), false, 1); bx2 += 11 * S;
+  tb('+', bx2, 10 * S, () => pixZoomStep(1), false, 1); bx2 += 11 * S;
+  tb('RST', bx2, 18 * S, () => {
     pixPushHist(); // и RESET може да се върне с UNDO
     const c = e.spr.getContext('2d');
     c.clearRect(0, 0, e.spr.width, e.spr.height);
     c.drawImage(e.bak, 0, 0);
     if (e.key.slice(0, 5) === 'cust_') { pixSaveOverride(); return; }
     if (G.spriteOverrides) { delete G.spriteOverrides[e.key]; saveCityLayout(); }
-  }, false, 1); bx2 += 22 * S;
+  }, false, 1); bx2 += 19 * S;
   if (e.key.slice(0, 5) !== 'tile_') { // СТЪПАЛО: героят се качва върху този спрайт
     const isCustKey = e.key.slice(0, 5) === 'cust_';
     const cdS = isCustKey ? (G.customDefs && G.customDefs[e.key.slice(5)]) : null;
     const onStep = isCustKey ? !!(cdS && cdS.step) : !!(G.stepKinds && G.stepKinds[e.key]);
-    tb('STEP', bx2, 22 * S, () => {
+    tb('STEP', bx2, 20 * S, () => {
       if (isCustKey) { if (cdS) { cdS.step = !cdS.step; if (cdS.step) { cdS.solid = true; cdS.flat = false; } } }
       else { G.stepKinds = G.stepKinds || {}; if (G.stepKinds[e.key]) delete G.stepKinds[e.key]; else G.stepKinds[e.key] = 1; }
       saveCityLayout();
       toast(onStep ? 'No longer a step.' : 'Now a STEP — the hero climbs on it.', '#7fd0a0');
-    }, onStep, 1); bx2 += 24 * S;
+    }, onStep, 1); bx2 += 21 * S;
   }
-  tb('DUP', bx2, 20 * S, () => pixDuplicate(), false, 1); bx2 += 22 * S;   // дублиране
+  tb('DUP', bx2, 18 * S, () => pixDuplicate(), false, 1); bx2 += 19 * S;   // дублиране
   if (e.key.slice(0, 5) !== 'tile_') { // ИЗТРИВАНЕ на ВСЕКИ спрайт (два клика)
     const armed = G.pixDelArm === e.key;
-    tb(armed ? 'SURE?' : 'DEL', bx2, 22 * S, () => {
+    tb(armed ? 'SURE?' : 'DEL', bx2, 20 * S, () => {
       if (!armed) { G.pixDelArm = e.key; toast('Click DEL again — the sprite and everything placed of it goes.', '#ff6b7a'); return; }
       deleteSpriteEverywhere(e.key);
       G.pixEdit = null; G.pixDelArm = null;
       Sfx.play('deny');
-    }, armed, 1); bx2 += 24 * S;
+    }, armed, 1); bx2 += 21 * S;
   }
-  tb('X', bx2, 12 * S, () => { G.pixEdit = null; }, false, 1);
+  tb('X', bx2, 11 * S, () => { G.pixEdit = null; }, false, 1);
   // ТРЕТИ РЕД: ПЛАТНОТО в пиксели — за ВСЕКИ спрайт, нагоре и надолу
   const isCust = e.key.slice(0, 5) === 'cust_';
   {
